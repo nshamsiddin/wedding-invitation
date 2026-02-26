@@ -1,10 +1,33 @@
 import { sql } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+export const events = sqliteTable('events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  date: text('date').notNull(),
+  time: text('time').notNull(),
+  venueName: text('venue_name').notNull(),
+  venueAddress: text('venue_address').notNull(),
+  dressCode: text('dress_code'),
+  mapsUrl: text('maps_url'),
+});
+
 export const guests = sqliteTable('guests', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
+  phone: text('phone'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const guestInvitations = sqliteTable('guest_invitations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guestId: integer('guest_id').notNull(),
+  eventId: integer('event_id').notNull(),
+  token: text('token').notNull().unique(),
   status: text('status', { enum: ['attending', 'declined', 'maybe', 'pending'] })
     .notNull()
     .default('pending'),
@@ -19,5 +42,6 @@ export const guests = sqliteTable('guests', {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
+export type EventRow = typeof events.$inferSelect;
 export type GuestRow = typeof guests.$inferSelect;
-export type NewGuest = typeof guests.$inferInsert;
+export type InvitationRow = typeof guestInvitations.$inferSelect;

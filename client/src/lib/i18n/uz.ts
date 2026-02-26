@@ -80,4 +80,29 @@ export const uz: Translations = {
 
   // Footer
   allRightsReserved: 'Barcha huquqlar himoyalangan.',
+
+  // Loading / error states
+  loadingInvitation: 'Taklif yuklanmoqda…',
+  invitationNotFound: 'Taklif Topilmadi',
+  invitationNotFoundSub: 'Bu tadbir sahifasi yuklanmadi.',
+  invitationExpired: 'Bu taklif havolasi muddati o\'tgan yoki noto\'g\'ri bo\'lishi mumkin.',
+
+  // EventPage — public page CTA
+  learnMore: 'Tadbir Tafsilotlari',
+
+  // EventPage — RSVP notice (no personal link)
+  personalInviteRequired: 'Shaxsiy Taklif Talab Etiladi',
+  personalInviteRequiredSub:
+    'Ishtirokingizni tasdiqlash uchun taklifnomangizda berilgan shaxsiy havoladan foydalaning. Har bir mehmon o\'z RSVP sahifasi uchun noyob havola oladi.',
+  personalLinkHint: 'Shaxsiy havolangiz uchun taklifnomangizni tekshiring',
+
+  // HomePage
+  chooseCity: 'To\'y tantanangizni tanlang',
+  viewInvitation: 'Taklifni Ko\'rish',
+
+  // CountdownTimer completion
+  celebrationBegun: 'Bayram boshlandi!',
+
+  // Footer
+  madeWithLove: 'Berfin & Shamsiddin uchun ♡ bilan yaratildi',
 };

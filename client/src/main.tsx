@@ -18,16 +18,16 @@ ReactDOM.createRoot(rootEl).render(
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#1e1b2e',
-            color: '#f5ede0',
-            fontFamily: '"Cormorant Garamond", Georgia, serif',
-            fontSize: '15px',
-            borderRadius: '12px',
-            border: '1px solid rgba(201,165,90,0.25)',
-            boxShadow: '0 4px 24px rgba(14,12,26,0.6)',
+            background: '#FEFCF7',
+            color: '#6B5D52',
+            fontFamily: '"Lato", system-ui, sans-serif',
+            fontSize: '14px',
+            borderRadius: '14px',
+            border: '1px solid rgba(196,154,108,0.25)',
+            boxShadow: '0 4px 24px rgba(140,123,110,0.15)',
           },
           success: {
-            iconTheme: { primary: '#c9a55a', secondary: '#1e1b2e' },
+            iconTheme: { primary: '#C9707A', secondary: '#FEFCF7' },
           },
           error: {
             iconTheme: { primary: '#ef4444', secondary: '#fff' },

@@ -6,3 +6,8 @@ dist/
 *.db-wal
 *.db-shm
 package-lock.json
+
+# Personal photos — kept out of version control
+client/public/*.jpg
+client/public/*.jpeg
+client/public/*.png

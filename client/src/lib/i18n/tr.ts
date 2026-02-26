@@ -80,4 +80,29 @@ export const tr: Translations = {
 
   // Footer
   allRightsReserved: 'Tüm hakları saklıdır.',
+
+  // Loading / error states
+  loadingInvitation: 'Davetiye yükleniyor…',
+  invitationNotFound: 'Davetiye Bulunamadı',
+  invitationNotFoundSub: 'Bu etkinlik sayfası yüklenemedi.',
+  invitationExpired: 'Bu davetiye bağlantısı süresi dolmuş veya geçersiz olabilir.',
+
+  // EventPage — public page CTA
+  learnMore: 'Etkinlik Detayları',
+
+  // EventPage — RSVP notice (no personal link)
+  personalInviteRequired: 'Kişisel Davetiye Gerekli',
+  personalInviteRequiredSub:
+    'Katılımınızı onaylamak için davetiyenizde yer alan kişisel bağlantıyı kullanın. Her misafir kendi RSVP sayfası için benzersiz bir bağlantı alır.',
+  personalLinkHint: 'Kişisel bağlantınız için davetiyenizi kontrol edin',
+
+  // HomePage
+  chooseCity: 'Düğün kutlamanızı seçin',
+  viewInvitation: 'Daveti Görüntüle',
+
+  // CountdownTimer completion
+  celebrationBegun: 'Kutlama başladı!',
+
+  // Footer
+  madeWithLove: 'Berfin & Şamsiddin için ♡ ile yapıldı',
 };

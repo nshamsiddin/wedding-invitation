@@ -8,7 +8,12 @@ export default function LanguageSwitcher() {
 
   return (
     <div
-      className="flex items-center gap-1 bg-mystic-800/60 border border-silver-300/15 rounded-full px-1 py-1 backdrop-blur-sm"
+      className="flex items-center gap-1 rounded-full px-1 py-1 backdrop-blur-sm"
+      style={{
+        background: 'rgba(254,252,247,0.85)',
+        border: '1px solid rgba(196,154,108,0.25)',
+        boxShadow: '0 2px 12px rgba(140,123,110,0.12)',
+      }}
       role="group"
       aria-label="Select language"
     >
@@ -18,20 +23,16 @@ export default function LanguageSwitcher() {
           <motion.button
             key={lang}
             onClick={() => setLanguage(lang)}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.95 }}
-            className={`relative px-3 py-1 rounded-full text-xs font-serif font-medium tracking-widest transition-colors focus:outline-none focus:ring-1 focus:ring-elfgold-400 ${
-              isActive
-                ? 'text-mystic-950'
-                : 'text-silver-400 hover:text-parchment-200'
-            }`}
+            className={`relative px-3 py-2 rounded-full text-xs font-sans font-bold tracking-widest transition-colors focus:outline-none focus:ring-1 focus:ring-tulip-400 min-h-[36px] min-w-[44px] ${isActive ? 'text-ivory-100' : 'text-stone-500'}`}
             aria-label={`Switch to ${lang.toUpperCase()}`}
             aria-pressed={isActive}
           >
             {isActive && (
               <motion.span
                 layoutId="lang-pill"
-                className="absolute inset-0 rounded-full bg-elfgold-600"
+                className="absolute inset-0 rounded-full bg-gradient-to-br from-tulip-500 to-tulip-600"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}

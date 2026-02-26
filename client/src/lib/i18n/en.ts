@@ -57,6 +57,24 @@ export type Translations = {
   detailDate: string;
   updateRsvpLink: string;
   allRightsReserved: string;
+  // Loading / error states
+  loadingInvitation: string;
+  invitationNotFound: string;
+  invitationNotFoundSub: string;
+  invitationExpired: string;
+  // EventPage — public page CTA
+  learnMore: string;
+  // EventPage — RSVP notice (no personal link)
+  personalInviteRequired: string;
+  personalInviteRequiredSub: string;
+  personalLinkHint: string;
+  // HomePage
+  chooseCity: string;
+  viewInvitation: string;
+  // CountdownTimer completion
+  celebrationBegun: string;
+  // Footer
+  madeWithLove: string;
 };
 
 export const en: Translations = {
@@ -139,4 +157,29 @@ export const en: Translations = {
 
   // Footer
   allRightsReserved: 'All rights reserved.',
+
+  // Loading / error states
+  loadingInvitation: 'Loading invitation…',
+  invitationNotFound: 'Invitation Not Found',
+  invitationNotFoundSub: 'This event page could not be loaded.',
+  invitationExpired: 'This invitation link may have expired or is invalid.',
+
+  // EventPage — public page CTA
+  learnMore: 'Event Details',
+
+  // EventPage — RSVP notice (no personal link)
+  personalInviteRequired: 'Personal Invitation Required',
+  personalInviteRequiredSub:
+    'To confirm your attendance, please use the personal link included in your invitation. Each guest receives a unique link to their own RSVP.',
+  personalLinkHint: 'Check your invitation for your personal link',
+
+  // HomePage
+  chooseCity: 'Choose your wedding celebration',
+  viewInvitation: 'View Invitation',
+
+  // CountdownTimer completion
+  celebrationBegun: 'The celebration has begun!',
+
+  // Footer
+  madeWithLove: 'Made with ♡ for Berfin & Şamsiddin',
 };

@@ -1,5 +1,3 @@
-import type { GuestRow } from '../db/schema.js';
-
 function escapeCsvField(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '';
   const str = String(value);
@@ -9,34 +7,47 @@ function escapeCsvField(value: string | number | null | undefined): string {
   return str;
 }
 
-export function guestsToCSV(guests: GuestRow[]): string {
+export interface CSVRow {
+  guestId: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  eventName: string;
+  eventSlug: string;
+  status: string;
+  guestCount: number;
+  dietary: string | null;
+  message: string | null;
+  rsvpDate: string;
+  updatedAt: string;
+}
+
+export function toCSV(rows: CSVRow[]): string {
   const headers = [
-    'ID',
-    'Name',
-    'Email',
-    'Status',
-    'Guest Count',
-    'Dietary Restrictions',
-    'Message',
-    'RSVP Date',
-    'Updated At',
+    'Guest ID', 'Name', 'Email', 'Phone',
+    'Event', 'Event Slug', 'Status', 'Guest Count',
+    'Dietary Restrictions', 'Message',
+    'RSVP Date', 'Updated At',
   ];
 
-  const rows = guests.map((g) => [
-    g.id,
-    g.name,
-    g.email,
-    g.status,
-    g.guestCount,
-    g.dietary ?? '',
-    g.message ?? '',
-    g.createdAt,
-    g.updatedAt,
+  const dataRows = rows.map((r) => [
+    r.guestId,
+    r.name,
+    r.email,
+    r.phone ?? '',
+    r.eventName,
+    r.eventSlug,
+    r.status,
+    r.guestCount,
+    r.dietary ?? '',
+    r.message ?? '',
+    r.rsvpDate,
+    r.updatedAt,
   ]);
 
   const lines = [
     headers.map(escapeCsvField).join(','),
-    ...rows.map((row) => row.map(escapeCsvField).join(',')),
+    ...dataRows.map((row) => row.map(escapeCsvField).join(',')),
   ];
 
   return lines.join('\r\n');

@@ -1,13 +1,23 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { and, eq, like, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, like, or } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { db, schema } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
-import { adminLoginSchema, addGuestSchema, updateGuestSchema } from '@invitation/shared';
-import { guestsToCSV } from '../lib/csv.js';
+import {
+  adminLoginSchema,
+  addGuestSchema,
+  updateGuestContactSchema,
+  updateInvitationSchema,
+  addInvitationSchema,
+} from '@invitation/shared';
+import { toCSV } from '../lib/csv.js';
+import type { AttendanceStatus } from '@invitation/shared';
 
 const router = Router();
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
 
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const parsed = adminLoginSchema.safeParse(req.body);
@@ -32,14 +42,12 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 
   const token = jwt.sign({ admin: true }, jwtSecret, { expiresIn: '24h' });
-
   res.cookie('token', token, {
     httpOnly: true,
     sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000,
   });
-
   res.json({ ok: true });
 });
 
@@ -52,71 +60,158 @@ router.get('/me', requireAuth, (_req: Request, res: Response): void => {
   res.json({ admin: true });
 });
 
-router.get('/stats', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+// ─── Events (with per-event stats) ──────────────────────────────────────────
+
+router.get('/events', requireAuth, async (_req: Request, res: Response): Promise<void> => {
   try {
-    const rows = await db
+    const eventRows = await db.select().from(schema.events);
+    const invRows = await db
       .select({
-        status: schema.guests.status,
-        guestCount: schema.guests.guestCount,
+        eventId: schema.guestInvitations.eventId,
+        status: schema.guestInvitations.status,
+        guestCount: schema.guestInvitations.guestCount,
       })
-      .from(schema.guests);
+      .from(schema.guestInvitations);
 
-    const stats = {
-      total: rows.length,
-      attending: 0,
-      declined: 0,
-      maybe: 0,
-      pending: 0,
-      totalHeadcount: 0,
-    };
+    const statsMap = new Map<number, {
+      total: number; attending: number; declined: number;
+      maybe: number; pending: number; totalHeadcount: number;
+    }>();
 
-    for (const row of rows) {
-      if (row.status === 'attending') {
-        stats.attending++;
-        stats.totalHeadcount += row.guestCount;
-      } else if (row.status === 'declined') {
-        stats.declined++;
-      } else if (row.status === 'maybe') {
-        stats.maybe++;
-      } else {
-        stats.pending++;
-      }
+    for (const e of eventRows) {
+      statsMap.set(e.id, { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 });
+    }
+    for (const inv of invRows) {
+      const s = statsMap.get(inv.eventId);
+      if (!s) continue;
+      s.total++;
+      if (inv.status === 'attending') { s.attending++; s.totalHeadcount += inv.guestCount; }
+      else if (inv.status === 'declined') s.declined++;
+      else if (inv.status === 'maybe') s.maybe++;
+      else s.pending++;
     }
 
-    res.json(stats);
+    res.json(
+      eventRows.map((e) => ({
+        id: e.id,
+        slug: e.slug,
+        name: e.name,
+        date: e.date,
+        time: e.time,
+        venueName: e.venueName,
+        venueAddress: e.venueAddress,
+        dressCode: e.dressCode,
+        mapsUrl: e.mapsUrl,
+        stats: statsMap.get(e.id) ?? { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 },
+      }))
+    );
   } catch (error) {
-    console.error('Stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    console.error('Admin events error:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
+// ─── Guests (with their invitations) ────────────────────────────────────────
+
 router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
   const status = req.query['status'] as string | undefined;
   const search = req.query['search'] as string | undefined;
 
   try {
-    const conditions = [];
+    // Resolve which guest IDs match the event/status filter
+    let matchingGuestIds: number[] | null = null;
+    if (eventId || (status && status !== '')) {
+      const invConditions = [];
+      if (eventId && !isNaN(eventId)) invConditions.push(eq(schema.guestInvitations.eventId, eventId));
+      if (status && ['attending', 'declined', 'maybe', 'pending'].includes(status)) {
+        invConditions.push(eq(schema.guestInvitations.status, status as AttendanceStatus));
+      }
 
-    if (status && ['attending', 'declined', 'maybe', 'pending'].includes(status)) {
-      conditions.push(eq(schema.guests.status, status as 'attending' | 'declined' | 'maybe' | 'pending'));
+      if (invConditions.length > 0) {
+        const matchingInvs = await db
+          .selectDistinct({ guestId: schema.guestInvitations.guestId })
+          .from(schema.guestInvitations)
+          .where(and(...invConditions));
+        matchingGuestIds = matchingInvs.map((r) => r.guestId);
+        if (matchingGuestIds.length === 0) {
+          res.json([]);
+          return;
+        }
+      }
     }
 
+    // Build guest WHERE conditions
+    const guestConditions = [];
     if (search && search.trim().length > 0) {
       const term = `%${search.trim()}%`;
-      conditions.push(
-        or(
-          like(schema.guests.name, term),
-          like(schema.guests.email, term)
-        )
-      );
+      guestConditions.push(or(like(schema.guests.name, term), like(schema.guests.email, term)));
+    }
+    if (matchingGuestIds !== null) {
+      guestConditions.push(inArray(schema.guests.id, matchingGuestIds));
     }
 
-    const guests = await db
+    // Fetch guests
+    const guestRows = await db
       .select()
       .from(schema.guests)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+      .where(guestConditions.length > 0 ? and(...guestConditions) : undefined)
+      .orderBy(desc(schema.guests.createdAt));
 
-    res.json(guests);
+    if (guestRows.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    // Fetch all invitations for those guests in one query
+    const guestIds = guestRows.map((g) => g.id);
+    const invRows = await db
+      .select({
+        id: schema.guestInvitations.id,
+        guestId: schema.guestInvitations.guestId,
+        eventId: schema.guestInvitations.eventId,
+        token: schema.guestInvitations.token,
+        status: schema.guestInvitations.status,
+        guestCount: schema.guestInvitations.guestCount,
+        dietary: schema.guestInvitations.dietary,
+        message: schema.guestInvitations.message,
+        updatedAt: schema.guestInvitations.updatedAt,
+        eventSlug: schema.events.slug,
+        eventName: schema.events.name,
+      })
+      .from(schema.guestInvitations)
+      .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
+      .where(inArray(schema.guestInvitations.guestId, guestIds));
+
+    // Aggregate
+    const invMap = new Map<number, typeof invRows>();
+    for (const inv of invRows) {
+      const list = invMap.get(inv.guestId) ?? [];
+      list.push(inv);
+      invMap.set(inv.guestId, list);
+    }
+
+    const result = guestRows.map((g) => ({
+      id: g.id,
+      name: g.name,
+      email: g.email,
+      phone: g.phone,
+      createdAt: g.createdAt,
+      invitations: (invMap.get(g.id) ?? []).map((inv) => ({
+        id: inv.id,
+        eventId: inv.eventId,
+        eventSlug: inv.eventSlug,
+        eventName: inv.eventName,
+        token: inv.token,
+        status: inv.status,
+        guestCount: inv.guestCount,
+        dietary: inv.dietary,
+        message: inv.message,
+        updatedAt: inv.updatedAt,
+      })),
+    }));
+
+    res.json(result);
   } catch (error) {
     console.error('Guest list error:', error);
     res.status(500).json({ error: 'Failed to fetch guests' });
@@ -130,7 +225,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, email, status, guestCount, dietary, message } = parsed.data;
+  const { name, email, phone, eventIds, status, guestCount, dietary, message } = parsed.data;
 
   try {
     const existing = await db
@@ -144,19 +239,30 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
       return;
     }
 
-    const inserted = await db
+    const [guest] = await db
       .insert(schema.guests)
-      .values({
-        name,
-        email,
-        status,
-        guestCount,
-        dietary: dietary ?? null,
-        message: message ?? null,
-      })
+      .values({ name, email, phone: phone ?? null })
       .returning();
 
-    res.status(201).json(inserted[0]);
+    // Create invitations for each selected event
+    const invitations = [];
+    for (const eventId of eventIds) {
+      const [inv] = await db
+        .insert(schema.guestInvitations)
+        .values({
+          guestId: guest.id,
+          eventId,
+          token: randomUUID(),
+          status: status ?? 'pending',
+          guestCount: guestCount ?? 1,
+          dietary: dietary ?? null,
+          message: message ?? null,
+        })
+        .returning();
+      invitations.push(inv);
+    }
+
+    res.status(201).json({ guest, invitations });
   } catch (error) {
     console.error('Add guest error:', error);
     res.status(500).json({ error: 'Failed to add guest' });
@@ -170,18 +276,15 @@ router.put('/guests/:id', requireAuth, async (req: Request, res: Response): Prom
     return;
   }
 
-  const parsed = updateGuestSchema.safeParse(req.body);
+  const parsed = updateGuestContactSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
     return;
   }
 
-  const updates = parsed.data;
-  const now = new Date().toISOString();
-
   try {
     const existing = await db
-      .select()
+      .select({ id: schema.guests.id })
       .from(schema.guests)
       .where(eq(schema.guests.id, id))
       .limit(1);
@@ -191,18 +294,13 @@ router.put('/guests/:id', requireAuth, async (req: Request, res: Response): Prom
       return;
     }
 
-    const updated = await db
+    const [updated] = await db
       .update(schema.guests)
-      .set({
-        ...updates,
-        dietary: updates.dietary !== undefined ? (updates.dietary || null) : undefined,
-        message: updates.message !== undefined ? (updates.message || null) : undefined,
-        updatedAt: now,
-      })
+      .set(parsed.data)
       .where(eq(schema.guests.id, id))
       .returning();
 
-    res.json(updated[0]);
+    res.json(updated);
   } catch (error) {
     console.error('Update guest error:', error);
     res.status(500).json({ error: 'Failed to update guest' });
@@ -234,12 +332,193 @@ router.delete('/guests/:id', requireAuth, async (req: Request, res: Response): P
   }
 });
 
-router.get('/export', requireAuth, async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const guests = await db.select().from(schema.guests);
-    const csv = guestsToCSV(guests);
+// ─── Invitations ─────────────────────────────────────────────────────────────
 
-    const filename = `guests-${new Date().toISOString().split('T')[0]}.csv`;
+router.post('/invitations', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const parsed = addInvitationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+
+  const { guestId, eventId, status, guestCount } = parsed.data;
+
+  try {
+    const guestExists = await db
+      .select({ id: schema.guests.id })
+      .from(schema.guests)
+      .where(eq(schema.guests.id, guestId))
+      .limit(1);
+
+    if (guestExists.length === 0) {
+      res.status(404).json({ error: 'Guest not found' });
+      return;
+    }
+
+    const eventExists = await db
+      .select({ id: schema.events.id })
+      .from(schema.events)
+      .where(eq(schema.events.id, eventId))
+      .limit(1);
+
+    if (eventExists.length === 0) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    const [inv] = await db
+      .insert(schema.guestInvitations)
+      .values({
+        guestId,
+        eventId,
+        token: randomUUID(),
+        status: status ?? 'pending',
+        guestCount: guestCount ?? 1,
+      })
+      .returning();
+
+    res.status(201).json(inv);
+  } catch (error) {
+    console.error('Add invitation error:', error);
+    // SQLite UNIQUE constraint on (guest_id, event_id) will throw here
+    res.status(409).json({ error: 'This guest already has an invitation for this event' });
+  }
+});
+
+router.put('/invitations/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const id = parseInt(req.params['id'] ?? '', 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid invitation ID' });
+    return;
+  }
+
+  const parsed = updateInvitationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const updates = parsed.data;
+
+  try {
+    const existing = await db
+      .select({ id: schema.guestInvitations.id })
+      .from(schema.guestInvitations)
+      .where(eq(schema.guestInvitations.id, id))
+      .limit(1);
+
+    if (existing.length === 0) {
+      res.status(404).json({ error: 'Invitation not found' });
+      return;
+    }
+
+    const [updated] = await db
+      .update(schema.guestInvitations)
+      .set({
+        ...updates,
+        dietary: updates.dietary !== undefined ? (updates.dietary || null) : undefined,
+        message: updates.message !== undefined ? (updates.message || null) : undefined,
+        updatedAt: now,
+      })
+      .where(eq(schema.guestInvitations.id, id))
+      .returning();
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update invitation error:', error);
+    res.status(500).json({ error: 'Failed to update invitation' });
+  }
+});
+
+router.delete('/invitations/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const id = parseInt(req.params['id'] ?? '', 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid invitation ID' });
+    return;
+  }
+
+  try {
+    const deleted = await db
+      .delete(schema.guestInvitations)
+      .where(eq(schema.guestInvitations.id, id))
+      .returning({ id: schema.guestInvitations.id });
+
+    if (deleted.length === 0) {
+      res.status(404).json({ error: 'Invitation not found' });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Delete invitation error:', error);
+    res.status(500).json({ error: 'Failed to delete invitation' });
+  }
+});
+
+// GET /api/admin/invitations/:id/link — returns the shareable invite URL
+router.get('/invitations/:id/link', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const id = parseInt(req.params['id'] ?? '', 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid invitation ID' });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select({ token: schema.guestInvitations.token })
+      .from(schema.guestInvitations)
+      .where(eq(schema.guestInvitations.id, id))
+      .limit(1);
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: 'Invitation not found' });
+      return;
+    }
+
+    const baseUrl = process.env.BASE_URL ?? `http://localhost:5173`;
+    res.json({ url: `${baseUrl}/invite/${rows[0].token}` });
+  } catch (error) {
+    console.error('Get link error:', error);
+    res.status(500).json({ error: 'Failed to get invite link' });
+  }
+});
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+router.get('/export', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
+
+  try {
+    const conditions = [];
+    if (eventId && !isNaN(eventId)) {
+      conditions.push(eq(schema.guestInvitations.eventId, eventId));
+    }
+
+    const rows = await db
+      .select({
+        guestId: schema.guests.id,
+        name: schema.guests.name,
+        email: schema.guests.email,
+        phone: schema.guests.phone,
+        eventName: schema.events.name,
+        eventSlug: schema.events.slug,
+        status: schema.guestInvitations.status,
+        guestCount: schema.guestInvitations.guestCount,
+        dietary: schema.guestInvitations.dietary,
+        message: schema.guestInvitations.message,
+        rsvpDate: schema.guestInvitations.createdAt,
+        updatedAt: schema.guestInvitations.updatedAt,
+      })
+      .from(schema.guestInvitations)
+      .innerJoin(schema.guests, eq(schema.guests.id, schema.guestInvitations.guestId))
+      .innerJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(schema.events.slug, schema.guests.name);
+
+    const csv = toCSV(rows);
+    const suffix = eventId ? `-event-${eventId}` : '-all-events';
+    const filename = `guests${suffix}-${new Date().toISOString().split('T')[0]}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);

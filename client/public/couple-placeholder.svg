@@ -1,88 +1,122 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" fill="none">
-  <!-- Outer decorative ring -->
-  <circle cx="160" cy="160" r="155" stroke="url(#goldRing)" stroke-width="1.5" fill="none" stroke-dasharray="4 6"/>
-  <circle cx="160" cy="160" r="148" stroke="url(#goldRing2)" stroke-width="0.5" fill="none"/>
+  <!-- Outermost dashed ring -->
+  <circle cx="160" cy="160" r="155" stroke="#C49A6C" stroke-width="1" fill="none" stroke-dasharray="3 5" opacity="0.5"/>
 
-  <!-- Corner flourishes -->
-  <g stroke="#c9a55a" stroke-width="1" opacity="0.7">
-    <path d="M 20 160 Q 30 120 60 100 Q 50 130 40 160" fill="none"/>
-    <path d="M 300 160 Q 290 120 260 100 Q 270 130 280 160" fill="none"/>
-    <path d="M 20 160 Q 30 200 60 220 Q 50 190 40 160" fill="none"/>
-    <path d="M 300 160 Q 290 200 260 220 Q 270 190 280 160" fill="none"/>
-    <!-- Leaf accents at top -->
-    <path d="M 130 18 Q 160 8 190 18" fill="none" stroke-width="1.5"/>
-    <path d="M 145 14 L 160 5 L 175 14" fill="none"/>
-    <!-- Leaf accents at bottom -->
-    <path d="M 130 302 Q 160 312 190 302" fill="none" stroke-width="1.5"/>
-    <path d="M 145 306 L 160 315 L 175 306" fill="none"/>
+  <!-- Ottoman geometric border ring (16-pointed star segments) -->
+  <g opacity="0.7">
+    <!-- Top -->
+    <path d="M 160 10 L 168 26 L 160 20 L 152 26 Z" fill="#C49A6C"/>
+    <!-- Top-right -->
+    <path d="M 220 30 L 228 46 L 220 40 L 212 46 Z" fill="#C9707A" transform="rotate(45, 160, 160)"/>
+    <!-- Right -->
+    <path d="M 310 160 L 294 168 L 300 160 L 294 152 Z" fill="#C49A6C"/>
+    <!-- Bottom-right -->
+    <path d="M 220 290 L 228 274 L 220 280 L 212 274 Z" fill="#C9707A" transform="rotate(-45, 160, 160)"/>
+    <!-- Bottom -->
+    <path d="M 160 310 L 168 294 L 160 300 L 152 294 Z" fill="#C49A6C"/>
+    <!-- Bottom-left -->
+    <path d="M 100 290 L 108 274 L 100 280 L 92 274 Z" fill="#C9707A" transform="rotate(45, 160, 160) scale(-1,1) translate(-320,0)"/>
+    <!-- Left -->
+    <path d="M 10 160 L 26 168 L 20 160 L 26 152 Z" fill="#C49A6C"/>
+    <!-- Top-left -->
+    <path d="M 40 40 L 56 48 L 48 40 L 56 32 Z" fill="#C9707A" transform="rotate(-45, 160, 160)"/>
   </g>
 
-  <!-- Inner circle background -->
-  <circle cx="160" cy="160" r="136" fill="url(#bgGrad)"/>
-  <circle cx="160" cy="160" r="136" stroke="url(#innerRing)" stroke-width="1" fill="none"/>
+  <!-- Second decorative ring -->
+  <circle cx="160" cy="160" r="148" stroke="#E8B4B8" stroke-width="0.8" fill="none" opacity="0.6"/>
 
-  <!-- Small ornamental dots on the ring -->
-  <circle cx="160" cy="12" r="3" fill="#c9a55a" opacity="0.8"/>
-  <circle cx="160" cy="308" r="3" fill="#c9a55a" opacity="0.8"/>
-  <circle cx="12" cy="160" r="3" fill="#c9a55a" opacity="0.8"/>
-  <circle cx="308" cy="160" r="3" fill="#c9a55a" opacity="0.8"/>
-  <circle cx="54" cy="54" r="2" fill="#c9a55a" opacity="0.5"/>
-  <circle cx="266" cy="54" r="2" fill="#c9a55a" opacity="0.5"/>
-  <circle cx="54" cy="266" r="2" fill="#c9a55a" opacity="0.5"/>
-  <circle cx="266" cy="266" r="2" fill="#c9a55a" opacity="0.5"/>
+  <!-- Ottoman tile border pattern ring -->
+  <g opacity="0.5">
+    <!-- Small diamond ornaments around the ring at 45° intervals -->
+    <path d="M160 18 L163 24 L160 30 L157 24 Z" fill="#C49A6C"/>
+    <path d="M221 38 L227 41 L221 47 L215 41 Z" fill="#C49A6C" transform="rotate(45 160 160)"/>
+    <path d="M291 160 L297 163 L291 169 L285 163 Z" fill="#C49A6C"/>
+    <path d="M221 282 L227 279 L221 273 L215 279 Z" fill="#C49A6C" transform="rotate(-45 160 160)"/>
+    <path d="M160 302 L163 296 L160 290 L157 296 Z" fill="#C49A6C"/>
+    <path d="M99 282 L93 279 L99 273 L105 279 Z" fill="#C49A6C" transform="rotate(45 160 160)"/>
+    <path d="M29 160 L23 163 L29 169 L35 163 Z" fill="#C49A6C"/>
+    <path d="M99 38 L93 41 L99 47 L105 41 Z" fill="#C49A6C" transform="rotate(-45 160 160)"/>
+  </g>
 
-  <!-- Female silhouette (left) -->
-  <ellipse cx="128" cy="108" rx="22" ry="24" fill="#c9a55a" opacity="0.35"/>
-  <path d="M 95 230 Q 95 160 108 142 Q 118 132 128 130 Q 138 132 142 142 Q 148 155 148 165 L 148 230 Z"
-        fill="#c9a55a" opacity="0.35"/>
-  <!-- Female dress flare -->
-  <path d="M 95 230 Q 100 270 128 275 Q 156 270 148 230 Z" fill="#c9a55a" opacity="0.25"/>
+  <!-- Inner circle background – soft warm gradient -->
+  <circle cx="160" cy="160" r="136" fill="url(#warmBg)"/>
 
-  <!-- Male silhouette (right) -->
-  <ellipse cx="195" cy="108" rx="22" ry="24" fill="#a8b4bc" opacity="0.35"/>
-  <path d="M 168 230 L 172 155 Q 180 135 195 132 Q 210 135 218 155 L 222 230 Z"
-        fill="#a8b4bc" opacity="0.35"/>
+  <!-- Subtle Ottoman tile texture inside circle -->
+  <circle cx="160" cy="160" r="136" fill="url(#tilePat)" opacity="0.06"/>
 
-  <!-- Joined hands -->
-  <path d="M 148 185 Q 160 178 172 185" stroke="#c9a55a" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <!-- Inner border -->
+  <circle cx="160" cy="160" r="136" stroke="url(#borderGrad)" stroke-width="1.5" fill="none"/>
+
+  <!-- Decorative tulip motifs at cardinal points -->
+  <g fill="#C9707A" opacity="0.35">
+    <!-- Top tulip -->
+    <path d="M 160 36 C 157 30 152 26 152 22 C 152 18 156 15 160 15 C 164 15 168 18 168 22 C 168 26 163 30 160 36 Z"/>
+    <path d="M 155 38 C 150 34 147 30 148 26 C 148 24 150 23 152 24 C 154 28 155 32 155 38 Z"/>
+    <path d="M 165 38 C 170 34 173 30 172 26 C 172 24 170 23 168 24 C 166 28 165 32 165 38 Z"/>
+    <!-- Bottom tulip (inverted) -->
+    <path d="M 160 284 C 157 290 152 294 152 298 C 152 302 156 305 160 305 C 164 305 168 302 168 298 C 168 294 163 290 160 284 Z"/>
+    <path d="M 155 282 C 150 286 147 290 148 294 C 148 296 150 297 152 296 C 154 292 155 288 155 282 Z"/>
+    <path d="M 165 282 C 170 286 173 290 172 294 C 172 296 170 297 168 296 C 166 292 165 288 165 282 Z"/>
+  </g>
+
+  <!-- Couple silhouettes -->
+  <!-- Female (left) – blush tones -->
+  <ellipse cx="127" cy="108" rx="20" ry="22" fill="#E8B4B8" opacity="0.5"/>
+  <path d="M 94 228 Q 95 158 108 142 Q 117 130 127 128 Q 137 130 142 142 Q 148 158 147 175 L 147 228 Z"
+        fill="#E8B4B8" opacity="0.45"/>
+  <!-- Dress flare -->
+  <path d="M 94 228 Q 100 268 127 272 Q 154 268 147 228 Z" fill="#E8B4B8" opacity="0.3"/>
+
+  <!-- Male (right) – stone/gold tones -->
+  <ellipse cx="196" cy="108" rx="20" ry="22" fill="#C49A6C" opacity="0.4"/>
+  <path d="M 170 228 L 173 158 Q 182 134 196 130 Q 210 134 219 158 L 222 228 Z"
+        fill="#C49A6C" opacity="0.35"/>
+
+  <!-- Clasped hands / ribbon detail -->
+  <path d="M 147 186 Q 162 178 175 186" stroke="#C9707A" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
 
   <!-- Heart -->
-  <path d="M 160 148 C 160 148 152 140 148 144 C 144 148 148 155 160 162 C 172 155 176 148 172 144 C 168 140 160 148 160 148 Z"
-        fill="#c9a55a" opacity="0.5"/>
+  <path d="M 162 150 C 162 150 154 141 150 146 C 146 151 150 158 162 165 C 174 158 178 151 174 146 C 170 141 162 150 162 150 Z"
+        fill="#C9707A" opacity="0.55"/>
 
-  <!-- Stars / sparkles -->
-  <g fill="#c9a55a" opacity="0.4">
-    <path d="M 80 80 L 82 76 L 84 80 L 88 82 L 84 84 L 82 88 L 80 84 L 76 82 Z" transform="scale(0.8) translate(22,22)"/>
-    <path d="M 240 80 L 242 76 L 244 80 L 248 82 L 244 84 L 242 88 L 240 84 L 236 82 Z" transform="scale(0.7) translate(-50,22)"/>
-    <circle cx="90" cy="230" r="2" opacity="0.5"/>
-    <circle cx="230" cy="230" r="2" opacity="0.5"/>
-    <circle cx="72" cy="140" r="1.5" opacity="0.4"/>
-    <circle cx="248" cy="140" r="1.5" opacity="0.4"/>
+  <!-- Floral accent petals -->
+  <g fill="#C9707A" opacity="0.3">
+    <ellipse cx="96" cy="195" rx="6" ry="10" transform="rotate(-30 96 195)"/>
+    <ellipse cx="224" cy="195" rx="6" ry="10" transform="rotate(30 224 195)"/>
+  </g>
+  <g fill="#9BAF8E" opacity="0.3">
+    <ellipse cx="88" cy="218" rx="5" ry="8" transform="rotate(-50 88 218)"/>
+    <ellipse cx="232" cy="218" rx="5" ry="8" transform="rotate(50 232 218)"/>
   </g>
 
-  <!-- Text placeholder -->
-  <text x="160" y="252" text-anchor="middle" font-family="Cinzel, serif" font-size="11"
-        fill="#c9a55a" opacity="0.7" letter-spacing="3">YOUR PHOTO</text>
-  <text x="160" y="268" text-anchor="middle" font-family="Cinzel, serif" font-size="8"
-        fill="#a8b4bc" opacity="0.5" letter-spacing="2">HERE</text>
+  <!-- Small sparkle details -->
+  <g fill="#C49A6C" opacity="0.45">
+    <circle cx="104" cy="140" r="2"/>
+    <circle cx="216" cy="140" r="2"/>
+    <circle cx="96" cy="100" r="1.5"/>
+    <circle cx="224" cy="100" r="1.5"/>
+  </g>
+
+  <!-- Placeholder text -->
+  <text x="160" y="248" text-anchor="middle" font-family="Playfair Display, serif" font-size="10"
+        fill="#8C7B6E" opacity="0.6" letter-spacing="3">YOUR PHOTO</text>
+  <text x="160" y="264" text-anchor="middle" font-family="Lato, sans-serif" font-size="8"
+        fill="#A0938A" opacity="0.45" letter-spacing="2">HERE</text>
 
   <defs>
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="#1e1b2e"/>
-      <stop offset="100%" stop-color="#0e0c1a"/>
+    <radialGradient id="warmBg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FDF8F0"/>
+      <stop offset="60%" stop-color="#F9EAE4"/>
+      <stop offset="100%" stop-color="#F7E8E0"/>
     </radialGradient>
-    <linearGradient id="goldRing" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#c9a55a" stop-opacity="0.8"/>
-      <stop offset="50%" stop-color="#f2d898" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#c9a55a" stop-opacity="0.8"/>
-    </linearGradient>
-    <linearGradient id="goldRing2" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#c9a55a" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#f2d898" stop-opacity="0.2"/>
-    </linearGradient>
-    <linearGradient id="innerRing" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#c9a55a" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#a8b4bc" stop-opacity="0.15"/>
+    <pattern id="tilePat" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M15 1 L29 15 L15 29 L1 15 Z" stroke="#C49A6C" stroke-width="0.5" fill="none"/>
+      <circle cx="15" cy="15" r="5" stroke="#C9707A" stroke-width="0.4" fill="none"/>
+    </pattern>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C49A6C" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#E8B4B8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#C49A6C" stop-opacity="0.5"/>
     </linearGradient>
   </defs>
 </svg>
