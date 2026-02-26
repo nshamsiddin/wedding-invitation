@@ -1,0 +1,116 @@
+import type { Config } from 'tailwindcss';
+
+export default {
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        mystic: {
+          50:  '#f0eef8',
+          100: '#ddd9f0',
+          200: '#bab2e1',
+          300: '#9488cc',
+          400: '#7060b5',
+          500: '#503d9a',
+          600: '#3d2d7e',
+          700: '#2d1f5e',
+          800: '#1e1535',
+          900: '#120d22',
+          950: '#0e0c1a',
+          DEFAULT: '#0e0c1a',
+        },
+        parchment: {
+          50:  '#fdfaf5',
+          100: '#f9f2e5',
+          200: '#f5ede0',
+          300: '#ede0ce',
+          400: '#e0ceaf',
+          500: '#cfb98a',
+          600: '#b89a60',
+          DEFAULT: '#f5ede0',
+        },
+        silver: {
+          50:  '#f8f9fa',
+          100: '#eef0f3',
+          200: '#dde1e6',
+          300: '#c8d0d8',
+          400: '#a8b4bc',
+          500: '#8898a4',
+          600: '#6a7d8c',
+          DEFAULT: '#c8d0d8',
+        },
+        elfgold: {
+          50:  '#fdf8ee',
+          100: '#f9edce',
+          200: '#f2d898',
+          300: '#e8be60',
+          400: '#d9a33a',
+          500: '#c9a55a',
+          600: '#b8943f',
+          700: '#9a7a30',
+          800: '#7d6225',
+          900: '#614c1c',
+          DEFAULT: '#c9a55a',
+        },
+        forest: {
+          50:  '#eef5f0',
+          100: '#d4e8d8',
+          200: '#a8d0b0',
+          300: '#72b082',
+          400: '#4a8a5e',
+          500: '#3d6147',
+          600: '#2e4a35',
+          700: '#203528',
+          800: '#14221a',
+          900: '#0b1510',
+          DEFAULT: '#2e4a35',
+        },
+      },
+      fontFamily: {
+        serif:     ['"Cinzel"', '"Cinzel Decorative"', 'Georgia', 'serif'],
+        display:   ['"Cinzel Decorative"', '"Cinzel"', 'Georgia', 'serif'],
+        body:      ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        sans:      ['"Cormorant Garamond"', 'Georgia', 'serif'],
+      },
+      animation: {
+        'fade-in':   'fadeIn 0.8s ease-out forwards',
+        'slide-up':  'slideUp 0.7s ease-out forwards',
+        'shimmer':   'shimmer 1.5s infinite linear',
+        'float':     'float 6s ease-in-out infinite',
+        'glow-pulse':'glowPulse 3s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          from: { opacity: '0' },
+          to:   { opacity: '1' },
+        },
+        slideUp: {
+          from: { opacity: '0', transform: 'translateY(24px)' },
+          to:   { opacity: '1', transform: 'translateY(0)' },
+        },
+        shimmer: {
+          '0%':   { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%':      { transform: 'translateY(-8px)' },
+        },
+        glowPulse: {
+          '0%, 100%': { opacity: '0.6' },
+          '50%':      { opacity: '1' },
+        },
+      },
+      boxShadow: {
+        'elfglow': '0 0 20px rgba(201,165,90,0.25), 0 0 60px rgba(201,165,90,0.1)',
+        'silverglow': '0 0 15px rgba(200,208,216,0.2)',
+      },
+      backgroundImage: {
+        'starfield': `radial-gradient(ellipse at 20% 20%, rgba(201,165,90,0.06) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 80%, rgba(80,61,154,0.12) 0%, transparent 50%),
+                      radial-gradient(ellipse at 50% 50%, rgba(14,12,26,0) 0%, rgba(14,12,26,0.95) 100%)`,
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config;

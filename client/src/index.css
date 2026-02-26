@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-mystic-950 text-parchment-200 antialiased;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Cinzel', 'Cinzel Decorative', Georgia, serif;
+    @apply tracking-wider;
+  }
+}
+
+@layer components {
+  .rune-divider {
+    @apply flex items-center gap-4 w-full;
+  }
+
+  .rune-divider::before,
+  .rune-divider::after {
+    content: '';
+    @apply flex-1 h-px;
+    background: linear-gradient(to right, transparent, rgba(201,165,90,0.5), transparent);
+  }
+
+  .rune-divider-icon {
+    @apply text-elfgold-500 text-lg opacity-80;
+  }
+
+  .card-mystic {
+    @apply bg-mystic-800/50 border border-silver-300/10 rounded-2xl backdrop-blur-sm;
+    box-shadow: 0 4px 24px rgba(14,12,26,0.6), inset 0 1px 0 rgba(201,165,90,0.08);
+  }
+
+  .btn-elfgold {
+    @apply inline-flex items-center justify-center gap-2
+           bg-elfgold-600 hover:bg-elfgold-500
+           text-mystic-950 font-serif font-semibold
+           tracking-widest uppercase text-sm
+           py-3 px-8 rounded-full
+           transition-all duration-300
+           focus:outline-none focus:ring-2 focus:ring-elfgold-400 focus:ring-offset-2 focus:ring-offset-mystic-950;
+    box-shadow: 0 0 20px rgba(201,165,90,0.2);
+  }
+
+  .btn-elfgold:hover {
+    box-shadow: 0 0 30px rgba(201,165,90,0.4);
+  }
+
+  .input-mystic {
+    @apply w-full bg-mystic-800/60 border border-silver-300/20
+           focus:border-elfgold-500 rounded-lg px-4 py-3
+           text-parchment-200 text-base
+           placeholder-parchment-500/40
+           focus:outline-none focus:ring-1 focus:ring-elfgold-500
+           transition-colors;
+  }
+
+  .label-mystic {
+    @apply block text-sm font-serif font-medium text-parchment-300/80 mb-1.5 tracking-wide;
+  }
+}
+
+@layer utilities {
+  .skeleton {
+    @apply bg-gradient-to-r from-mystic-800/40 via-mystic-700/40 to-mystic-800/40 bg-[length:200%_100%] animate-shimmer rounded;
+  }
+
+  .skeleton-light {
+    @apply bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%] animate-shimmer rounded;
+  }
+
+  .text-glow-gold {
+    text-shadow: 0 0 20px rgba(201,165,90,0.6), 0 0 40px rgba(201,165,90,0.2);
+  }
+
+  .text-glow-silver {
+    text-shadow: 0 0 15px rgba(200,208,216,0.5);
+  }
+
+  .border-glow {
+    box-shadow: 0 0 0 1px rgba(201,165,90,0.3), 0 0 20px rgba(201,165,90,0.1);
+  }
+
+  .stars-bg {
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 40%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 20%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 80%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 40% 30%, rgba(201,165,90,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 75% 45%, rgba(200,208,216,0.25) 0%, transparent 100%);
+  }
+}
