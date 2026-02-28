@@ -35,7 +35,7 @@ export default function LanguageSwitcher() {
               onClick={() => setLanguage(code)}
               className="relative z-10 px-3 py-1 rounded-full transition-colors"
               style={{
-                fontFamily: '"Inter", system-ui, sans-serif',
+                fontFamily: '"DM Sans", system-ui, sans-serif',
                 fontSize: '0.6rem',
                 fontWeight: 600,
                 letterSpacing: '0.1em',

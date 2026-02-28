@@ -35,7 +35,7 @@ function AppInner() {
           style: {
             background: 'var(--bg-surface)',
             color: 'var(--text-primary)',
-            fontFamily: '"Inter", system-ui, sans-serif',
+            fontFamily: '"DM Sans", system-ui, sans-serif',
             fontSize: '13px',
             borderRadius: '14px',
             border: '1px solid var(--border-warm)',

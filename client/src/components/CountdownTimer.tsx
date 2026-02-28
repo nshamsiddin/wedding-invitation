@@ -70,9 +70,9 @@ function FlipUnit({ value, label }: FlipDigitProps) {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center"
             style={{
-              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontFamily: '"Bodoni Moda", Georgia, serif',
               fontSize: 'clamp(1.75rem, 5vw, 2.75rem)',
-              fontWeight: 300,
+              fontWeight: 400,
               color: 'var(--text-primary)',
               letterSpacing: '-0.02em',
               tabularNums: 'tabular-nums' as never,
@@ -122,7 +122,7 @@ export default function CountdownTimer({ targetDate }: Props) {
       >
         <span style={{ color: 'var(--accent-rose)' }} aria-hidden="true">♡</span>
         <p style={{
-          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontFamily: '"Bodoni Moda", Georgia, serif',
           fontStyle: 'italic',
           color: 'var(--accent-rose)',
         }}>

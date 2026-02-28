@@ -148,7 +148,7 @@ export default function SuccessScreen({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.6 }}
         style={{
-          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontFamily: '"Bodoni Moda", Georgia, serif',
           fontStyle: 'italic',
           fontSize: 'clamp(1.4rem, 4vw, 2rem)',
           fontWeight: 300,
@@ -173,7 +173,7 @@ export default function SuccessScreen({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.6 }}
         style={{
-          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontFamily: '"Bodoni Moda", Georgia, serif',
           fontSize: 'clamp(1.1rem, 3vw, 1.4rem)',
           fontWeight: 400,
           color: 'var(--text-primary)',
@@ -189,7 +189,7 @@ export default function SuccessScreen({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7, duration: 0.6 }}
         style={{
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"DM Sans", system-ui, sans-serif',
           fontSize: '0.82rem',
           lineHeight: 1.7,
           color: 'var(--text-secondary)',
@@ -207,7 +207,7 @@ export default function SuccessScreen({
         transition={{ delay: 0.85 }}
         onClick={onUpdateRsvp}
         style={{
-          fontFamily: '"Inter", system-ui, sans-serif',
+          fontFamily: '"DM Sans", system-ui, sans-serif',
           fontSize: '0.72rem',
           fontWeight: 500,
           letterSpacing: '0.08em',

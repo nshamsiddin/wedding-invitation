@@ -28,16 +28,22 @@ const GOLD        = '#B8924A';
 const GOLD_DIM    = 'rgba(184,146,74,0.45)';
 const ROSE        = '#C4848C';
 
-const serif = '"Cormorant Garamond", Georgia, serif';
-const sans  = '"Inter", system-ui, sans-serif';
+const serif = '"Bodoni Moda", Georgia, serif';
+const sans  = '"DM Sans", system-ui, sans-serif';
 
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
 
 const COUPLE_PHOTO = '/IMG_2524.jpg';
 
-// Subtle diagonal gradient on large names — unified depth treatment, no animation
+// iOS 26 liquid-glass: specular on Bodoni's hairline strokes → solid stems → translucent base
 const NAME_GRADIENT: CSSProperties = {
-  background: `linear-gradient(165deg, ${ESPRESSO} 15%, rgba(42,31,26,0.58) 100%)`,
+  background: `linear-gradient(
+    174deg,
+    rgba(253,250,245,0.68) 0%,
+    ${ESPRESSO}            11%,
+    rgba(42,31,26,0.92)    50%,
+    rgba(42,31,26,0.60)    100%
+  )`,
   WebkitBackgroundClip: 'text',
   backgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
@@ -292,7 +298,7 @@ export default function EventPage({ slug }: Props) {
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {firstName}
                 </motion.h1>
@@ -311,7 +317,7 @@ export default function EventPage({ slug }: Props) {
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {secondName}
                 </motion.h1>
@@ -321,7 +327,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {rawCoupleName}
               </motion.h1>
@@ -479,7 +485,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {firstName}
               </motion.h1>
@@ -498,7 +504,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {secondName}
               </motion.h1>
@@ -508,7 +514,7 @@ export default function EventPage({ slug }: Props) {
               initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
             >
               {rawCoupleName}
             </motion.h1>

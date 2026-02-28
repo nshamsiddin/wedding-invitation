@@ -144,8 +144,8 @@ function CountdownDigit({ value, label }: { value: number; label: string }) {
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           style={{
             display: 'block',
-            fontFamily: '"Cormorant Garamond", Georgia, serif',
-            fontWeight: 300,
+            fontFamily: '"Bodoni Moda", Georgia, serif',
+            fontWeight: 400,
             fontSize: 'clamp(2rem, 5vw, 3rem)',
             color: G.espresso,
             lineHeight: 1,
@@ -155,7 +155,7 @@ function CountdownDigit({ value, label }: { value: number; label: string }) {
         </motion.span>
       </AnimatePresence>
       <span style={{
-        fontFamily: '"Inter", system-ui, sans-serif',
+        fontFamily: '"DM Sans", system-ui, sans-serif',
         fontSize: '0.48rem',
         letterSpacing: '0.28em',
         textTransform: 'uppercase',
@@ -256,8 +256,13 @@ function usePetalCanvas(ref: React.RefObject<HTMLCanvasElement>, active: boolean
 
 // ══════════════════════════════════════════════════════════════
 // OttomanArch — pointed arch for Ankara (Turkish/Ottoman style)
-// Features: pointed apex, slender columns, diamond capitals,
-//           inner concentric arch, crescent + star at keystone
+//
+// Arch:     ogival (pointed) with inner concentric echo, lintel
+// Capitals: diamond-cut columns
+// Ornament: Ottoman lale (tulip) on each capital stem
+// Crown:    geometrically-correct hilal (crescent) formed by two
+//           offset circles via SVG mask, paired with proper
+//           5-pointed yıldız (star) — exactly as on the Turkish flag
 // ══════════════════════════════════════════════════════════════
 function OttomanArch({ inView }: { inView: boolean }) {
   const [apexVisible, setApexVisible] = useState(false);
@@ -270,6 +275,21 @@ function OttomanArch({ inView }: { inView: boolean }) {
 
   const stroke = G.goldDim;
 
+  // 5-pointed yıldız — outer r=2.6, inner r=1.05, centre (109, 7)
+  // Points interleave outer (O) and inner (I) at 36° steps from top
+  const star5 = [
+    '109.0,4.4',   // O0  top
+    '109.6,6.2',   // I0
+    '111.5,6.2',   // O1
+    '110.0,7.3',   // I1
+    '110.5,9.1',   // O2
+    '109.0,8.1',   // I2
+    '107.5,9.1',   // O3
+    '108.0,7.3',   // I3
+    '106.5,6.2',   // O4
+    '108.4,6.2',   // I4
+  ].join(' ');
+
   return (
     <svg
       viewBox="0 0 200 88"
@@ -277,6 +297,19 @@ function OttomanArch({ inView }: { inView: boolean }) {
       aria-hidden="true"
       style={{ width: 'clamp(180px, 55%, 340px)', height: 68, display: 'block', overflow: 'visible' }}
     >
+      <defs>
+        {/*
+          Hilal mask: outer circle r=7 fills white; inner circle r=6.1
+          offset 3.2px to the right punches the crescent opening.
+          The offset/radius ratio ≈ 0.46 closely matches the Turkish flag
+          crescent proportions — wide, bold, recognisable.
+        */}
+        <mask id="hilal-mask">
+          <circle cx="100" cy="9" r="7" fill="white" />
+          <circle cx="103.2" cy="9" r="6.1" fill="black" />
+        </mask>
+      </defs>
+
       {/* Left column + pointed arch arm */}
       <motion.path
         d="M 58,86 L 58,62 C 58,38 80,12 100,5"
@@ -293,7 +326,7 @@ function OttomanArch({ inView }: { inView: boolean }) {
         animate={inView ? { pathLength: 1 } : { pathLength: 0 }}
         transition={{ duration: 1.3, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
       />
-      {/* Inner concentric arch — ghost echo of main arch */}
+      {/* Inner concentric arch — depth echo */}
       <motion.path
         d="M 68,86 L 68,66 C 68,46 84,18 100,12"
         fill="none" stroke={stroke} strokeWidth="0.35" strokeLinecap="round" opacity={0.35}
@@ -308,7 +341,7 @@ function OttomanArch({ inView }: { inView: boolean }) {
         animate={inView ? { pathLength: 1 } : { pathLength: 0 }}
         transition={{ duration: 1.3, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
       />
-      {/* Lintel — horizontal band where arch springs from columns */}
+      {/* Lintel */}
       <motion.line
         x1="46" y1="62" x2="154" y2="62"
         stroke={stroke} strokeWidth="0.7" opacity={0.45}
@@ -317,7 +350,7 @@ function OttomanArch({ inView }: { inView: boolean }) {
         transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
         style={{ transformOrigin: '100px 62px' }}
       />
-      {/* Diamond capital — left column */}
+      {/* Diamond capital — left */}
       <motion.path
         d="M 58,57 L 53,62 L 58,67 L 63,62 Z"
         fill={G.gold} stroke="none"
@@ -326,7 +359,7 @@ function OttomanArch({ inView }: { inView: boolean }) {
         transition={{ duration: 0.4, type: 'spring', bounce: 0.4 }}
         style={{ transformOrigin: '58px 62px' }}
       />
-      {/* Diamond capital — right column */}
+      {/* Diamond capital — right */}
       <motion.path
         d="M 142,57 L 137,62 L 142,67 L 147,62 Z"
         fill={G.gold} stroke="none"
@@ -335,7 +368,7 @@ function OttomanArch({ inView }: { inView: boolean }) {
         transition={{ duration: 0.4, delay: 0.10, type: 'spring', bounce: 0.4 }}
         style={{ transformOrigin: '142px 62px' }}
       />
-      {/* Stylized tulip above left capital — the Ottoman lale motif */}
+      {/* Ottoman lale (tulip) — left stem */}
       <motion.path
         d="M 58,57 C 55,51 54,45 58,41 C 62,45 61,51 58,57 Z"
         fill={G.gold} stroke="none"
@@ -344,22 +377,19 @@ function OttomanArch({ inView }: { inView: boolean }) {
         transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
         style={{ transformOrigin: '58px 57px' }}
       />
-      {/* Left tulip side petal */}
-      <motion.path
-        d="M 56,51 C 52,50 51,46 53,43"
-        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round" opacity={0}
+      <motion.path d="M 56,51 C 52,50 51,46 53,43"
+        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round"
         initial={{ opacity: 0, pathLength: 0 }}
         animate={apexVisible ? { opacity: 0.45, pathLength: 1 } : { opacity: 0, pathLength: 0 }}
         transition={{ duration: 0.5, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
       />
-      <motion.path
-        d="M 60,51 C 64,50 65,46 63,43"
-        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round" opacity={0}
+      <motion.path d="M 60,51 C 64,50 65,46 63,43"
+        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round"
         initial={{ opacity: 0, pathLength: 0 }}
         animate={apexVisible ? { opacity: 0.45, pathLength: 1 } : { opacity: 0, pathLength: 0 }}
         transition={{ duration: 0.5, delay: 0.30, ease: [0.22, 1, 0.36, 1] }}
       />
-      {/* Stylized tulip above right capital */}
+      {/* Ottoman lale (tulip) — right stem */}
       <motion.path
         d="M 142,57 C 139,51 138,45 142,41 C 146,45 145,51 142,57 Z"
         fill={G.gold} stroke="none"
@@ -368,36 +398,37 @@ function OttomanArch({ inView }: { inView: boolean }) {
         transition={{ duration: 0.6, delay: 0.20, ease: [0.22, 1, 0.36, 1] }}
         style={{ transformOrigin: '142px 57px' }}
       />
-      <motion.path
-        d="M 140,51 C 136,50 135,46 137,43"
-        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round" opacity={0}
+      <motion.path d="M 140,51 C 136,50 135,46 137,43"
+        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round"
         initial={{ opacity: 0, pathLength: 0 }}
         animate={apexVisible ? { opacity: 0.45, pathLength: 1 } : { opacity: 0, pathLength: 0 }}
         transition={{ duration: 0.5, delay: 0.30, ease: [0.22, 1, 0.36, 1] }}
       />
-      <motion.path
-        d="M 144,51 C 148,50 149,46 147,43"
-        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round" opacity={0}
+      <motion.path d="M 144,51 C 148,50 149,46 147,43"
+        fill="none" stroke={G.gold} strokeWidth="0.7" strokeLinecap="round"
         initial={{ opacity: 0, pathLength: 0 }}
         animate={apexVisible ? { opacity: 0.45, pathLength: 1 } : { opacity: 0, pathLength: 0 }}
         transition={{ duration: 0.5, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
       />
-      {/* Crescent moon at apex — Ottoman crescent */}
-      <motion.path
-        d="M 104,2 C 99,2 95,5 95,9 C 95,13 99,16 104,16 C 101,16 98,14 98,10 C 98,6 101,3 104,2 Z"
-        fill={G.gold} stroke="none"
+
+      {/* ── HILAl (crescent) — two offset circles via mask ── */}
+      <motion.circle
+        cx={100} cy={9} r={7}
+        fill={G.gold}
+        mask="url(#hilal-mask)"
         initial={{ opacity: 0, scale: 0 }}
-        animate={apexVisible ? { opacity: 0.88, scale: 1 } : { opacity: 0, scale: 0 }}
-        transition={{ duration: 0.45, type: 'spring', bounce: 0.5 }}
+        animate={apexVisible ? { opacity: 0.92, scale: 1 } : { opacity: 0, scale: 0 }}
+        transition={{ duration: 0.5, type: 'spring', bounce: 0.35 }}
         style={{ transformOrigin: '100px 9px' }}
       />
-      {/* Small star beside crescent */}
-      <motion.circle
-        cx={109} cy={7} r={1.3}
+
+      {/* ── YILDIZ (5-pointed star) ── */}
+      <motion.polygon
+        points={star5}
         fill={G.gold}
         initial={{ opacity: 0, scale: 0 }}
-        animate={apexVisible ? { opacity: 0.80, scale: 1 } : { opacity: 0, scale: 0 }}
-        transition={{ duration: 0.3, delay: 0.14, type: 'spring', bounce: 0.5 }}
+        animate={apexVisible ? { opacity: 0.88, scale: 1 } : { opacity: 0, scale: 0 }}
+        transition={{ duration: 0.35, delay: 0.2, type: 'spring', bounce: 0.5 }}
         style={{ transformOrigin: '109px 7px' }}
       />
     </svg>
@@ -665,8 +696,8 @@ export default function GardenHomePage() {
   }, []);
 
   // Shared text styles
-  const serif = '"Cormorant Garamond", Georgia, serif';
-  const sans  = '"Inter", system-ui, sans-serif';
+  const serif = '"Bodoni Moda", Georgia, serif';
+  const sans  = '"DM Sans", system-ui, sans-serif';
 
   return (
     <div
@@ -776,7 +807,7 @@ export default function GardenHomePage() {
                 : { opacity: 0, y: 36, filter: 'blur(8px)' }}
               transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
               style={{
-                fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+                fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
                 fontSize: 'clamp(3rem, 13vw, 13rem)',
                 lineHeight: 0.88, letterSpacing: '-0.02em',
                 color: G.espresso, margin: 0,
@@ -815,7 +846,7 @@ export default function GardenHomePage() {
                 : { opacity: 0, y: 36, filter: 'blur(8px)' }}
               transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
               style={{
-                fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+                fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
                 fontSize: 'clamp(2.8rem, 10.5vw, 11rem)',
                 lineHeight: 0.88, letterSpacing: '-0.02em',
                 color: G.espresso, margin: 0,
@@ -917,7 +948,7 @@ export default function GardenHomePage() {
               animate={s2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
               transition={{ duration: 1.1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
               style={{
-                fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+                fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
                 fontSize: 'clamp(2rem, 5vw, 4rem)',
                 lineHeight: 1.3, letterSpacing: '0.01em',
                 color: G.espresso, margin: 0, padding: '0.5rem',
@@ -950,7 +981,7 @@ export default function GardenHomePage() {
             transition={{ duration: 0.9, delay: 0.7 }}
           >
             <p style={{
-              fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+              fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
               fontSize: 'clamp(3rem, 8vw, 6rem)',
               lineHeight: 0.95, letterSpacing: '-0.01em',
               color: G.espresso, margin: 0,
@@ -1034,7 +1065,7 @@ export default function GardenHomePage() {
                 animate={inV ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }}
                 transition={{ duration: 1.1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 style={{
-                  fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+                  fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
                   fontSize: 'clamp(3rem, 11vw, 11rem)',
                   lineHeight: 0.88, letterSpacing: '-0.02em',
                   color: G.espresso, margin: '0 0 0.5rem',
@@ -1271,7 +1302,7 @@ export default function GardenHomePage() {
             animate={s5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
             transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={{
-              fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+              fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
               fontSize: 'clamp(2.2rem, 6vw, 4rem)',
               lineHeight: 1.1, color: G.espresso, margin: '0 0 1rem',
             }}
@@ -1392,7 +1423,7 @@ export default function GardenHomePage() {
             animate={s6 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ duration: 1.1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={{
-              fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+              fontFamily: serif, fontStyle: 'italic', fontWeight: 400,
               fontSize: 'clamp(2.5rem, 7vw, 5.5rem)',
               lineHeight: 1.05, letterSpacing: '-0.01em',
               color: G.espresso, margin: '0 0 0.5rem',

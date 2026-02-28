@@ -95,9 +95,9 @@ export default function HomePage() {
             <h1
               className="text-display-italic"
               style={{
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontFamily: '"Bodoni Moda", Georgia, serif',
                 fontStyle: 'italic',
-                fontWeight: 300,
+                fontWeight: 400,
                 fontSize: 'clamp(3rem, 10vw, 7rem)',
                 lineHeight: 0.95,
                 color: 'var(--text-primary)',
@@ -124,7 +124,7 @@ export default function HomePage() {
             variants={item}
             className="text-center mb-14"
             style={{
-              fontFamily: '"Inter", system-ui, sans-serif',
+              fontFamily: '"DM Sans", system-ui, sans-serif',
               fontSize: '0.8rem',
               letterSpacing: '0.06em',
               color: 'var(--text-secondary)',
@@ -171,7 +171,7 @@ export default function HomePage() {
                     {/* City name */}
                     <h2
                       style={{
-                        fontFamily: '"Cormorant Garamond", Georgia, serif',
+                        fontFamily: '"Bodoni Moda", Georgia, serif',
                         fontStyle: 'italic',
                         fontWeight: 300,
                         fontSize: 'clamp(2rem, 5vw, 2.75rem)',
@@ -198,7 +198,7 @@ export default function HomePage() {
                     {/* Date */}
                     <p
                       style={{
-                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontFamily: '"DM Sans", system-ui, sans-serif',
                         fontSize: '0.8rem',
                         color: 'var(--text-secondary)',
                         marginBottom: '0.25rem',
@@ -210,7 +210,7 @@ export default function HomePage() {
                     {/* Venue */}
                     <p
                       style={{
-                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontFamily: '"DM Sans", system-ui, sans-serif',
                         fontSize: '0.72rem',
                         color: 'var(--text-tertiary)',
                         marginBottom: '2rem',
@@ -254,7 +254,7 @@ export default function HomePage() {
       <footer className="relative z-10 py-8 text-center">
         <p
           style={{
-            fontFamily: '"Inter", system-ui, sans-serif',
+            fontFamily: '"DM Sans", system-ui, sans-serif',
             fontSize: '0.7rem',
             color: 'var(--text-tertiary)',
           }}

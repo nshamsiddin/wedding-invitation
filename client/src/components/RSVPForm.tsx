@@ -31,7 +31,7 @@ const inputStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border-warm)',
   padding: '0.75rem 0',
   color: 'var(--text-primary)',
-  fontFamily: '"Inter", system-ui, sans-serif',
+  fontFamily: '"DM Sans", system-ui, sans-serif',
   fontSize: '0.9rem',
   outline: 'none',
   appearance: 'none' as const,
@@ -40,7 +40,7 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontFamily: '"Inter", system-ui, sans-serif',
+  fontFamily: '"DM Sans", system-ui, sans-serif',
   fontSize: '0.62rem',
   fontWeight: 500,
   letterSpacing: '0.15em',
@@ -153,7 +153,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
             role="status"
             aria-live="polite"
           >
-            <p style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontFamily: '"Inter", system-ui, sans-serif' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontFamily: '"DM Sans", system-ui, sans-serif' }}>
               <span style={{ fontWeight: 600 }}>{t.rsvpFoundTitle}</span>{' '}
               {t.rsvpFoundSub}
             </p>
@@ -169,7 +169,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
           role="alert"
           aria-live="assertive"
         >
-          <p style={{ fontSize: '0.8rem', color: 'var(--accent-rose)', fontFamily: '"Inter", system-ui, sans-serif' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--accent-rose)', fontFamily: '"DM Sans", system-ui, sans-serif' }}>
             {(submitMutation.error as Error)?.message ?? t.errorGeneric}
           </p>
         </div>
@@ -236,7 +236,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
                 </span>
                 <span style={{
                   fontSize: '0.65rem',
-                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontFamily: '"DM Sans", system-ui, sans-serif',
                   fontWeight: 500,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase' as const,
@@ -359,7 +359,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
         textAlign: 'center',
         fontSize: '0.72rem',
         color: 'var(--text-tertiary)',
-        fontFamily: '"Inter", system-ui, sans-serif',
+        fontFamily: '"DM Sans", system-ui, sans-serif',
       }}>
         {t.rsvpDeadlineHint}
       </p>
