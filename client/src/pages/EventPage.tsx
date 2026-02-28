@@ -1,4 +1,5 @@
 import { useRef, useContext, useState, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import CountdownTimer from '../components/CountdownTimer';
@@ -33,6 +34,15 @@ const sans  = '"Inter", system-ui, sans-serif';
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
 
 const COUPLE_PHOTO = '/IMG_2524.jpg';
+
+// Subtle diagonal gradient on large names — unified depth treatment, no animation
+const NAME_GRADIENT: CSSProperties = {
+  background: `linear-gradient(165deg, ${ESPRESSO} 15%, rgba(42,31,26,0.58) 100%)`,
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  color: 'transparent',
+};
 
 function formatEventDate(dateStr: string, lang: Language): string {
   const d = new Date(dateStr);
@@ -155,14 +165,19 @@ export default function EventPage({ slug }: Props) {
   const { language } = useContext(LanguageContext);
   const lang = language as Language;
 
-  // Frosted-glass nav on scroll — listen to snap container, not window
+  // Frosted-glass nav — snap container scroll when wrapRef mounted, else window
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const el = wrapRef.current;
-    if (!el) return;
-    const h = () => setScrolled(el.scrollTop > 40);
-    el.addEventListener('scroll', h, { passive: true });
-    return () => el.removeEventListener('scroll', h);
+    if (el) {
+      const h = () => setScrolled(el.scrollTop > 40);
+      el.addEventListener('scroll', h, { passive: true });
+      return () => el.removeEventListener('scroll', h);
+    }
+    // Fallback for teaser / error views that don't use garden-wrap
+    const h = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', h, { passive: true });
+    return () => window.removeEventListener('scroll', h);
   }, []);
 
   const { data: event, isLoading, isError } = useQuery({
@@ -277,7 +292,7 @@ export default function EventPage({ slug }: Props) {
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', color: ESPRESSO, margin: 0 }}
+                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {firstName}
                 </motion.h1>
@@ -296,7 +311,7 @@ export default function EventPage({ slug }: Props) {
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', color: ESPRESSO, margin: 0 }}
+                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {secondName}
                 </motion.h1>
@@ -306,7 +321,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', color: ESPRESSO, margin: 0 }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {rawCoupleName}
               </motion.h1>
@@ -464,7 +479,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', color: ESPRESSO, margin: 0 }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {firstName}
               </motion.h1>
@@ -483,7 +498,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', color: ESPRESSO, margin: 0 }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {secondName}
               </motion.h1>
@@ -493,7 +508,7 @@ export default function EventPage({ slug }: Props) {
               initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', color: ESPRESSO, margin: 0 }}
+              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
             >
               {rawCoupleName}
             </motion.h1>
@@ -514,8 +529,13 @@ export default function EventPage({ slug }: Props) {
           <motion.div
             initial={{ opacity: 0, y: 30, rotate: -2 }}
             animate={{ opacity: 1, y: 0, rotate: -2 }}
-            whileHover={{ rotate: 0, scale: 1.03, y: -8 }}
-            transition={{ opacity: { duration: 0.8, delay: 0.8 }, y: { duration: 0.8, delay: 0.8 }, rotate: { type: 'spring', stiffness: 200 } }}
+            whileHover={{ rotate: 0, scale: 1.02, y: -5 }}
+            transition={{
+              opacity: { duration: 0.8, delay: 0.8 },
+              y: { duration: 0.8, delay: 0.8 },
+              rotate: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+              scale:  { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+            }}
             style={{ display: 'inline-block', marginTop: 'clamp(1.5rem, 3vh, 2.5rem)', marginBottom: 'clamp(1rem, 2.5vh, 2rem)', position: 'relative' }}
           >
             <div style={{
@@ -542,7 +562,7 @@ export default function EventPage({ slug }: Props) {
               <div style={{
                 position: 'absolute', bottom: '0.75rem', left: 0, right: 0, textAlign: 'center',
                 fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
-                fontSize: '0.75rem', color: 'var(--text-secondary)', letterSpacing: '0.05em',
+                fontSize: '0.75rem', color: ESPRESSO_DIM, letterSpacing: '0.05em',
               }} aria-hidden="true">
                 {rawCoupleName}
               </div>
@@ -668,12 +688,13 @@ export default function EventPage({ slug }: Props) {
                 viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.7, delay: 0.05 * i }}
                 style={{
-                  background: 'rgba(253,250,245,0.7)',
+                  background: 'rgba(255,252,248,0.85)',
                   backdropFilter: 'blur(16px)',
                   WebkitBackdropFilter: 'blur(16px)',
                   border: `1px solid ${GOLD_DIM}`,
                   borderRadius: '18px',
                   padding: 'clamp(1.25rem, 3vw, 2rem)',
+                  boxShadow: '0 4px 20px rgba(42,31,26,0.06)',
                 }}
               >
                 <p style={{ fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: ESPRESSO_FAINT, marginBottom: '0.75rem' }}>
