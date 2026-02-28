@@ -45,8 +45,8 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  const INPUT_CLASS = 'w-full bg-gray-800 border border-gray-700 focus:border-gold-400 rounded-lg px-3 py-2.5 text-white font-sans text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors';
-  const LABEL_CLASS = 'block text-sm font-medium font-sans text-gray-300 mb-1.5';
+  const INPUT_CLASS = 'w-full bg-white border border-gray-300 focus:border-blue-500 rounded-lg px-3 py-2.5 text-gray-900 font-sans text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors';
+  const LABEL_CLASS = 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5';
 
   return (
     <AnimatePresence>
@@ -55,7 +55,7 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
             aria-hidden="true"
           />
           <div
@@ -63,17 +63,17 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
             role="dialog" aria-modal="true" aria-labelledby="add-guest-title"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.97, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              exit={{ opacity: 0, scale: 0.97, y: 8 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
+              className="bg-white border border-gray-200 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl"
             >
-              <div className="flex items-center justify-between p-6 border-b border-white/10">
-                <h2 id="add-guest-title" className="font-serif text-xl text-white">Add Guest</h2>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <h2 id="add-guest-title" className="font-sans font-semibold text-base text-gray-900">Add Guest</h2>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-gold-400"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label="Close dialog"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -86,21 +86,21 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                 {/* Name */}
                 <div>
                   <label htmlFor="add-name" className={LABEL_CLASS}>
-                    Full Name <span className="text-gold-400">*</span>
+                    Full Name <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <input id="add-name" type="text" autoFocus aria-required="true" {...register('name')}
                     className={INPUT_CLASS} placeholder="Jane Smith" />
-                  {errors.name && <p className="mt-1 text-xs text-red-400 font-sans" role="alert">{errors.name.message}</p>}
+                  {errors.name && <p className="mt-1 text-xs text-red-600 font-sans" role="alert">{errors.name.message}</p>}
                 </div>
 
                 {/* Email */}
                 <div>
                   <label htmlFor="add-email" className={LABEL_CLASS}>
-                    Email <span className="text-gold-400">*</span>
+                    Email <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <input id="add-email" type="email" aria-required="true" {...register('email')}
                     className={INPUT_CLASS} placeholder="jane@example.com" />
-                  {errors.email && <p className="mt-1 text-xs text-red-400 font-sans" role="alert">{errors.email.message}</p>}
+                  {errors.email && <p className="mt-1 text-xs text-red-600 font-sans" role="alert">{errors.email.message}</p>}
                 </div>
 
                 {/* Phone */}
@@ -112,23 +112,23 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
 
                 {/* Event assignment */}
                 <fieldset>
-                  <legend className={`${LABEL_CLASS} mb-2`}>
-                    Invite to <span className="text-gold-400">*</span>
+                  <legend className={`${LABEL_CLASS}`}>
+                    Invite to <span className="text-red-500" aria-hidden="true">*</span>
                   </legend>
                   <Controller
                     name="eventIds"
                     control={control}
                     render={({ field }) => (
-                      <div className="space-y-2">
+                      <div className="space-y-2 mt-1.5">
                         {events.map((ev) => {
                           const checked = field.value.includes(ev.id);
                           return (
                             <label
                               key={ev.id}
-                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                                 checked
-                                  ? 'bg-gold-500/10 border-gold-500/40 text-white'
-                                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                  ? 'bg-blue-50 border-blue-300 text-gray-900'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
                               }`}
                             >
                               <input
@@ -143,16 +143,16 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                                   }
                                 }}
                               />
-                              <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${checked ? 'bg-gold-500 border-gold-500' : 'border-gray-600'}`}>
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`}>
                                 {checked && (
-                                  <svg className="w-2.5 h-2.5 text-gray-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                   </svg>
                                 )}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-sm font-sans">{ev.name}</p>
-                                <p className="text-xs text-gray-500">{ev.date} · {ev.venueName}</p>
+                                <p className="text-xs text-gray-400">{ev.date} · {ev.venueName}</p>
                               </div>
                             </label>
                           );
@@ -161,7 +161,7 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                     )}
                   />
                   {errors.eventIds && (
-                    <p className="mt-1.5 text-xs text-red-400 font-sans" role="alert">{errors.eventIds.message}</p>
+                    <p className="mt-1.5 text-xs text-red-600 font-sans" role="alert">{errors.eventIds.message}</p>
                   )}
                 </fieldset>
 
@@ -172,7 +172,7 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                     <select id="add-status" {...register('status')}
                       className={`${INPUT_CLASS} appearance-none`}>
                       {['attending','declined','maybe','pending'].map((s) => (
-                        <option key={s} value={s} className="bg-gray-800 capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                       ))}
                     </select>
                   </div>
@@ -181,7 +181,7 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                     <select id="add-guest-count" {...register('guestCount', { valueAsNumber: true })}
                       className={`${INPUT_CLASS} appearance-none`}>
                       {[1,2,3,4,5].map((n) => (
-                        <option key={n} value={n} className="bg-gray-800">{n}</option>
+                        <option key={n} value={n}>{n}</option>
                       ))}
                     </select>
                   </div>
@@ -201,13 +201,13 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                     className={`${INPUT_CLASS} resize-none`} placeholder="Optional" />
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-2 border-t border-gray-100">
                   <button type="button" onClick={onClose}
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-sans font-medium text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
                     Cancel
                   </button>
                   <button type="submit" disabled={isPending}
-                    className="flex-1 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-gray-950 font-sans font-semibold text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gold-400 disabled:cursor-not-allowed">
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-sans font-semibold text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed">
                     {isPending ? 'Adding...' : 'Add Guest'}
                   </button>
                 </div>

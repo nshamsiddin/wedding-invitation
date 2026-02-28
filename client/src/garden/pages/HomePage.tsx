@@ -1017,7 +1017,8 @@ export default function GardenHomePage() {
   const lang = language as Language;
   const coupleName = EVENT_CONFIG.names[lang] ?? EVENT_CONFIG.names.en;
   const [firstName, secondName] = coupleName.split(' & ');
-  const countdown = useCountdown(EVENT_CONFIG.date);
+  const countdownAnkara   = useCountdown('2026-05-19T14:00:00');
+  const countdownTashkent = useCountdown(EVENT_CONFIG.date);
 
   // Container ref for scroll-snap
   const wrapRef    = useRef<HTMLDivElement>(null);
@@ -1490,36 +1491,39 @@ export default function GardenHomePage() {
                 </p>
               </motion.div>
 
-              {/* Countdown (second event only) */}
-              {!isAnkara && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={inV ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-                  transition={{ duration: 0.8, delay: 0.7 }}
-                  style={{
-                    display: 'inline-flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                    gap: 'clamp(0.75rem, 2.5vw, 2rem)',
-                    alignItems: 'center',
-                    padding: 'clamp(0.9rem, 2vw, 1.25rem) clamp(1.25rem, 3vw, 2.5rem)',
-                    background: 'rgba(253,250,245,0.7)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    borderRadius: '18px',
-                    border: `1px solid ${G.goldDim}`,
-                    marginBottom: '2rem',
-                  }}
-                >
-                  <CountdownDigit value={countdown.d} label={tl.days} />
-                  <span style={{ color: G.goldDim, fontFamily: serif, fontSize: '1.4rem', marginBottom: '0.8rem' }} aria-hidden="true">:</span>
-                  <CountdownDigit value={countdown.h} label={tl.hours} />
-                  <span style={{ color: G.goldDim, fontFamily: serif, fontSize: '1.4rem', marginBottom: '0.8rem' }} aria-hidden="true">:</span>
-                  <CountdownDigit value={countdown.m} label={tl.minutes} />
-                  <span style={{ color: G.goldDim, fontFamily: serif, fontSize: '1.4rem', marginBottom: '0.8rem' }} aria-hidden="true">:</span>
-                  <CountdownDigit value={countdown.s} label={tl.seconds} />
-                </motion.div>
-              )}
+              {/* Countdown */}
+              {(() => {
+                const cd = isAnkara ? countdownAnkara : countdownTashkent;
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={inV ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                    transition={{ duration: 0.8, delay: 0.7 }}
+                    style={{
+                      display: 'inline-flex',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center',
+                      gap: 'clamp(0.75rem, 2.5vw, 2rem)',
+                      alignItems: 'center',
+                      padding: 'clamp(0.9rem, 2vw, 1.25rem) clamp(1.25rem, 3vw, 2.5rem)',
+                      background: 'rgba(253,250,245,0.7)',
+                      backdropFilter: 'blur(16px)',
+                      WebkitBackdropFilter: 'blur(16px)',
+                      borderRadius: '18px',
+                      border: `1px solid ${G.goldDim}`,
+                      marginBottom: '2rem',
+                    }}
+                  >
+                    <CountdownDigit value={cd.d} label={tl.days} />
+                    <span style={{ color: G.goldDim, fontFamily: serif, fontSize: '1.4rem', marginBottom: '0.8rem' }} aria-hidden="true">:</span>
+                    <CountdownDigit value={cd.h} label={tl.hours} />
+                    <span style={{ color: G.goldDim, fontFamily: serif, fontSize: '1.4rem', marginBottom: '0.8rem' }} aria-hidden="true">:</span>
+                    <CountdownDigit value={cd.m} label={tl.minutes} />
+                    <span style={{ color: G.goldDim, fontFamily: serif, fontSize: '1.4rem', marginBottom: '0.8rem' }} aria-hidden="true">:</span>
+                    <CountdownDigit value={cd.s} label={tl.seconds} />
+                  </motion.div>
+                );
+              })()}
 
               {/* CTA */}
               <motion.div

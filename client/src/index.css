@@ -66,7 +66,8 @@ a, button, [role="button"], input, select, textarea, label[for] {
   cursor: none !important;
 }
 
-/* Restore default cursor for admin panel */
+/* Restore default cursor + light background for admin panel */
+.admin-page { background-color: #f9fafb; }
 .admin-page, .admin-page * { cursor: auto !important; }
 .admin-page a, .admin-page button, .admin-page [role="button"],
 .admin-page input, .admin-page select, .admin-page textarea,

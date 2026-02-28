@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children }: Props) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div
-          className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin"
+          className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
           role="status"
           aria-label="Checking authentication"
         />

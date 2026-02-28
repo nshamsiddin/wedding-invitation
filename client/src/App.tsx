@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { queryClient } from './lib/queryClient';
@@ -13,13 +13,21 @@ import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 
-function AppInner() {
-  // Smooth scroll is provided by CSS scroll-behavior: smooth in index.css
-
+function InvitationChrome() {
+  const { pathname } = useLocation();
+  const isAdmin = pathname.startsWith('/admin');
+  if (isAdmin) return null;
   return (
     <>
       <CustomCursor />
       <ScrollProgress />
+    </>
+  );
+}
+
+function AppInner() {
+  return (
+    <>
       <Toaster
         position="top-right"
         toastOptions={{
@@ -42,6 +50,7 @@ function AppInner() {
         }}
       />
       <BrowserRouter>
+        <InvitationChrome />
         <Routes>
           {/* ── Garden design ── */}
           <Route path="/"              element={<HomePage />} />
