@@ -75,6 +75,14 @@ export type Translations = {
   celebrationBegun: string;
   // Footer
   madeWithLove: string;
+  // EventPage / InvitePage — garden additions
+  countingDown: string;
+  untilTheDay: string;
+  personalInvitationFor: string;
+  youveBeenInvited: string;
+  pleaseRegister: string;
+  invitationAlreadyClaimed: string;
+  invitationAlreadyClaimedSub: string;
 };
 
 export const en: Translations = {
@@ -182,4 +190,13 @@ export const en: Translations = {
 
   // Footer
   madeWithLove: 'Made with ♡ for Berfin & Şamsiddin',
+
+  // EventPage / InvitePage — garden additions
+  countingDown: 'Counting Down',
+  untilTheDay: 'Until We Celebrate Together',
+  personalInvitationFor: 'A Personal Invitation for',
+  youveBeenInvited: "You've been invited",
+  pleaseRegister: 'Please Register',
+  invitationAlreadyClaimed: 'This invitation has already been claimed',
+  invitationAlreadyClaimedSub: 'This link has already been used. If you believe this is an error, please contact the couple directly.',
 };

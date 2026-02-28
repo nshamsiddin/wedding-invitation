@@ -105,4 +105,13 @@ export const tr: Translations = {
 
   // Footer
   madeWithLove: 'Berfin & Şamsiddin için ♡ ile yapıldı',
+
+  // EventPage / InvitePage — garden additions
+  countingDown: 'Geri Sayım',
+  untilTheDay: 'Birlikte Kutlayana Kadar',
+  personalInvitationFor: 'Kişisel Davetiye',
+  youveBeenInvited: 'Davet edildiniz',
+  pleaseRegister: 'Lütfen Kayıt Olun',
+  invitationAlreadyClaimed: 'Bu davetiye zaten kullanılmış',
+  invitationAlreadyClaimedSub: 'Bu bağlantı daha önce kullanılmış. Hata olduğunu düşünüyorsanız lütfen çift ile iletişime geçin.',
 };

@@ -3,8 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import type { AdminGuest, AdminInvitation } from '../../lib/api';
-import type { AddGuestValues, UpdateGuestContactValues, UpdateInvitationValues } from '@invitation/shared';
+import axios from 'axios';
+import type { AdminGuest, AdminInvitation, OpenInvitation } from '../../lib/api';
+import type {
+  AddGuestValues,
+  UpdateGuestContactValues,
+  UpdateInvitationValues,
+  CreateOpenInvitationValues,
+} from '@invitation/shared';
 import { adminApi } from '../../lib/api';
 import StatsCards from '../../components/admin/StatsCards';
 import GuestTable from '../../components/admin/GuestTable';
@@ -20,6 +26,58 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'pending',   label: 'No Response' },
 ];
 
+function OpenInvitationRow({
+  inv,
+  onDelete,
+}: {
+  inv: OpenInvitation & { url?: string };
+  onDelete: (id: number) => void;
+}) {
+  const handleCopy = async () => {
+    const url = inv.url ?? `${window.location.origin}/invite/${inv.token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Open link copied!');
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2 px-3 bg-amber-50 border border-amber-100 rounded-lg gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+            Open Link
+          </span>
+          <span className="text-xs text-gray-600 font-sans">{inv.eventName ?? inv.eventSlug}</span>
+        </div>
+        <p className="text-xs text-gray-400 font-mono mt-0.5 truncate max-w-[200px]">{inv.token.slice(0, 8)}…</p>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          onClick={handleCopy}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-sans bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus:ring-1 focus:ring-amber-400"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Copy
+        </button>
+        <button
+          onClick={() => onDelete(inv.id)}
+          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
+          aria-label="Delete open invitation"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -32,6 +90,8 @@ export default function DashboardPage() {
   const [editingInvitation, setEditingInvitation] = useState<{ inv: AdminInvitation; guest: AdminGuest } | null>(null);
   const [deletingGuest, setDeletingGuest] = useState<AdminGuest | null>(null);
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
+  const [showOpenLinkModal, setShowOpenLinkModal] = useState(false);
+  const [openLinkEventIds, setOpenLinkEventIds] = useState<number[]>([]);
 
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['admin', 'events'],
@@ -50,6 +110,11 @@ export default function DashboardPage() {
     queryFn: () => adminApi.getGuests(guestQueryParams),
   });
 
+  const { data: openInvitations = [] } = useQuery({
+    queryKey: ['admin', 'invitations', 'open'],
+    queryFn: adminApi.getOpenInvitations,
+  });
+
   const logoutMutation = useMutation({
     mutationFn: adminApi.logout,
     onSuccess: () => { qc.clear(); navigate('/admin/login', { replace: true }); },
@@ -57,7 +122,13 @@ export default function DashboardPage() {
 
   const addMutation = useMutation({
     mutationFn: adminApi.addGuest,
-    onError: () => toast.error('Failed to add guest'),
+    onError: (error) => {
+      const message =
+        axios.isAxiosError(error) && error.response?.status === 409
+          ? (error.response.data?.error as string | undefined) ?? 'A guest with this email already exists'
+          : 'Failed to add guest';
+      toast.error(message);
+    },
     onSuccess: () => {
       setShowAddModal(false);
       toast.success('Guest added');
@@ -68,7 +139,13 @@ export default function DashboardPage() {
   const updateGuestMutation = useMutation({
     mutationFn: ({ id, values }: { id: number; values: UpdateGuestContactValues }) =>
       adminApi.updateGuest(id, values),
-    onError: () => toast.error('Failed to update guest'),
+    onError: (error) => {
+      const message =
+        axios.isAxiosError(error) && error.response?.status === 409
+          ? (error.response.data?.error as string | undefined) ?? 'A guest with this email already exists'
+          : 'Failed to update guest';
+      toast.error(message);
+    },
     onSuccess: () => {
       setEditingGuest(null);
       toast.success('Contact updated');
@@ -108,9 +185,27 @@ export default function DashboardPage() {
     },
   });
 
+  const createOpenInvMutation = useMutation({
+    mutationFn: (values: CreateOpenInvitationValues) => adminApi.createOpenInvitation(values),
+    onError: () => toast.error('Failed to create open invitation'),
+    onSuccess: (data) => {
+      setShowOpenLinkModal(false);
+      setOpenLinkEventIds([]);
+      toast.success(`Created ${data.length} open invitation link${data.length !== 1 ? 's' : ''}`);
+      qc.invalidateQueries({ queryKey: ['admin', 'invitations', 'open'] });
+      // Copy first URL to clipboard automatically
+      if (data[0]?.token) {
+        const url = `${window.location.origin}/invite/${data[0].token}`;
+        navigator.clipboard.writeText(url).catch(() => {});
+      }
+    },
+  });
+
   const handleAddGuest = (values: AddGuestValues) => addMutation.mutate(values);
   const handleUpdateGuest = (id: number, values: UpdateGuestContactValues) =>
     updateGuestMutation.mutate({ id, values });
+  const handleUpdateInvFromUnified = (id: number, values: UpdateInvitationValues) =>
+    updateInvMutation.mutate({ id, values });
   const handleUpdateInv = (id: number, values: UpdateInvitationValues) =>
     updateInvMutation.mutate({ id, values });
 
@@ -220,6 +315,27 @@ export default function DashboardPage() {
           <StatsCards events={events} selectedEventId={selectedEventId} isLoading={eventsLoading} />
         </section>
 
+        {/* Open Invitations */}
+        {openInvitations.length > 0 && (
+          <section aria-labelledby="open-inv-heading">
+            <div className="flex items-center justify-between mb-2">
+              <h2 id="open-inv-heading" className="font-sans font-semibold text-sm text-gray-900">
+                Open Links
+                <span className="ml-2 text-xs font-normal text-gray-400">{openInvitations.length} unclaimed</span>
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {openInvitations.map((inv) => (
+                <OpenInvitationRow
+                  key={inv.id}
+                  inv={inv as OpenInvitation & { url?: string }}
+                  onDelete={(id) => deleteInvMutation.mutate(id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Guest list */}
         <section aria-labelledby="guests-heading">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -261,6 +377,18 @@ export default function DashboardPage() {
                 ))}
               </select>
 
+              {/* Generate open link */}
+              <button
+                onClick={() => setShowOpenLinkModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 whitespace-nowrap"
+                aria-label="Generate open invitation link"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Open Link
+              </button>
+
               {/* Add guest */}
               <button
                 onClick={() => setShowAddModal(true)}
@@ -299,6 +427,97 @@ export default function DashboardPage() {
         </section>
       </main>
 
+      {/* Generate Open Link Modal */}
+      <AnimatePresence>
+        {showOpenLinkModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowOpenLinkModal(false)}
+              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+              aria-hidden="true"
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog" aria-modal="true" aria-labelledby="open-link-title">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
+                className="bg-white border border-gray-200 rounded-xl p-6 w-full max-w-sm shadow-lg"
+              >
+                <h3 id="open-link-title" className="font-sans font-semibold text-sm text-gray-900 mb-1">
+                  Generate Open Invitation Link
+                </h3>
+                <p className="text-xs text-gray-500 font-sans mb-4">
+                  Creates a shareable link that any new guest can use to self-register. Select the event(s) to cover.
+                </p>
+
+                <fieldset className="mb-4">
+                  <legend className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Events</legend>
+                  <div className="space-y-2">
+                    {events.map((ev) => {
+                      const checked = openLinkEventIds.includes(ev.id);
+                      return (
+                        <label
+                          key={ev.id}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                            checked ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setOpenLinkEventIds((ids) => [...ids, ev.id]);
+                              } else {
+                                setOpenLinkEventIds((ids) => ids.filter((id) => id !== ev.id));
+                              }
+                            }}
+                          />
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${checked ? 'bg-amber-500 border-amber-500' : 'border-gray-300 bg-white'}`}>
+                            {checked && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm font-sans text-gray-800">{ev.name}</p>
+                            <p className="text-xs text-gray-400">{ev.date}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowOpenLinkModal(false); setOpenLinkEventIds([]); }}
+                    className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-xs py-2 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (openLinkEventIds.length === 0) {
+                        toast.error('Select at least one event');
+                        return;
+                      }
+                      createOpenInvMutation.mutate({ eventIds: openLinkEventIds });
+                    }}
+                    disabled={createOpenInvMutation.isPending || openLinkEventIds.length === 0}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:cursor-not-allowed"
+                  >
+                    {createOpenInvMutation.isPending ? 'Creating…' : 'Generate Link'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Modals */}
       <AddGuestModal
         isOpen={showAddModal}
@@ -307,12 +526,19 @@ export default function DashboardPage() {
         isPending={addMutation.isPending}
         events={events}
       />
+
+      {/* Unified edit modal: contact info + per-event RSVP tabs */}
       <EditGuestModal
         guest={editingGuest}
+        events={events}
         onClose={() => setEditingGuest(null)}
-        onSubmit={handleUpdateGuest}
-        isPending={updateGuestMutation.isPending}
+        onUpdateContact={handleUpdateGuest}
+        onUpdateInvitation={handleUpdateInvFromUnified}
+        isContactPending={updateGuestMutation.isPending}
+        isInvitationPending={updateInvMutation.isPending}
       />
+
+      {/* Separate invitation modal accessible from per-event edit button in table */}
       <EditInvitationModal
         invitation={editingInvitation?.inv ?? null}
         guest={editingInvitation?.guest ?? null}

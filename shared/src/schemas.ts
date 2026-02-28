@@ -14,7 +14,7 @@ export const rsvpFormSchema = z.object({
   email: z
     .string()
     .email('Please enter a valid email address')
-    .max(255, 'Email must be under 255 characters')
+    .max(254, 'Email must be under 254 characters')
     .toLowerCase()
     .trim(),
   status: z.enum(['attending', 'declined', 'maybe'], {
@@ -43,9 +43,8 @@ export const rsvpFormSchema = z.object({
 
 export type RSVPFormValues = z.infer<typeof rsvpFormSchema>;
 
-// Server-side RSVP submission — either token-based or slug+email
 // Token-only schema — anonymous slug+email submissions are intentionally not supported.
-// Every RSVP must originate from a guest's unique personal link.
+// Every personal RSVP must originate from a guest's unique personal link.
 export const rsvpSubmitSchema = z.object({
   token: z.string().uuid('Invalid invitation token'),
   status: z.enum(['attending', 'declined', 'maybe']),
@@ -53,6 +52,37 @@ export const rsvpSubmitSchema = z.object({
   dietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
 });
+
+// ─── Open invitation claim ────────────────────────────────────────────────────
+
+export const rsvpEntrySchema = z.object({
+  eventId: z.number().int().positive(),
+  status: z.enum(['attending', 'declined', 'maybe']),
+  guestCount: z.number().int().min(1).max(5).optional().default(1),
+  dietary: z.string().max(500).trim().optional().default(''),
+  message: z.string().max(1000).trim().optional().default(''),
+});
+
+export type RSVPEntry = z.infer<typeof rsvpEntrySchema>;
+
+export const claimInvitationSchema = z.object({
+  token: z.string().uuid('Invalid invitation token'),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be under 100 characters')
+    .trim(),
+  email: z
+    .string()
+    .email('Please enter a valid email address')
+    .max(254, 'Email must be under 254 characters')
+    .toLowerCase()
+    .trim(),
+  phone: z.string().max(30).trim().optional(),
+  rsvpEntries: z.array(rsvpEntrySchema).min(1, 'At least one RSVP entry is required'),
+});
+
+export type ClaimInvitationValues = z.infer<typeof claimInvitationSchema>;
 
 // ─── Event (public) ──────────────────────────────────────────────────────────
 
@@ -70,6 +100,17 @@ export const eventSchema = z.object({
 
 export type EventData = z.infer<typeof eventSchema>;
 
+// Partial event data returned publicly without a valid invitation token
+export const partialEventSchema = z.object({
+  id: z.number(),
+  slug: z.string(),
+  name: z.string(),
+  date: z.string(),
+  restricted: z.literal(true),
+});
+
+export type PartialEventData = z.infer<typeof partialEventSchema>;
+
 // ─── Invitation (shared type) ─────────────────────────────────────────────────
 
 export const invitationSchema = z.object({
@@ -84,11 +125,14 @@ export const invitationSchema = z.object({
 
 export type InvitationData = z.infer<typeof invitationSchema>;
 
-// Admin-facing invitation (includes event info)
+// Admin-facing invitation (includes event info + open invitation fields)
 export const adminInvitationSchema = invitationSchema.extend({
   eventId: z.number(),
   eventSlug: z.string().nullable(),
   eventName: z.string().nullable(),
+  isOpen: z.boolean().default(false),
+  claimedAt: z.string().nullable().optional(),
+  guestId: z.number().nullable().optional(),
 });
 
 export type AdminInvitation = z.infer<typeof adminInvitationSchema>;
@@ -119,6 +163,20 @@ export const adminEventSchema = eventSchema.extend({
 
 export type AdminEvent = z.infer<typeof adminEventSchema>;
 
+// Open (unclaimed) invitation shown in admin panel
+export const openInvitationSchema = z.object({
+  id: z.number(),
+  token: z.string(),
+  isOpen: z.literal(true),
+  claimedAt: z.string().nullable(),
+  eventId: z.number(),
+  eventSlug: z.string().nullable(),
+  eventName: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type OpenInvitation = z.infer<typeof openInvitationSchema>;
+
 // ─── Admin auth ───────────────────────────────────────────────────────────────
 
 export const adminLoginSchema = z.object({
@@ -132,7 +190,7 @@ export type AdminLoginValues = z.infer<typeof adminLoginSchema>;
 
 export const addGuestSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100).trim(),
-  email: z.string().email('Please enter a valid email').max(255).toLowerCase().trim(),
+  email: z.string().email('Please enter a valid email').max(254).toLowerCase().trim(),
   phone: z.string().max(30).trim().optional(),
   eventIds: z
     .array(z.number().int().positive())
@@ -147,7 +205,7 @@ export type AddGuestValues = z.infer<typeof addGuestSchema>;
 
 export const updateGuestContactSchema = z.object({
   name: z.string().min(2).max(100).trim().optional(),
-  email: z.string().email().max(255).toLowerCase().trim().optional(),
+  email: z.string().email().max(254).toLowerCase().trim().optional(),
   phone: z.string().max(30).trim().nullable().optional(),
 });
 
@@ -171,6 +229,13 @@ export const updateInvitationSchema = z.object({
 
 export type UpdateInvitationValues = z.infer<typeof updateInvitationSchema>;
 
+// Admin: create open (generic) invitation link
+export const createOpenInvitationSchema = z.object({
+  eventIds: z.array(z.number().int().positive()).min(1, 'Select at least one event'),
+});
+
+export type CreateOpenInvitationValues = z.infer<typeof createOpenInvitationSchema>;
+
 // ─── API response interfaces ─────────────────────────────────────────────────
 
 export interface ApiError {
@@ -191,13 +256,35 @@ export interface RSVPCheckResponse {
   guest?: { name: string; email: string };
 }
 
-export interface TokenLookupResponse {
+// Discriminated union for token lookup — covers all three states
+export interface PersonalTokenLookupResponse {
+  type: 'personal';
   invitation: InvitationData;
   guest: { id: number; name: string; email: string };
   event: EventData;
 }
 
+export interface OpenTokenLookupResponse {
+  type: 'open';
+  token: string;
+  events: Array<{ id: number; slug: string; name: string; date: string }>;
+}
+
+export interface ClaimedTokenLookupResponse {
+  type: 'claimed';
+}
+
+export type TokenLookupResponse =
+  | PersonalTokenLookupResponse
+  | OpenTokenLookupResponse
+  | ClaimedTokenLookupResponse;
+
 export interface RSVPSubmitResponse {
   invitation: InvitationData;
   updated: boolean;
+}
+
+export interface ClaimInvitationResponse {
+  guest: { id: number; name: string; email: string };
+  invitations: InvitationData[];
 }

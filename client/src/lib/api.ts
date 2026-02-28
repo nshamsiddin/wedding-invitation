@@ -1,9 +1,11 @@
 import axios from 'axios';
 import type {
   EventData,
+  PartialEventData,
   AdminEvent,
   AdminGuest,
   AdminInvitation,
+  OpenInvitation,
   AdminLoginValues,
   AddGuestValues,
   UpdateGuestContactValues,
@@ -11,15 +13,21 @@ import type {
   UpdateInvitationValues,
   TokenLookupResponse,
   RSVPSubmitResponse,
+  ClaimInvitationValues,
+  ClaimInvitationResponse,
+  CreateOpenInvitationValues,
 } from '@invitation/shared';
 
 export type {
   EventData,
+  PartialEventData,
   AdminEvent,
   AdminGuest,
   AdminInvitation,
+  OpenInvitation,
   TokenLookupResponse,
   RSVPSubmitResponse,
+  ClaimInvitationResponse,
 };
 
 export interface RSVPSubmitBody {
@@ -37,8 +45,8 @@ export const api = axios.create({
 });
 
 export const rsvpApi = {
-  getEvent: async (slug: string): Promise<EventData> => {
-    const { data } = await api.get<EventData>(`/events/${slug}`);
+  getEvent: async (slug: string): Promise<EventData | PartialEventData> => {
+    const { data } = await api.get<EventData | PartialEventData>(`/events/${slug}`);
     return data;
   },
   getByToken: async (token: string): Promise<TokenLookupResponse> => {
@@ -47,6 +55,10 @@ export const rsvpApi = {
   },
   submit: async (body: RSVPSubmitBody): Promise<RSVPSubmitResponse> => {
     const { data } = await api.post<RSVPSubmitResponse>('/rsvp', body);
+    return data;
+  },
+  claim: async (values: ClaimInvitationValues): Promise<ClaimInvitationResponse> => {
+    const { data } = await api.post<ClaimInvitationResponse>('/rsvp/claim', values);
     return data;
   },
 };
@@ -82,8 +94,9 @@ export const adminApi = {
     const { data } = await api.post('/admin/guests', values);
     return data;
   },
+  // Use PATCH for partial updates; PUT is still supported on the server for backward compat.
   updateGuest: async (id: number, values: UpdateGuestContactValues): Promise<AdminGuest> => {
-    const { data } = await api.put<AdminGuest>(`/admin/guests/${id}`, values);
+    const { data } = await api.patch<AdminGuest>(`/admin/guests/${id}`, values);
     return data;
   },
   deleteGuest: async (id: number): Promise<void> => {
@@ -93,8 +106,9 @@ export const adminApi = {
     const { data } = await api.post<AdminInvitation>('/admin/invitations', values);
     return data;
   },
+  // Use PATCH for partial updates; PUT is still supported on the server for backward compat.
   updateInvitation: async (id: number, values: UpdateInvitationValues): Promise<AdminInvitation> => {
-    const { data } = await api.put<AdminInvitation>(`/admin/invitations/${id}`, values);
+    const { data } = await api.patch<AdminInvitation>(`/admin/invitations/${id}`, values);
     return data;
   },
   deleteInvitation: async (id: number): Promise<void> => {
@@ -103,6 +117,14 @@ export const adminApi = {
   getInviteLink: async (invitationId: number): Promise<string> => {
     const { data } = await api.get<{ url: string }>(`/admin/invitations/${invitationId}/link`);
     return data.url;
+  },
+  createOpenInvitation: async (values: CreateOpenInvitationValues): Promise<OpenInvitation[]> => {
+    const { data } = await api.post<OpenInvitation[]>('/admin/invitations/open', values);
+    return data;
+  },
+  getOpenInvitations: async (): Promise<OpenInvitation[]> => {
+    const { data } = await api.get<OpenInvitation[]>('/admin/invitations/open');
+    return data;
   },
   exportCSV: (eventId?: number): void => {
     const params = eventId ? `?eventId=${eventId}` : '';

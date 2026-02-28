@@ -105,4 +105,13 @@ export const uz: Translations = {
 
   // Footer
   madeWithLove: 'Berfin & Shamsiddin uchun ♡ bilan yaratildi',
+
+  // EventPage / InvitePage — garden additions
+  countingDown: 'Ortigacha',
+  untilTheDay: 'Birgalikda Nishonlaguncha',
+  personalInvitationFor: 'Shaxsiy Taklif',
+  youveBeenInvited: 'Siz taklif etildingiz',
+  pleaseRegister: "Iltimos, Ro'yxatdan O'ting",
+  invitationAlreadyClaimed: 'Bu taklif allaqachon ishlatilgan',
+  invitationAlreadyClaimedSub: "Bu havola avval ishlatilgan. Xato deb hisoblasangiz, juftlik bilan bog'laning.",
 };

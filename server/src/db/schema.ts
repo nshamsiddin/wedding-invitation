@@ -25,7 +25,8 @@ export const guests = sqliteTable('guests', {
 
 export const guestInvitations = sqliteTable('guest_invitations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  guestId: integer('guest_id').notNull(),
+  // Nullable: open invitations have no guestId until claimed
+  guestId: integer('guest_id'),
   eventId: integer('event_id').notNull(),
   token: text('token').notNull().unique(),
   status: text('status', { enum: ['attending', 'declined', 'maybe', 'pending'] })
@@ -34,6 +35,10 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   guestCount: integer('guest_count').notNull().default(1),
   dietary: text('dietary'),
   message: text('message'),
+  // Open invitation: created without a specific guest; can be claimed once
+  isOpen: integer('is_open', { mode: 'boolean' }).notNull().default(false),
+  // Timestamp when an open invitation was claimed by a self-registrant
+  claimedAt: text('claimed_at'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),

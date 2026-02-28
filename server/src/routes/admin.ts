@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { and, desc, eq, inArray, like, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, isNotNull, like, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
+// bcryptjs is used for password hashing support ($2b$ prefix detection).
+// It is the pure-JS alternative to bcrypt — no native compilation required.
+import bcrypt from 'bcryptjs';
 import { db, schema } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
@@ -11,6 +14,7 @@ import {
   updateGuestContactSchema,
   updateInvitationSchema,
   addInvitationSchema,
+  createOpenInvitationSchema,
 } from '@invitation/shared';
 import { toCSV } from '../lib/csv.js';
 import type { AttendanceStatus } from '@invitation/shared';
@@ -36,7 +40,22 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  if (username !== expectedUsername || password !== expectedPassword) {
+  if (username !== expectedUsername) {
+    res.status(401).json({ error: 'Invalid username or password' });
+    return;
+  }
+
+  // If ADMIN_PASSWORD starts with $2b$, treat it as a bcrypt hash and compare accordingly.
+  // Otherwise fall back to plaintext comparison for backward compatibility.
+  // To generate a bcrypt hash: node -e "require('bcryptjs').hash('your-password', 12).then(console.log)"
+  let passwordMatch = false;
+  if (expectedPassword.startsWith('$2b$')) {
+    passwordMatch = await bcrypt.compare(password, expectedPassword);
+  } else {
+    passwordMatch = password === expectedPassword;
+  }
+
+  if (!passwordMatch) {
     res.status(401).json({ error: 'Invalid username or password' });
     return;
   }
@@ -70,6 +89,8 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
         eventId: schema.guestInvitations.eventId,
         status: schema.guestInvitations.status,
         guestCount: schema.guestInvitations.guestCount,
+        isOpen: schema.guestInvitations.isOpen,
+        claimedAt: schema.guestInvitations.claimedAt,
       })
       .from(schema.guestInvitations);
 
@@ -82,6 +103,8 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
       statsMap.set(e.id, { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 });
     }
     for (const inv of invRows) {
+      // Exclude unclaimed open invitations from stats (they have no confirmed status)
+      if (inv.isOpen && !inv.claimedAt) continue;
       const s = statsMap.get(inv.eventId);
       if (!s) continue;
       s.total++;
@@ -132,8 +155,11 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         const matchingInvs = await db
           .selectDistinct({ guestId: schema.guestInvitations.guestId })
           .from(schema.guestInvitations)
-          .where(and(...invConditions));
-        matchingGuestIds = matchingInvs.map((r) => r.guestId);
+          .where(and(...invConditions, isNotNull(schema.guestInvitations.guestId)));
+        // Filter out null guestIds (open invitations have no guest)
+        matchingGuestIds = matchingInvs
+          .map((r) => r.guestId)
+          .filter((id): id is number => id !== null);
         if (matchingGuestIds.length === 0) {
           res.json([]);
           return;
@@ -175,17 +201,25 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         guestCount: schema.guestInvitations.guestCount,
         dietary: schema.guestInvitations.dietary,
         message: schema.guestInvitations.message,
+        isOpen: schema.guestInvitations.isOpen,
+        claimedAt: schema.guestInvitations.claimedAt,
         updatedAt: schema.guestInvitations.updatedAt,
         eventSlug: schema.events.slug,
         eventName: schema.events.name,
       })
       .from(schema.guestInvitations)
       .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
-      .where(inArray(schema.guestInvitations.guestId, guestIds));
+      .where(
+        and(
+          isNotNull(schema.guestInvitations.guestId),
+          inArray(schema.guestInvitations.guestId, guestIds)
+        )
+      );
 
     // Aggregate
     const invMap = new Map<number, typeof invRows>();
     for (const inv of invRows) {
+      if (inv.guestId === null) continue;
       const list = invMap.get(inv.guestId) ?? [];
       list.push(inv);
       invMap.set(inv.guestId, list);
@@ -199,6 +233,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
       createdAt: g.createdAt,
       invitations: (invMap.get(g.id) ?? []).map((inv) => ({
         id: inv.id,
+        guestId: inv.guestId,
         eventId: inv.eventId,
         eventSlug: inv.eventSlug,
         eventName: inv.eventName,
@@ -207,6 +242,8 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         guestCount: inv.guestCount,
         dietary: inv.dietary,
         message: inv.message,
+        isOpen: inv.isOpen,
+        claimedAt: inv.claimedAt,
         updatedAt: inv.updatedAt,
       })),
     }));
@@ -269,7 +306,8 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
   }
 });
 
-router.put('/guests/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
+// Shared handler for updating guest contact details (used by both PUT and PATCH)
+async function handleUpdateGuest(req: Request, res: Response): Promise<void> {
   const id = parseInt(req.params['id'] ?? '', 10);
   if (isNaN(id)) {
     res.status(400).json({ error: 'Invalid guest ID' });
@@ -284,7 +322,7 @@ router.put('/guests/:id', requireAuth, async (req: Request, res: Response): Prom
 
   try {
     const existing = await db
-      .select({ id: schema.guests.id })
+      .select({ id: schema.guests.id, email: schema.guests.email })
       .from(schema.guests)
       .where(eq(schema.guests.id, id))
       .limit(1);
@@ -292,6 +330,20 @@ router.put('/guests/:id', requireAuth, async (req: Request, res: Response): Prom
     if (existing.length === 0) {
       res.status(404).json({ error: 'Guest not found' });
       return;
+    }
+
+    // If email is being changed, check uniqueness against other guests
+    if (parsed.data.email && parsed.data.email !== existing[0].email) {
+      const emailConflict = await db
+        .select({ id: schema.guests.id })
+        .from(schema.guests)
+        .where(eq(schema.guests.email, parsed.data.email))
+        .limit(1);
+
+      if (emailConflict.length > 0) {
+        res.status(409).json({ error: 'A guest with this email address already exists' });
+        return;
+      }
     }
 
     const [updated] = await db
@@ -305,7 +357,11 @@ router.put('/guests/:id', requireAuth, async (req: Request, res: Response): Prom
     console.error('Update guest error:', error);
     res.status(500).json({ error: 'Failed to update guest' });
   }
-});
+}
+
+// Keep both PUT and PATCH for backward compatibility
+router.put('/guests/:id', requireAuth, handleUpdateGuest);
+router.patch('/guests/:id', requireAuth, handleUpdateGuest);
 
 router.delete('/guests/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params['id'] ?? '', 10);
@@ -333,6 +389,113 @@ router.delete('/guests/:id', requireAuth, async (req: Request, res: Response): P
 });
 
 // ─── Invitations ─────────────────────────────────────────────────────────────
+
+// POST /api/admin/invitations/open — create a generic (open) invitation link
+// Must be defined before /api/admin/invitations/:id to avoid route shadowing
+router.post('/invitations/open', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const parsed = createOpenInvitationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+
+  const { eventIds } = parsed.data;
+
+  try {
+    // Verify all event IDs exist
+    for (const eventId of eventIds) {
+      const exists = await db
+        .select({ id: schema.events.id })
+        .from(schema.events)
+        .where(eq(schema.events.id, eventId))
+        .limit(1);
+      if (exists.length === 0) {
+        res.status(404).json({ error: `Event ${eventId} not found` });
+        return;
+      }
+    }
+
+    // Create one open invitation per event (each with a unique token)
+    const createdInvitations = [];
+    for (const eventId of eventIds) {
+      const [inv] = await db
+        .insert(schema.guestInvitations)
+        .values({
+          guestId: null,
+          eventId,
+          token: randomUUID(),
+          status: 'pending',
+          guestCount: 1,
+          isOpen: true,
+          claimedAt: null,
+        })
+        .returning();
+
+      const eventRow = await db
+        .select({ slug: schema.events.slug, name: schema.events.name })
+        .from(schema.events)
+        .where(eq(schema.events.id, eventId))
+        .limit(1);
+
+      const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
+      createdInvitations.push({
+        id: inv.id,
+        token: inv.token,
+        isOpen: true,
+        claimedAt: null,
+        eventId: inv.eventId,
+        eventSlug: eventRow[0]?.slug ?? null,
+        eventName: eventRow[0]?.name ?? null,
+        url: `${baseUrl}/invite/${inv.token}`,
+        createdAt: inv.createdAt,
+      });
+    }
+
+    res.status(201).json(createdInvitations);
+  } catch (error) {
+    console.error('Create open invitation error:', error);
+    res.status(500).json({ error: 'Failed to create open invitation' });
+  }
+});
+
+// GET /api/admin/invitations/open — list unclaimed open invitations
+router.get('/invitations/open', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await db
+      .select({
+        id: schema.guestInvitations.id,
+        token: schema.guestInvitations.token,
+        isOpen: schema.guestInvitations.isOpen,
+        claimedAt: schema.guestInvitations.claimedAt,
+        eventId: schema.guestInvitations.eventId,
+        createdAt: schema.guestInvitations.createdAt,
+        eventSlug: schema.events.slug,
+        eventName: schema.events.name,
+      })
+      .from(schema.guestInvitations)
+      .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
+      .where(and(eq(schema.guestInvitations.isOpen, true), isNull(schema.guestInvitations.claimedAt)))
+      .orderBy(desc(schema.guestInvitations.createdAt));
+
+    const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        token: r.token,
+        isOpen: r.isOpen,
+        claimedAt: r.claimedAt,
+        eventId: r.eventId,
+        eventSlug: r.eventSlug,
+        eventName: r.eventName,
+        url: `${baseUrl}/invite/${r.token}`,
+        createdAt: r.createdAt,
+      }))
+    );
+  } catch (error) {
+    console.error('List open invitations error:', error);
+    res.status(500).json({ error: 'Failed to fetch open invitations' });
+  }
+});
 
 router.post('/invitations', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const parsed = addInvitationSchema.safeParse(req.body);
@@ -385,7 +548,8 @@ router.post('/invitations', requireAuth, async (req: Request, res: Response): Pr
   }
 });
 
-router.put('/invitations/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
+// Shared handler for invitation updates (PUT and PATCH)
+async function handleUpdateInvitation(req: Request, res: Response): Promise<void> {
   const id = parseInt(req.params['id'] ?? '', 10);
   if (isNaN(id)) {
     res.status(400).json({ error: 'Invalid invitation ID' });
@@ -429,7 +593,11 @@ router.put('/invitations/:id', requireAuth, async (req: Request, res: Response):
     console.error('Update invitation error:', error);
     res.status(500).json({ error: 'Failed to update invitation' });
   }
-});
+}
+
+// Keep both PUT and PATCH for backward compatibility
+router.put('/invitations/:id', requireAuth, handleUpdateInvitation);
+router.patch('/invitations/:id', requireAuth, handleUpdateInvitation);
 
 router.delete('/invitations/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params['id'] ?? '', 10);
@@ -494,6 +662,8 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
     if (eventId && !isNaN(eventId)) {
       conditions.push(eq(schema.guestInvitations.eventId, eventId));
     }
+    // Only export claimed/personal invitations (those with a guest record)
+    conditions.push(isNotNull(schema.guestInvitations.guestId));
 
     const rows = await db
       .select({
