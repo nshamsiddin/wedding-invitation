@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import { TulipSVG } from '../components/decorative';
+import DarkModeToggle from '../components/ui/DarkModeToggle';
 import { useTranslation } from '../lib/i18n';
 import { LanguageContext } from '../context/LanguageContext';
 import type { Language } from '../lib/i18n';
@@ -12,147 +12,237 @@ const events = [
   {
     slug: 'tashkent',
     city: 'Toshkent',
-    country: {
-      en: 'Uzbekistan',
-      tr: 'Özbekistan',
-      uz: 'O\'zbekiston',
-    },
-    flag: '🇺🇿',
-    date: {
-      en: '12 September 2026',
-      tr: '12 Eylül 2026',
-      uz: '12 Sentyabr 2026',
-    },
+    country: { en: 'Uzbekistan', tr: 'Özbekistan', uz: "O'zbekiston" },
+    date: { en: '12 September 2026', tr: '12 Eylül 2026', uz: '12 Sentyabr 2026' },
     venue: 'Yulduzli Saroy',
-    color: '#C9707A',
+    index: '01',
   },
   {
     slug: 'ankara',
     city: 'Ankara',
-    country: {
-      en: 'Türkiye',
-      tr: 'Türkiye',
-      uz: 'Turkiya',
-    },
-    flag: '🇹🇷',
-    date: {
-      en: '19 May 2026',
-      tr: '19 Mayıs 2026',
-      uz: '19 May 2026',
-    },
+    country: { en: 'Türkiye', tr: 'Türkiye', uz: 'Turkiya' },
+    date: { en: '19 May 2026', tr: '19 Mayıs 2026', uz: '19 May 2026' },
     venue: 'Sheraton Grand Ankara',
-    color: '#C49A6C',
+    index: '02',
   },
 ];
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12 } },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+};
 
 export default function HomePage() {
   const t = useTranslation();
   const { language } = useContext(LanguageContext);
   const lang = language as Language;
-
   const coupleName = EVENT_CONFIG.names[lang] ?? EVENT_CONFIG.names.en;
 
   return (
     <div
-      className="min-h-screen bg-ivory-100 text-stone-600 flex flex-col"
-      style={{
-        background:
-          'linear-gradient(160deg, #FEFCF7 0%, #FDF8F0 50%, #F9EAE4 100%)',
-      }}
+      className="min-h-screen flex flex-col"
+      style={{ background: 'var(--bg)', color: 'var(--text-primary)', position: 'relative' }}
     >
-      <div className="fixed top-4 right-4 z-50">
-        <LanguageSwitcher />
+      {/* Ambient background orbs */}
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+        <div className="orb" style={{ width: 600, height: 600, top: '-10%', left: '-15%', background: 'radial-gradient(circle, rgba(196,151,90,0.08) 0%, transparent 70%)' }} />
+        <div className="orb" style={{ width: 500, height: 500, bottom: '-5%', right: '-10%', background: 'radial-gradient(circle, rgba(201,128,138,0.07) 0%, transparent 70%)' }} />
       </div>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center max-w-2xl w-full"
+      {/* Top bar */}
+      <header
+        className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-4"
+        style={{ background: 'transparent' }}
+      >
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-overline"
+          style={{ color: 'var(--text-tertiary)' }}
         >
-          <p className="font-sans text-tulip-600 uppercase tracking-[0.45em] text-xs sm:text-sm mb-6">
-            {t.cordiallyInvited}
-          </p>
-          <h1 className="font-serif text-4xl sm:text-6xl font-bold text-stone-700 italic mb-4 leading-tight">
-            {coupleName}
-          </h1>
+          Wedding 2026
+        </motion.p>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <DarkModeToggle />
+        </div>
+      </header>
 
-          <div
-            className="flex items-center justify-center gap-4 my-6"
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-24 relative z-10">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="w-full max-w-3xl"
+        >
+          {/* Eyebrow */}
+          <motion.p
+            variants={item}
+            className="text-overline text-center mb-6"
+            style={{ color: 'var(--accent-gold)' }}
+          >
+            {t.cordiallyInvited}
+          </motion.p>
+
+          {/* Names */}
+          <motion.div variants={item} className="text-center mb-4 overflow-hidden">
+            <h1
+              className="text-display-italic"
+              style={{
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontStyle: 'italic',
+                fontWeight: 300,
+                fontSize: 'clamp(3rem, 10vw, 7rem)',
+                lineHeight: 0.95,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {coupleName}
+            </h1>
+          </motion.div>
+
+          {/* Thin divider line */}
+          <motion.div
+            variants={item}
+            className="flex items-center justify-center gap-4 my-8"
             aria-hidden="true"
           >
-            <div
-              className="h-px w-16"
-              style={{
-                background:
-                  'linear-gradient(to right, transparent, rgba(201,112,122,0.4))',
-              }}
-            />
-            <TulipSVG size={20} color="#C9707A" />
-            <span className="text-tulip-400 text-xl font-serif">♡</span>
-            <TulipSVG size={20} color="#C9707A" />
-            <div
-              className="h-px w-16"
-              style={{
-                background:
-                  'linear-gradient(to left, transparent, rgba(201,112,122,0.4))',
-              }}
-            />
-          </div>
+            <div style={{ height: 1, width: 80, background: 'linear-gradient(to right, transparent, var(--border-warm))' }} />
+            <span style={{ color: 'var(--accent-rose)', fontSize: '0.7rem' }}>♡</span>
+            <div style={{ height: 1, width: 80, background: 'linear-gradient(to left, transparent, var(--border-warm))' }} />
+          </motion.div>
 
-          <p className="text-stone-400 font-sans text-sm mb-12">{t.chooseCity}</p>
+          {/* Subtitle */}
+          <motion.p
+            variants={item}
+            className="text-center mb-14"
+            style={{
+              fontFamily: '"Inter", system-ui, sans-serif',
+              fontSize: '0.8rem',
+              letterSpacing: '0.06em',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {t.chooseCity}
+          </motion.p>
 
-          <div className="grid sm:grid-cols-2 gap-6 mt-4">
+          {/* Event cards */}
+          <div className="grid sm:grid-cols-2 gap-5">
             {events.map((ev, i) => (
               <motion.div
                 key={ev.slug}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.15, duration: 0.7 }}
+                variants={item}
+                custom={i}
               >
                 <Link
                   to={`/${ev.slug}`}
-                  className="block rounded-3xl p-8 text-center transition-all duration-300 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-tulip-400 focus:ring-offset-2"
-                  style={{
-                    background: 'rgba(255,255,255,0.7)',
-                    border: '1px solid rgba(196,154,108,0.2)',
-                    boxShadow: '0 4px 24px rgba(140,123,110,0.10)',
-                    backdropFilter: 'blur(8px)',
-                  }}
+                  style={{ display: 'block', textDecoration: 'none' }}
+                  aria-label={`View invitation for ${ev.city} celebration`}
                 >
-                  <span
-                    className="text-4xl mb-3 block"
-                    role="img"
-                    aria-label={ev.country[lang] ?? ev.country.en}
-                  >
-                    {ev.flag}
-                  </span>
-                  <p className="font-serif text-2xl font-bold text-stone-700 italic mb-1">
-                    {ev.city}
-                  </p>
-                  <p className="text-stone-400 font-sans text-xs uppercase tracking-widest mb-4">
-                    {ev.country[lang] ?? ev.country.en}
-                  </p>
-                  <div
-                    className="w-full h-px mb-4"
+                  <motion.div
+                    whileHover={{ y: -4, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                    className="relative overflow-hidden rounded-3xl p-8"
                     style={{
-                      background:
-                        'linear-gradient(to right, transparent, rgba(196,154,108,0.3), transparent)',
-                    }}
-                  />
-                  <p className="text-stone-500 font-sans text-sm mb-1">
-                    {ev.date[lang] ?? ev.date.en}
-                  </p>
-                  <p className="text-stone-400 font-sans text-xs">{ev.venue}</p>
-                  <div
-                    className="mt-5 inline-flex items-center gap-2 px-5 py-2 rounded-full font-sans text-xs font-bold uppercase tracking-widest text-ivory-100"
-                    style={{
-                      background: `linear-gradient(135deg, ${ev.color}, ${ev.color}cc)`,
+                      background: 'var(--glass-bg)',
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
+                      border: '1px solid var(--glass-border)',
+                      boxShadow: 'var(--shadow-md)',
                     }}
                   >
-                    {t.viewInvitation}
-                  </div>
+                    {/* Card index number */}
+                    <span
+                      className="absolute top-6 right-6 text-overline"
+                      style={{ color: 'var(--text-tertiary)', fontSize: '0.6rem' }}
+                      aria-hidden="true"
+                    >
+                      {ev.index}
+                    </span>
+
+                    {/* City name */}
+                    <h2
+                      style={{
+                        fontFamily: '"Cormorant Garamond", Georgia, serif',
+                        fontStyle: 'italic',
+                        fontWeight: 300,
+                        fontSize: 'clamp(2rem, 5vw, 2.75rem)',
+                        lineHeight: 1,
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.25rem',
+                        letterSpacing: '-0.01em',
+                      }}
+                    >
+                      {ev.city}
+                    </h2>
+
+                    {/* Country */}
+                    <p
+                      className="text-overline mb-6"
+                      style={{ color: 'var(--text-tertiary)' }}
+                    >
+                      {ev.country[lang] ?? ev.country.en}
+                    </p>
+
+                    {/* Divider */}
+                    <div style={{ height: 1, background: 'var(--border-warm)', marginBottom: '1.25rem' }} aria-hidden="true" />
+
+                    {/* Date */}
+                    <p
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: '0.8rem',
+                        color: 'var(--text-secondary)',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
+                      {ev.date[lang] ?? ev.date.en}
+                    </p>
+
+                    {/* Venue */}
+                    <p
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: '0.72rem',
+                        color: 'var(--text-tertiary)',
+                        marginBottom: '2rem',
+                      }}
+                    >
+                      {ev.venue}
+                    </p>
+
+                    {/* CTA row */}
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-overline"
+                        style={{ color: 'var(--accent-gold)' }}
+                      >
+                        {t.viewInvitation}
+                      </span>
+                      <motion.span
+                        whileHover={{ x: 4 }}
+                        style={{ color: 'var(--accent-gold)', fontSize: '1rem' }}
+                        aria-hidden="true"
+                      >
+                        →
+                      </motion.span>
+                    </div>
+
+                    {/* Hover glow */}
+                    <motion.div
+                      className="absolute inset-0 rounded-3xl pointer-events-none"
+                      style={{ background: 'radial-gradient(circle at 50% 0%, rgba(196,151,90,0.06) 0%, transparent 60%)' }}
+                      aria-hidden="true"
+                    />
+                  </motion.div>
                 </Link>
               </motion.div>
             ))}
@@ -160,8 +250,17 @@ export default function HomePage() {
         </motion.div>
       </main>
 
-      <footer className="py-6 text-center">
-        <p className="text-stone-300 font-sans text-xs">{t.madeWithLove}</p>
+      {/* Footer */}
+      <footer className="relative z-10 py-8 text-center">
+        <p
+          style={{
+            fontFamily: '"Inter", system-ui, sans-serif',
+            fontSize: '0.7rem',
+            color: 'var(--text-tertiary)',
+          }}
+        >
+          {t.madeWithLove}
+        </p>
       </footer>
     </div>
   );

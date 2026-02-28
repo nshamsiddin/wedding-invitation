@@ -24,23 +24,88 @@ function isZero(t: TimeLeft) {
   return t.days === 0 && t.hours === 0 && t.minutes === 0 && t.seconds === 0;
 }
 
+interface FlipDigitProps {
+  value: number;
+  label: string;
+}
+
+function FlipUnit({ value, label }: FlipDigitProps) {
+  const padded = String(value).padStart(2, '0');
+
+  return (
+    <div className="flex flex-col items-center gap-2 sm:gap-3">
+      <div
+        className="relative w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 rounded-2xl overflow-hidden noise"
+        style={{
+          background: 'var(--glass-bg)',
+          backdropFilter: 'blur(20px) saturate(1.4)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+          border: '1px solid var(--glass-border)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+        }}
+      >
+        {/* Horizontal divider for split-flap look */}
+        <div
+          className="absolute inset-x-0 z-10 pointer-events-none"
+          style={{
+            top: '50%',
+            height: '1px',
+            background: 'var(--border)',
+          }}
+          aria-hidden="true"
+        />
+        {/* Subtle top gradient */}
+        <div
+          className="absolute inset-x-0 top-0 h-1/3 z-10 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15), transparent)' }}
+          aria-hidden="true"
+        />
+
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={padded}
+            initial={{ y: -40, opacity: 0, filter: 'blur(4px)' }}
+            animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+            exit={{ y: 40, opacity: 0, filter: 'blur(4px)' }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontSize: 'clamp(1.75rem, 5vw, 2.75rem)',
+              fontWeight: 300,
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.02em',
+              tabularNums: 'tabular-nums' as never,
+            } as React.CSSProperties}
+            aria-live="off"
+          >
+            {padded}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+      <span
+        className="text-overline"
+        style={{ color: 'var(--text-tertiary)' }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 interface Props {
   targetDate: string;
 }
 
 export default function CountdownTimer({ targetDate }: Props) {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>(() =>
-    calculateTimeLeft(targetDate)
-  );
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => calculateTimeLeft(targetDate));
   const [mounted, setMounted] = useState(false);
   const t = useTranslation();
 
   useEffect(() => {
     setMounted(true);
-    const interval = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(targetDate));
-    }, 1000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => setTimeLeft(calculateTimeLeft(targetDate)), 1000);
+    return () => clearInterval(id);
   }, [targetDate]);
 
   if (!mounted) return null;
@@ -51,20 +116,19 @@ export default function CountdownTimer({ targetDate }: Props) {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl"
-        style={{
-          background: 'rgba(255,255,255,0.75)',
-          border: '1px solid rgba(201,112,122,0.3)',
-          boxShadow: '0 4px 24px rgba(201,112,122,0.12)',
-        }}
+        className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl glass"
         role="status"
         aria-live="polite"
       >
-        <span className="text-tulip-400 text-xl" aria-hidden="true">♡</span>
-        <p className="font-serif text-lg text-tulip-600 italic">
+        <span style={{ color: 'var(--accent-rose)' }} aria-hidden="true">♡</span>
+        <p style={{
+          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontStyle: 'italic',
+          color: 'var(--accent-rose)',
+        }}>
           {t.celebrationBegun}
         </p>
-        <span className="text-tulip-400 text-xl" aria-hidden="true">♡</span>
+        <span style={{ color: 'var(--accent-rose)' }} aria-hidden="true">♡</span>
       </motion.div>
     );
   }
@@ -83,35 +147,7 @@ export default function CountdownTimer({ targetDate }: Props) {
       aria-label="Countdown to the event"
     >
       {units.map(({ label, value }) => (
-        <div key={label} className="flex flex-col items-center">
-          <div
-            className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center rounded-2xl overflow-hidden relative"
-            style={{
-              background: 'rgba(255,255,255,0.75)',
-              border: '1px solid rgba(196,154,108,0.25)',
-              boxShadow:
-                '0 4px 16px rgba(201,112,122,0.10), 0 1px 4px rgba(196,154,108,0.10)',
-            }}
-          >
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.span
-                key={value}
-                initial={{ y: -28, opacity: 0 }}
-                animate={{ y: 0,   opacity: 1 }}
-                exit={{   y:  28,  opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="font-serif text-3xl sm:text-4xl font-bold tabular-nums absolute"
-                style={{ color: '#C9707A' }}
-                aria-live="off"
-              >
-                {String(value).padStart(2, '0')}
-              </motion.span>
-            </AnimatePresence>
-          </div>
-          <span className="mt-2 text-xs font-sans font-bold uppercase tracking-widest text-stone-400">
-            {label}
-          </span>
-        </div>
+        <FlipUnit key={label} value={value} label={label} />
       ))}
     </div>
   );

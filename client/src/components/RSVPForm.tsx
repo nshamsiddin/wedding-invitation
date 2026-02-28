@@ -24,6 +24,31 @@ interface Props {
   prefillData?: PrefillData;
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'transparent',
+  border: 'none',
+  borderBottom: '1px solid var(--border-warm)',
+  padding: '0.75rem 0',
+  color: 'var(--text-primary)',
+  fontFamily: '"Inter", system-ui, sans-serif',
+  fontSize: '0.9rem',
+  outline: 'none',
+  appearance: 'none' as const,
+  WebkitAppearance: 'none',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontFamily: '"Inter", system-ui, sans-serif',
+  fontSize: '0.62rem',
+  fontWeight: 500,
+  letterSpacing: '0.15em',
+  textTransform: 'uppercase',
+  color: 'var(--text-tertiary)',
+  marginBottom: '0.4rem',
+};
+
 export default function RSVPForm({ token, eventName = '', prefillData }: Props) {
   const [successResult, setSuccessResult] = useState<{
     name: string;
@@ -31,14 +56,16 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
     guestCount: number;
     updated: boolean;
   } | null>(null);
-  const [showUpdateBanner] = useState(!!prefillData);
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const showUpdateBanner = !!prefillData;
   const t = useTranslation();
 
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<RSVPFormValues>({
     resolver: zodResolver(rsvpFormSchema),
     defaultValues: prefillData
@@ -90,19 +117,25 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
   }
 
   const statusOptions = [
-    { value: 'attending' as const, label: t.attendingOption, icon: '✓' },
-    { value: 'declined'  as const, label: t.decliningOption, icon: '✗' },
-    { value: 'maybe'     as const, label: t.maybeOption,     icon: '?' },
+    { value: 'attending' as const, label: t.attendingOption,  symbol: '✓' },
+    { value: 'declined'  as const, label: t.decliningOption,  symbol: '✕' },
+    { value: 'maybe'     as const, label: t.maybeOption,      symbol: '◎' },
   ];
+
+  const getFocusedInputStyle = (field: string): React.CSSProperties => ({
+    ...inputStyle,
+    borderBottomColor: focusedField === field ? 'var(--accent-gold)' : 'var(--border-warm)',
+    transition: 'border-color 0.3s ease',
+  });
 
   return (
     <motion.form
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="space-y-5"
+      className="space-y-7"
       aria-label={t.rsvpHeading}
     >
       {/* Update banner */}
@@ -112,13 +145,16 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-2xl px-4 py-3"
-            style={{ background: 'rgba(196,154,108,0.10)', border: '1px solid rgba(196,154,108,0.30)' }}
+            className="rounded-xl px-4 py-3"
+            style={{
+              background: 'rgba(196,151,90,0.08)',
+              border: '1px solid var(--border-warm)',
+            }}
             role="status"
             aria-live="polite"
           >
-            <p className="text-gold-700 text-sm font-sans">
-              <span className="font-bold">{t.rsvpFoundTitle}</span>{' '}
+            <p style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontFamily: '"Inter", system-ui, sans-serif' }}>
+              <span style={{ fontWeight: 600 }}>{t.rsvpFoundTitle}</span>{' '}
               {t.rsvpFoundSub}
             </p>
           </motion.div>
@@ -128,65 +164,91 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
       {/* Error */}
       {submitMutation.isError && (
         <div
-          className="rounded-2xl px-4 py-3"
-          style={{ background: 'rgba(201,112,122,0.08)', border: '1px solid rgba(201,112,122,0.25)' }}
+          className="rounded-xl px-4 py-3"
+          style={{ background: 'rgba(201,128,138,0.08)', border: '1px solid rgba(201,128,138,0.2)' }}
           role="alert"
           aria-live="assertive"
         >
-          <p className="text-tulip-700 text-sm font-sans">
+          <p style={{ fontSize: '0.8rem', color: 'var(--accent-rose)', fontFamily: '"Inter", system-ui, sans-serif' }}>
             {(submitMutation.error as Error)?.message ?? t.errorGeneric}
           </p>
         </div>
       )}
 
-      {/* Name (read-only, pre-filled from invite) */}
+      {/* Name */}
       <div>
-        <label htmlFor="rsvp-name" className="label-ottoman">
-          {t.nameLabel}
-        </label>
+        <label htmlFor="rsvp-name" style={labelStyle}>{t.nameLabel}</label>
         <input
           id="rsvp-name"
           type="text"
           autoComplete="name"
-          aria-describedby={errors.name ? 'rsvp-name-error' : undefined}
-          aria-invalid={!!errors.name}
           {...register('name')}
           disabled
-          className="input-ottoman disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ ...getFocusedInputStyle('name'), opacity: 0.5 }}
           placeholder={t.namePlaceholder}
         />
+        {errors.name && (
+          <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">
+            {errors.name.message}
+          </p>
+        )}
       </div>
 
       {/* Attendance */}
-      <fieldset>
-        <legend className="label-ottoman">
-          {t.attendanceLabel} <span aria-hidden="true" className="text-tulip-400">*</span>
+      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend style={{ ...labelStyle, marginBottom: '0.75rem' }}>
+          {t.attendanceLabel} <span aria-hidden="true" style={{ color: 'var(--accent-rose)' }}>*</span>
         </legend>
-        <div className="grid grid-cols-3 gap-2">
-          {statusOptions.map(({ value, label, icon }) => (
-            <label
-              key={value}
-              className="relative flex flex-col items-center justify-center py-3 px-2 rounded-2xl border cursor-pointer transition-all"
-              style={
-                watchedStatus === value
-                  ? { background: 'rgba(201,112,122,0.09)', borderColor: 'rgba(201,112,122,0.45)', color: '#B85A64' }
-                  : { background: 'rgba(253,248,240,0.7)', borderColor: 'rgba(196,154,108,0.2)', color: '#A0938A' }
-              }
-            >
-              <input
-                type="radio"
-                value={value}
-                {...register('status')}
-                className="sr-only"
-                aria-label={label}
-              />
-              <span className="text-lg mb-0.5" aria-hidden="true">{icon}</span>
-              <span className="text-xs font-sans font-semibold tracking-wide">{label}</span>
-            </label>
-          ))}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {statusOptions.map(({ value, label, symbol }) => {
+            const isSelected = watchedStatus === value;
+            return (
+              <label
+                key={value}
+                className="relative flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl transition-all"
+                style={{
+                  background: isSelected
+                    ? 'rgba(196,151,90,0.1)'
+                    : 'rgba(0,0,0,0.02)',
+                  border: `1px solid ${isSelected ? 'var(--accent-gold)' : 'var(--border-warm)'}`,
+                  color: isSelected ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                  transition: 'all 0.25s ease',
+                  cursor: 'none',
+                }}
+              >
+                <input
+                  type="radio"
+                  value={value}
+                  {...register('status')}
+                  className="sr-only"
+                  aria-label={label}
+                />
+                <span
+                  style={{
+                    fontSize: '1rem',
+                    marginBottom: '0.25rem',
+                    display: 'block',
+                    fontFamily: 'inherit',
+                  }}
+                  aria-hidden="true"
+                >
+                  {symbol}
+                </span>
+                <span style={{
+                  fontSize: '0.65rem',
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontWeight: 500,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase' as const,
+                }}>
+                  {label}
+                </span>
+              </label>
+            );
+          })}
         </div>
         {errors.status && (
-          <p className="mt-1.5 text-xs text-tulip-600 font-sans" role="alert">
+          <p style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">
             {errors.status.message}
           </p>
         )}
@@ -199,19 +261,18 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            <label htmlFor="rsvp-guest-count" className="label-ottoman">
-              {t.guestCountLabel}
-            </label>
+            <label htmlFor="rsvp-guest-count" style={labelStyle}>{t.guestCountLabel}</label>
             <select
               id="rsvp-guest-count"
-              aria-describedby={errors.guestCount ? 'rsvp-guest-count-error' : undefined}
               {...register('guestCount', { valueAsNumber: true })}
-              className="input-ottoman appearance-none cursor-pointer"
+              style={getFocusedInputStyle('guestCount')}
+              onFocus={() => setFocusedField('guestCount')}
+              onBlur={() => setFocusedField(null)}
             >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n} className="bg-ivory-100 text-stone-700">
+              {[1, 2, 3, 4, 5].map(n => (
+                <option key={n} value={n}>
                   {n} {n === 1 ? t.guestCountSingle : t.guestCountPlural}
                 </option>
               ))}
@@ -222,30 +283,42 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
 
       {/* Dietary */}
       <div>
-        <label htmlFor="rsvp-dietary" className="label-ottoman">
+        <label htmlFor="rsvp-dietary" style={labelStyle}>
           {t.dietaryLabel}{' '}
-          <span className="text-stone-400/60 font-normal normal-case">{t.dietaryOptional}</span>
+          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-tertiary)' }}>
+            {t.dietaryOptional}
+          </span>
         </label>
         <input
           id="rsvp-dietary"
           type="text"
           {...register('dietary')}
-          className="input-ottoman"
+          style={getFocusedInputStyle('dietary')}
+          onFocus={() => setFocusedField('dietary')}
+          onBlur={() => setFocusedField(null)}
           placeholder={t.dietaryPlaceholder}
         />
       </div>
 
       {/* Message */}
       <div>
-        <label htmlFor="rsvp-message" className="label-ottoman">
+        <label htmlFor="rsvp-message" style={labelStyle}>
           {t.messageLabel}{' '}
-          <span className="text-stone-400/60 font-normal normal-case">{t.messageOptional}</span>
+          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-tertiary)' }}>
+            {t.messageOptional}
+          </span>
         </label>
         <textarea
           id="rsvp-message"
           rows={3}
           {...register('message')}
-          className="input-ottoman resize-none"
+          style={{
+            ...getFocusedInputStyle('message'),
+            resize: 'none',
+            paddingTop: '0.75rem',
+          }}
+          onFocus={() => setFocusedField('message')}
+          onBlur={() => setFocusedField(null)}
           placeholder={t.messagePlaceholder}
         />
       </div>
@@ -253,28 +326,41 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
       {/* Submit */}
       <motion.button
         type="submit"
-        disabled={isSubmitting || submitMutation.isPending}
+        disabled={submitMutation.isPending}
         whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="btn-tulip w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        whileTap={{ scale: 0.97 }}
+        className="btn-primary w-full"
+        style={{
+          opacity: submitMutation.isPending ? 0.7 : 1,
+        }}
         aria-label={showUpdateBanner ? t.updateRsvp : t.sendRsvp}
       >
         {submitMutation.isPending ? (
           <span className="flex items-center justify-center gap-2">
-            <span
-              className="w-4 h-4 border-2 border-ivory-100/40 border-t-ivory-100 rounded-full animate-spin"
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              style={{
+                display: 'inline-block',
+                width: 14,
+                height: 14,
+                border: '2px solid rgba(12,10,9,0.2)',
+                borderTopColor: 'rgba(12,10,9,0.8)',
+                borderRadius: '50%',
+              }}
               aria-hidden="true"
             />
             {t.sending}
           </span>
-        ) : showUpdateBanner ? (
-          t.updateRsvp
-        ) : (
-          t.sendRsvp
-        )}
+        ) : showUpdateBanner ? t.updateRsvp : t.sendRsvp}
       </motion.button>
 
-      <p className="text-center text-xs text-stone-400 font-sans">
+      <p style={{
+        textAlign: 'center',
+        fontSize: '0.72rem',
+        color: 'var(--text-tertiary)',
+        fontFamily: '"Inter", system-ui, sans-serif',
+      }}>
         {t.rsvpDeadlineHint}
       </p>
     </motion.form>

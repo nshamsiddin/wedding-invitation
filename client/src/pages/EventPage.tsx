@@ -1,15 +1,11 @@
-import { useRef, useContext } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef, useContext, useState } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import CountdownTimer from '../components/CountdownTimer';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import {
-  TulipSVG,
-  TulipDivider,
-  Petal,
-  OttomanCorner,
-  formatEventDate,
-} from '../components/decorative';
+import DarkModeToggle from '../components/ui/DarkModeToggle';
+import { SplitText, Reveal } from '../components/ui/AnimatedText';
+import MagneticButton from '../components/ui/MagneticButton';
 import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
 import { LanguageContext } from '../context/LanguageContext';
@@ -17,24 +13,138 @@ import type { Language } from '../lib/i18n';
 
 const COUPLE_PHOTO = '/IMG_2524.jpg';
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 36 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.85, delay: i * 0.14, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
+function formatEventDate(dateStr: string, lang: Language): string {
+  const d = new Date(dateStr);
+  const localeMap: Record<Language, string> = { en: 'en-US', tr: 'tr-TR', uz: 'uz-UZ' };
+  return d.toLocaleDateString(localeMap[lang] ?? 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
 
-interface Props {
-  slug: string;
+interface Props { slug: string }
+
+// Animated ambient particle field
+function AmbientOrbs({ scrollY }: { scrollY: ReturnType<typeof useScroll>['scrollY'] }) {
+  const y1 = useTransform(scrollY, [0, 1000], [0, -200]);
+  const y2 = useTransform(scrollY, [0, 1000], [0, -120]);
+  const y3 = useTransform(scrollY, [0, 1000], [0, -300]);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Large gradient orb — top left */}
+      <motion.div
+        style={{ y: y1, position: 'absolute', top: '-10%', left: '-5%' }}
+        className="absolute rounded-full"
+        animate={{
+          scale: [1, 1.1, 1],
+          opacity: [0.4, 0.55, 0.4],
+        }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <div style={{
+          width: 700,
+          height: 700,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(196,151,90,0.12) 0%, transparent 65%)',
+          filter: 'blur(60px)',
+        }} />
+      </motion.div>
+
+      {/* Mid orb — right */}
+      <motion.div
+        style={{ y: y2 }}
+        animate={{
+          scale: [1, 1.15, 1],
+          opacity: [0.3, 0.45, 0.3],
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+      >
+        <div style={{
+          width: 500,
+          height: 500,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(201,128,138,0.1) 0%, transparent 65%)',
+          filter: 'blur(70px)',
+          position: 'absolute',
+          top: '15%',
+          right: '-8%',
+        }} />
+      </motion.div>
+
+      {/* Small orb — bottom */}
+      <motion.div
+        style={{ y: y3 }}
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.2, 0.35, 0.2],
+        }}
+        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut', delay: 6 }}
+      >
+        <div style={{
+          width: 350,
+          height: 350,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(196,151,90,0.09) 0%, transparent 65%)',
+          filter: 'blur(50px)',
+          position: 'absolute',
+          bottom: '5%',
+          left: '20%',
+        }} />
+      </motion.div>
+    </div>
+  );
+}
+
+// Floating particles
+function FloatingParticles() {
+  const particles = Array.from({ length: 18 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 2 + 1,
+    delay: Math.random() * 8,
+    duration: Math.random() * 12 + 14,
+  }));
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+            background: p.id % 3 === 0
+              ? 'rgba(196,151,90,0.5)'
+              : p.id % 3 === 1
+              ? 'rgba(201,128,138,0.4)'
+              : 'rgba(245,237,215,0.3)',
+          }}
+          animate={{
+            y: [0, -40, 0],
+            x: [0, Math.random() * 20 - 10, 0],
+            opacity: [0, 0.8, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function EventPage({ slug }: Props) {
   const detailsRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
   const t = useTranslation();
   const { language } = useContext(LanguageContext);
   const lang = language as Language;
+  const [detailsOpen, setDetailsOpen] = useState(true);
 
   const { data: event, isLoading, isError } = useQuery({
     queryKey: ['events', slug],
@@ -43,40 +153,47 @@ export default function EventPage({ slug }: Props) {
   });
 
   const { scrollY } = useScroll();
-  // Layer 1 — bokeh ellipses
-  const bokehY       = useTransform(scrollY, [0, 800], [0, -140]);
-  // Layer 2 — large petals
-  const petal1Y      = useTransform(scrollY, [0, 800], [0, -176]);
-  // Layer 3 — small petals
-  const petal2Y      = useTransform(scrollY, [0, 800], [0, -112]);
-  const petal3Y      = useTransform(scrollY, [0, 800], [0, -144]);
-  // Layer 4 — text (fastest)
-  const heroContentY = useTransform(scrollY, [0, 600], [0, -80]);
-  // Title shrinks slightly as the user scrolls away from the hero
-  const titleScale   = useTransform(scrollY, [0, 380], [1, 0.88]);
-  const titleOpacity = useTransform(scrollY, [0, 320], [1, 0]);
+
+  // Parallax layers
+  const bgY    = useTransform(scrollY, [0, 800], [0, -200]);
+  const midY   = useTransform(scrollY, [0, 800], [0, -100]);
+  const textY  = useTransform(scrollY, [0, 600], [0, -60]);
+  const photoScale = useTransform(scrollY, [0, 500], [1, 1.08]);
+  const titleOpacity = useTransform(scrollY, [0, 350], [1, 0]);
 
   const scrollToDetails = () =>
     detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  // ── Loading ──
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-ivory-100 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-tulip-300 border-t-tulip-500 rounded-full animate-spin" />
-          <p className="text-stone-400 font-sans text-sm">{t.loadingInvitation}</p>
-        </div>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+          style={{
+            width: 40,
+            height: 40,
+            border: '2px solid var(--border-warm)',
+            borderTopColor: 'var(--accent-gold)',
+            borderRadius: '50%',
+          }}
+          aria-label={t.loadingInvitation}
+        />
       </div>
     );
   }
 
+  // ── Error ──
   if (isError || !event) {
     return (
-      <div className="min-h-screen bg-ivory-100 flex items-center justify-center text-center px-4">
-        <div>
-          <TulipSVG size={48} color="#C9707A" className="mx-auto mb-4 opacity-50" />
-          <h1 className="font-serif text-2xl text-stone-600 mb-2">{t.invitationNotFound}</h1>
-          <p className="text-stone-400 font-sans text-sm">{t.invitationNotFoundSub}</p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '2rem', marginBottom: '1rem', color: 'var(--accent-rose)' }} aria-hidden="true">◎</p>
+          <h1 style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontStyle: 'italic', fontSize: '1.8rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+            {t.invitationNotFound}
+          </h1>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t.invitationNotFoundSub}</p>
         </div>
       </div>
     );
@@ -84,252 +201,518 @@ export default function EventPage({ slug }: Props) {
 
   const displayDate = formatEventDate(event.date, lang);
   const targetDateTime = `${event.date}T${event.time}:00`;
-
-  // Split "Couple Names — City" into separate parts so the h1 never starts
-  // a new line with an em dash (a typographic error).
   const [coupleName, eventCity] = event.name.includes(' \u2014 ')
     ? event.name.split(' \u2014 ')
     : [event.name, null];
 
+  const detailItems = [
+    {
+      icon: '◈',
+      label: t.date,
+      value: displayDate,
+      sub: event.time,
+    },
+    {
+      icon: '◉',
+      label: t.venue,
+      value: event.venueName,
+      sub: event.venueAddress,
+    },
+    {
+      icon: '◇',
+      label: t.dressCode,
+      value: event.dressCode ?? '—',
+      sub: null,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-ivory-100 text-stone-600 overflow-x-hidden">
-      <div className="fixed top-4 right-4 z-50">
-        <LanguageSwitcher />
-      </div>
+    <div
+      style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-primary)', overflowX: 'hidden' }}
+    >
+      {/* Grain */}
+      <div className="grain-overlay" aria-hidden="true" />
 
-      {/* ══════════════════════ HERO ══════════════════════ */}
-      <section
-        className="relative min-h-screen flex flex-col items-center justify-center px-4 py-24 overflow-hidden"
-        aria-label="Event hero"
-        style={{
-          background:
-            'linear-gradient(160deg, #FEFCF7 0%, #FDF8F0 30%, #F9EAE4 65%, #F7E8E0 100%)',
-        }}
+      {/* Fixed nav */}
+      <header
+        className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-4"
+        style={{ background: 'transparent' }}
       >
-        {/* Radial colour blooms */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true"
-          style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 20%, rgba(232,180,184,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 40% at 80% 80%, rgba(196,154,108,0.14) 0%, transparent 55%)' }} />
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="text-overline"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
+          {eventCity ?? coupleName}
+        </motion.p>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <DarkModeToggle />
+        </div>
+      </header>
 
-        {/* ── Layer 1: Bokeh ellipses ── */}
-        <motion.div className="absolute inset-0 pointer-events-none" style={{ y: bokehY }} aria-hidden="true">
-          <div className="absolute rounded-full" style={{ width: 320, height: 320, top: '6%', left: '3%', background: 'radial-gradient(circle, rgba(232,180,184,0.20) 0%, transparent 70%)', filter: 'blur(48px)' }} />
-          <div className="absolute rounded-full" style={{ width: 400, height: 400, top: '10%', right: '2%', background: 'radial-gradient(circle, rgba(196,154,108,0.15) 0%, transparent 70%)', filter: 'blur(56px)' }} />
-          <div className="absolute rounded-full" style={{ width: 260, height: 260, bottom: '20%', left: '6%', background: 'radial-gradient(circle, rgba(201,112,122,0.14) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+      {/* ════════════════════ HERO ════════════════════ */}
+      <section
+        ref={heroRef}
+        style={{ position: 'relative', height: '100vh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        aria-label="Wedding hero"
+      >
+        {/* Background layer — parallax slowest */}
+        <motion.div
+          style={{ y: bgY, position: 'absolute', inset: '-20% -5%' }}
+          aria-hidden="true"
+        >
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'var(--bg)',
+          }} />
+          {/* Diagonal gradient overlay */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(ellipse 80% 70% at 50% 30%, rgba(196,151,90,0.07) 0%, transparent 60%)',
+          }} />
         </motion.div>
 
-        {/* ── Layer 2: Large petals ── */}
-        <motion.div className="petal-bg" style={{ y: petal1Y, top: '8%', left: '6%' }} aria-hidden="true">
-          <div className="animate-petal-drift"><Petal color="#E8B4B8" size={72} style={{ opacity: 0.45 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal1Y, top: '20%', left: '14%' }} aria-hidden="true">
-          <div style={{ animationDelay: '2s' }} className="animate-petal-drift"><Petal color="#C9707A" size={44} style={{ opacity: 0.35 }} /></div>
+        {/* Ambient orbs layer */}
+        <motion.div style={{ y: bgY, position: 'absolute', inset: 0 }} aria-hidden="true">
+          <AmbientOrbs scrollY={scrollY} />
+          <FloatingParticles />
         </motion.div>
 
-        {/* ── Layer 3: Small petals ── */}
-        <motion.div className="petal-bg" style={{ y: petal2Y, top: '6%', right: '8%' }} aria-hidden="true">
-          <div style={{ animationDelay: '1s' }} className="animate-petal-drift"><Petal color="#E8B4B8" size={58} style={{ opacity: 0.42 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal2Y, top: '24%', right: '5%' }} aria-hidden="true">
-          <div style={{ animationDelay: '3.5s' }} className="animate-petal-drift"><Petal color="#9BAF8E" size={42} style={{ opacity: 0.38 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal3Y, bottom: '18%', left: '4%' }} aria-hidden="true">
-          <div style={{ animationDelay: '0.5s' }} className="animate-petal-drift"><Petal color="#C49A6C" size={48} style={{ opacity: 0.32 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal3Y, bottom: '22%', right: '6%' }} aria-hidden="true">
-          <div style={{ animationDelay: '4s' }} className="animate-petal-drift"><Petal color="#E8B4B8" size={60} style={{ opacity: 0.38 }} /></div>
-        </motion.div>
-
-        {/* ── Layer 4: Text + photo content ── */}
-        <motion.div style={{ y: heroContentY }} className="relative z-10 max-w-4xl mx-auto text-center w-full">
-
-          <motion.p custom={0} initial="hidden" animate="visible" variants={fadeUp}
-            className="font-sans text-tulip-600 uppercase tracking-[0.45em] text-xs sm:text-sm mb-6">
+        {/* Content layer — parallax medium */}
+        <motion.div
+          style={{ y: textY, position: 'relative', zIndex: 10, width: '100%', maxWidth: '72rem', padding: '0 1.5rem', textAlign: 'center' }}
+        >
+          {/* Eyebrow */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-overline mb-8"
+            style={{ color: 'var(--accent-gold)' }}
+          >
             {t.cordiallyInvited}
           </motion.p>
 
-          {/* Couple names — fluid + scroll-shrink */}
-          <motion.h1
-            custom={1}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUp}
-            style={{ fontSize: 'clamp(2.6rem, 8.5vw, 7.5rem)', lineHeight: 1.05, scale: titleScale, opacity: titleOpacity }}
-            className="font-serif font-bold text-stone-700 text-shadow-soft mb-1"
-          >
-            {coupleName}
-          </motion.h1>
-
-          {eventCity && (
-            <motion.p custom={2} initial="hidden" animate="visible" variants={fadeUp}
-              className="font-sans text-stone-400 uppercase tracking-[0.35em] text-xs sm:text-sm mt-2 mb-1">
-              {eventCity}
-            </motion.p>
-          )}
-
-          {/* Minimal separator */}
-          <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}
-            className="flex items-center justify-center gap-3 my-5" aria-hidden="true">
-            <div className="h-px w-12 sm:w-20" style={{ background: 'linear-gradient(to right, transparent, rgba(201,112,122,0.35))' }} />
-            <span className="text-tulip-300 text-base font-serif">♡</span>
-            <div className="h-px w-12 sm:w-20" style={{ background: 'linear-gradient(to left, transparent, rgba(201,112,122,0.35))' }} />
-          </motion.div>
-
-          {/* Couple photo — larger, prominent */}
-          <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp} className="flex justify-center mb-10">
-            <div className="relative animate-float">
-              <div className="absolute inset-0 rounded-full" style={{ boxShadow: '0 12px 60px rgba(201,112,122,0.28), 0 4px 20px rgba(201,112,122,0.18)' }} aria-hidden="true" />
-              <img
-                src={COUPLE_PHOTO}
-                alt="The happy couple"
-                className="w-44 h-44 sm:w-60 sm:h-60 rounded-full object-cover relative z-10"
-                style={{ border: '3px solid rgba(232,180,184,0.75)', outline: '1px solid rgba(196,154,108,0.3)', outlineOffset: '5px', objectPosition: 'center 45%' }}
-              />
+          {/* Couple names — oversized hero type */}
+          <motion.div style={{ opacity: titleOpacity }}>
+            <div
+              style={{
+                overflow: 'hidden',
+                marginBottom: eventCity ? '0.25rem' : '0',
+              }}
+            >
+              <h1
+                aria-label={coupleName}
+                style={{
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  fontSize: 'clamp(3.5rem, 10vw, 9rem)',
+                  lineHeight: 0.92,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.02em',
+                  display: 'block',
+                  margin: '0 auto',
+                }}
+              >
+                <SplitText text={coupleName} delay={0.4} staggerChildren={0.06} />
+              </h1>
             </div>
+
+            {eventCity && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.0, duration: 0.8 }}
+                className="text-overline mt-3 mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                {eventCity}
+              </motion.p>
+            )}
           </motion.div>
 
-          {/* Date / time / dress code */}
-          <motion.div custom={5} initial="hidden" animate="visible" variants={fadeUp}
-            className="flex flex-wrap justify-center gap-8 sm:gap-14 mb-12">
+          {/* Photo card — mid parallax */}
+          <motion.div
+            style={{ y: midY }}
+            className="flex justify-center my-10"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 30, rotate: -2 }}
+              animate={{ opacity: 1, y: 0, rotate: -2 }}
+              whileHover={{ rotate: 0, scale: 1.03, y: -8 }}
+              transition={{ opacity: { duration: 0.8, delay: 0.8 }, y: { duration: 0.8, delay: 0.8 }, rotate: { type: 'spring', stiffness: 200 } }}
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+              }}
+            >
+              {/* Card frame */}
+              <div
+                style={{
+                  padding: '0.75rem',
+                  paddingBottom: '3rem',
+                  background: 'var(--glass-bg)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '0.75rem',
+                  boxShadow: '0 30px 80px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.2)',
+                }}
+              >
+                <motion.img
+                  src={COUPLE_PHOTO}
+                  alt="The happy couple"
+                  style={{
+                    scale: photoScale,
+                    width: 'clamp(180px, 28vw, 300px)',
+                    height: 'clamp(200px, 32vw, 360px)',
+                    objectFit: 'cover',
+                    objectPosition: 'center 40%',
+                    borderRadius: '0.375rem',
+                    display: 'block',
+                  }}
+                />
+                {/* Photo label */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '0.75rem',
+                    left: 0,
+                    right: 0,
+                    textAlign: 'center',
+                    fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    fontStyle: 'italic',
+                    fontWeight: 300,
+                    fontSize: '0.8rem',
+                    color: 'var(--text-secondary)',
+                    letterSpacing: '0.05em',
+                  }}
+                  aria-hidden="true"
+                >
+                  {coupleName}
+                </div>
+              </div>
+
+              {/* Glow behind card */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '-20px',
+                  borderRadius: '1rem',
+                  background: 'radial-gradient(circle, rgba(196,151,90,0.15) 0%, transparent 70%)',
+                  filter: 'blur(20px)',
+                  zIndex: -1,
+                  pointerEvents: 'none',
+                }}
+                aria-hidden="true"
+              />
+            </motion.div>
+          </motion.div>
+
+          {/* Date / Time / Dress Code quick stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1.1 }}
+            className="flex flex-wrap justify-center gap-8 sm:gap-16 mb-10"
+          >
             {[
               { label: t.date,      value: displayDate },
               { label: t.time,      value: event.time },
               { label: t.dressCode, value: event.dressCode ?? '—' },
-            ].map(({ label, value }, i) => (
-              <div key={i} className="text-center">
-                <p className="text-tulip-500 text-xs font-sans font-bold uppercase tracking-widest mb-1.5">{label}</p>
-                <p className="text-stone-600 font-serif text-base sm:text-lg italic">{value}</p>
+            ].map(({ label, value }) => (
+              <div key={label} style={{ textAlign: 'center' }}>
+                <p className="text-overline mb-1.5" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
+                <p style={{
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
+                  fontWeight: 400,
+                  color: 'var(--text-primary)',
+                }}>
+                  {value}
+                </p>
               </div>
             ))}
           </motion.div>
 
-          <motion.div custom={6} initial="hidden" animate="visible" variants={fadeUp}>
-            <CountdownTimer targetDate={targetDateTime} />
-          </motion.div>
-
-          <motion.div custom={7} initial="hidden" animate="visible" variants={fadeUp} className="mt-12">
-            <button onClick={scrollToDetails} className="btn-tulip" aria-label={t.learnMore}>
+          {/* CTA Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.3 }}
+          >
+            <MagneticButton
+              onClick={scrollToDetails}
+              className="btn-primary"
+              aria-label={t.learnMore}
+            >
               {t.learnMore}
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M19 9l-7 7-7-7"/>
               </svg>
-            </button>
+            </MagneticButton>
           </motion.div>
         </motion.div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-36 pointer-events-none" aria-hidden="true"
-          style={{ background: 'linear-gradient(to top, #FAF3E6, transparent)' }} />
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+          style={{
+            position: 'absolute',
+            bottom: '2.5rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+          aria-hidden="true"
+        >
+          <span className="text-overline" style={{ color: 'var(--text-tertiary)', fontSize: '0.55rem' }}>SCROLL</span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ width: 1, height: 40, background: 'linear-gradient(to bottom, var(--border-warm), transparent)' }}
+          />
+        </motion.div>
+
+        {/* Bottom fade */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 160,
+            background: 'linear-gradient(to top, var(--bg), transparent)',
+            pointerEvents: 'none',
+          }}
+          aria-hidden="true"
+        />
       </section>
 
-      {/* ══════════════════════ EVENT DETAILS ══════════════════════ */}
+      {/* ════════════════════ COUNTDOWN ════════════════════ */}
+      <section
+        style={{ padding: '6rem 1.5rem', position: 'relative', overflow: 'hidden' }}
+        aria-label="Countdown timer"
+      >
+        <div style={{ maxWidth: '56rem', margin: '0 auto' }}>
+          <Reveal delay={0}>
+            <p className="text-overline text-center mb-3" style={{ color: 'var(--accent-gold)' }}>
+              Counting Down
+            </p>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <h2 style={{
+              textAlign: 'center',
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+              letterSpacing: '-0.02em',
+              color: 'var(--text-primary)',
+              marginBottom: '3.5rem',
+            }}>
+              Until We Say <em>I Do</em>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.2}>
+            <CountdownTimer targetDate={targetDateTime} />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ════════════════════ EVENT DETAILS ════════════════════ */}
       <section
         ref={detailsRef}
-        className="relative py-24 px-4 overflow-hidden"
+        style={{ padding: '6rem 1.5rem', position: 'relative' }}
         aria-label="Event details"
-        style={{ backgroundColor: '#FAF3E6' }}
       >
-        {/* Static section background — no parallax so boundaries stay seamless */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(160deg, #FAF3E6 0%, #F7E8E0 50%, #F9EAE4 100%)',
-            }}
-          />
-          <div className="absolute inset-0 tile-pattern opacity-5" />
+        {/* Section background */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(196,151,90,0.04) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }}
+          aria-hidden="true"
+        />
+
+        <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
+          {/* Section header */}
+          <Reveal delay={0}>
+            <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+              <p className="text-overline mb-3" style={{ color: 'var(--accent-gold)' }}>
+                {t.aboutEvent}
+              </p>
+              <h2 style={{
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontStyle: 'italic',
+                fontWeight: 300,
+                fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+                letterSpacing: '-0.02em',
+                color: 'var(--text-primary)',
+                marginBottom: '1.5rem',
+              }}>
+                {t.eventSubheading}
+              </h2>
+              <div className="section-line" aria-hidden="true" />
+            </div>
+          </Reveal>
+
+          {/* Detail cards accordion */}
+          <Reveal delay={0.1}>
+            <div
+              className="glass rounded-3xl overflow-hidden"
+              style={{ boxShadow: 'var(--shadow-lg)' }}
+            >
+              {/* Header with toggle */}
+              <button
+                onClick={() => setDetailsOpen(v => !v)}
+                className="w-full flex items-center justify-between p-6 sm:p-8"
+                style={{ background: 'none', border: 'none', color: 'var(--text-primary)', textAlign: 'left' }}
+                aria-expanded={detailsOpen}
+              >
+                <div className="flex items-center gap-3">
+                  <span style={{ color: 'var(--accent-gold)', fontSize: '1rem' }} aria-hidden="true">◈</span>
+                  <span style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-secondary)',
+                  }}>
+                    Event Details
+                  </span>
+                </div>
+                <motion.span
+                  animate={{ rotate: detailsOpen ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ color: 'var(--text-tertiary)', fontSize: '1.2rem' }}
+                  aria-hidden="true"
+                >
+                  ↓
+                </motion.span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {detailsOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    {/* Border top */}
+                    <div style={{ height: 1, background: 'var(--border)' }} aria-hidden="true" />
+
+                    {/* Detail grid */}
+                    <div
+                      className="grid sm:grid-cols-3 gap-0"
+                      style={{ padding: '0' }}
+                    >
+                      {detailItems.map((detail, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            padding: '1.75rem 2rem',
+                            borderRight: i < 2 ? '1px solid var(--border)' : 'none',
+                            borderBottom: 0,
+                          }}
+                        >
+                          <div className="flex items-center gap-2 mb-3">
+                            <span style={{ color: 'var(--accent-gold)', fontSize: '0.75rem' }} aria-hidden="true">
+                              {detail.icon}
+                            </span>
+                            <p className="text-overline" style={{ color: 'var(--text-tertiary)' }}>
+                              {detail.label}
+                            </p>
+                          </div>
+                          <p style={{
+                            fontFamily: '"Cormorant Garamond", Georgia, serif',
+                            fontStyle: 'italic',
+                            fontSize: 'clamp(1rem, 2.5vw, 1.2rem)',
+                            fontWeight: 400,
+                            color: 'var(--text-primary)',
+                            marginBottom: detail.sub ? '0.25rem' : 0,
+                            lineHeight: 1.3,
+                          }}>
+                            {detail.value}
+                          </p>
+                          {detail.sub && (
+                            <p style={{
+                              fontFamily: '"Inter", system-ui, sans-serif',
+                              fontSize: '0.75rem',
+                              color: 'var(--text-secondary)',
+                              lineHeight: 1.5,
+                            }}>
+                              {detail.sub}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </Reveal>
         </div>
-        {/* Top feather — dissolves hero's bottom into this section */}
-        <div
-          className="absolute top-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to bottom, #FAF3E6, transparent)' }}
-        />
-        {/* Bottom feather — dissolves into the RSVP section below */}
-        <div
-          className="absolute bottom-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to top, #FAF3E6, transparent)' }}
-        />
-        <motion.div
-          className="petal-bg hidden sm:block"
-          style={{ y: petal2Y, top: '10%', right: '3%' }}
-          aria-hidden="true"
+      </section>
+
+      {/* ════════════════════ VENUE MAP ════════════════════ */}
+      {event.mapsUrl && (
+        <section
+          style={{ padding: '0 1.5rem 6rem', position: 'relative' }}
+          aria-label="Venue location"
         >
-          <Petal color="#E8B4B8" size={48} style={{ opacity: 0.3 }} />
-        </motion.div>
-        <motion.div
-          className="petal-bg hidden sm:block"
-          style={{ y: petal1Y, bottom: '8%', left: '2%' }}
-          aria-hidden="true"
-        >
-          <Petal color="#C49A6C" size={36} style={{ opacity: 0.25 }} />
-        </motion.div>
-
-        <div className="max-w-4xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75 }}
-            className="text-center mb-14"
-          >
-            <p className="text-tulip-500 text-xs font-sans font-bold uppercase tracking-[0.45em] mb-4">
-              {t.aboutEvent}
-            </p>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-stone-700 italic mb-2 text-shadow-soft">
-              {t.eventSubheading}
-            </h2>
-            <TulipDivider />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75, delay: 0.1 }}
-            className="relative card-glass overflow-hidden"
-          >
-            <OttomanCorner className="top-3 left-3 opacity-50" />
-            <OttomanCorner
-              className="top-3 right-3 opacity-50"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 left-3 opacity-50"
-              style={{ transform: 'scaleY(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 right-3 opacity-50"
-              style={{ transform: 'scale(-1,-1)' }}
-            />
-
-            <div className="p-8 sm:p-10 grid sm:grid-cols-2 gap-8">
-              <div>
-                <p className="text-gold-600 text-xs font-sans font-bold uppercase tracking-widest mb-2">
+          <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
+            <Reveal delay={0}>
+              <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <p className="text-overline mb-3" style={{ color: 'var(--accent-gold)' }}>
                   {t.venue}
                 </p>
-                <h3 className="font-serif text-xl font-semibold text-stone-700 italic mb-1">
+                <h2 style={{
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+                  letterSpacing: '-0.02em',
+                  color: 'var(--text-primary)',
+                }}>
                   {event.venueName}
-                </h3>
-                <p className="text-stone-400 font-sans text-sm leading-relaxed">
+                </h2>
+                <p style={{
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-secondary)',
+                  marginTop: '0.5rem',
+                }}>
                   {event.venueAddress}
                 </p>
               </div>
-              <div className="sm:text-right">
-                <p className="text-gold-600 text-xs font-sans font-bold uppercase tracking-widest mb-2">
-                  {t.date}
-                </p>
-                <p className="font-serif text-xl font-semibold text-stone-700 italic">
-                  {displayDate}
-                </p>
-                <p className="text-stone-400 font-sans text-sm mt-1">{event.time}</p>
-              </div>
-            </div>
+            </Reveal>
 
-            {event.mapsUrl && (
+            <Reveal delay={0.15}>
               <div
-                className="h-52 sm:h-72"
-                style={{ borderTop: '1px solid rgba(196,154,108,0.15)' }}
+                className="glass map-container rounded-3xl overflow-hidden"
+                style={{
+                  height: 'clamp(250px, 40vw, 420px)',
+                  boxShadow: 'var(--shadow-lg)',
+                }}
               >
                 <iframe
                   src={event.mapsUrl}
@@ -338,189 +721,130 @@ export default function EventPage({ slug }: Props) {
                   referrerPolicy="no-referrer-when-downgrade"
                   title={`Map showing ${event.venueName}`}
                   aria-label={`Map of ${event.venueAddress}`}
-                  style={{ filter: 'saturate(0.7) brightness(1.05)' }}
                 />
               </div>
-            )}
-          </motion.div>
-        </div>
-      </section>
+            </Reveal>
+          </div>
+        </section>
+      )}
 
-      {/* ══════════════════════ RSVP NOTICE ══════════════════════ */}
+      {/* ════════════════════ RSVP NOTICE ════════════════════ */}
       <section
-        id="rsvp"
-        className="relative py-24 px-4 overflow-hidden"
-        aria-labelledby="rsvp-heading"
-        style={{ backgroundColor: '#FAF3E6' }}
+        style={{ padding: '6rem 1.5rem', position: 'relative' }}
+        aria-labelledby="rsvp-notice-heading"
       >
-        {/* Static section background */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(180deg, #FAF3E6 0%, #FEFCF7 50%, #FDF8F0 100%)',
-            }}
-          />
-        </div>
-        {/* Top feather */}
-        <div
-          className="absolute top-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to bottom, #FAF3E6, transparent)' }}
-        />
-        {/* Bottom feather — dissolves into footer */}
-        <div
-          className="absolute bottom-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to top, #FDF8F0, transparent)' }}
-        />
-        <motion.div
-          className="petal-bg hidden sm:block"
-          style={{ y: petal3Y, top: '5%', left: '5%' }}
-          aria-hidden="true"
-        >
-          <div className="animate-float opacity-20">
-            <TulipSVG size={60} color="#C9707A" />
-          </div>
-        </motion.div>
-        <motion.div
-          className="petal-bg hidden sm:block"
-          style={{ y: petal1Y, bottom: '10%', right: '4%' }}
-          aria-hidden="true"
-        >
-          <div style={{ animationDelay: '3s' }} className="animate-float opacity-15">
-            <TulipSVG size={48} color="#C49A6C" />
-          </div>
-        </motion.div>
-
-        <div className="max-w-lg mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75 }}
-            className="text-center mb-10"
-          >
-            <p className="text-tulip-500 text-xs font-sans font-bold uppercase tracking-[0.45em] mb-4">
+        <div style={{ maxWidth: '40rem', margin: '0 auto', textAlign: 'center' }}>
+          <Reveal delay={0}>
+            <p className="text-overline mb-3" style={{ color: 'var(--accent-rose)' }}>
               {t.kindlyReply}
             </p>
             <h2
-              id="rsvp-heading"
-              className="font-serif text-3xl sm:text-4xl font-bold text-stone-700 italic text-shadow-soft"
+              id="rsvp-notice-heading"
+              style={{
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontStyle: 'italic',
+                fontWeight: 300,
+                fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+                letterSpacing: '-0.02em',
+                color: 'var(--text-primary)',
+                marginBottom: '1.5rem',
+              }}
             >
               {t.rsvpHeading}
             </h2>
-            <TulipDivider />
-          </motion.div>
+          </Reveal>
 
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75, delay: 0.1 }}
-            className="relative card-glass p-8 sm:p-10 text-center"
-          >
-            <OttomanCorner className="top-3 left-3 opacity-50" />
-            <OttomanCorner
-              className="top-3 right-3 opacity-50"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 left-3 opacity-50"
-              style={{ transform: 'scaleY(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 right-3 opacity-50"
-              style={{ transform: 'scale(-1,-1)' }}
-            />
-
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{
-                type: 'spring',
-                stiffness: 200,
-                damping: 18,
-                delay: 0.2,
-              }}
-              className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-              style={{
-                background: 'rgba(201,112,122,0.08)',
-                border: '2px solid rgba(201,112,122,0.28)',
-                boxShadow: '0 4px 24px rgba(201,112,122,0.12)',
-              }}
+          <Reveal delay={0.15}>
+            <div
+              className="glass rounded-3xl p-8 sm:p-10"
+              style={{ boxShadow: 'var(--shadow-lg)', textAlign: 'center' }}
             >
-              <svg
-                className="w-9 h-9"
-                style={{ color: '#C9707A' }}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
+              {/* Envelope icon */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.3 }}
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: '50%',
+                  background: 'rgba(201,128,138,0.08)',
+                  border: '1px solid rgba(201,128,138,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.5rem',
+                }}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
-            </motion.div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ color: 'var(--accent-rose)' }}
+                  aria-hidden="true"
+                >
+                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <h3 className="font-serif text-xl sm:text-2xl font-bold text-stone-700 italic mb-3">
+              <h3 style={{
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontStyle: 'italic',
+                fontSize: 'clamp(1.2rem, 3vw, 1.6rem)',
+                color: 'var(--text-primary)',
+                marginBottom: '0.75rem',
+              }}>
                 {t.personalInviteRequired}
               </h3>
-              <p className="text-stone-400 font-sans text-sm leading-relaxed max-w-sm mx-auto mb-6">
+              <p style={{
+                fontFamily: '"Inter", system-ui, sans-serif',
+                fontSize: '0.82rem',
+                lineHeight: 1.7,
+                color: 'var(--text-secondary)',
+                maxWidth: '28rem',
+                margin: '0 auto 2rem',
+              }}>
                 {t.personalInviteRequiredSub}
               </p>
               <div
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-sans text-xs font-bold uppercase tracking-widest"
+                className="inline-flex items-center gap-2"
                 style={{
-                  background: 'rgba(196,154,108,0.10)',
-                  border: '1px solid rgba(196,154,108,0.30)',
-                  color: '#A07848',
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: '100px',
+                  background: 'rgba(196,151,90,0.08)',
+                  border: '1px solid var(--border-warm)',
                 }}
-                aria-label={t.personalLinkHint}
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ color: 'var(--accent-gold)' }} aria-hidden="true"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                {t.personalLinkHint}
+                <span className="text-overline" style={{ color: 'var(--accent-gold)' }}>
+                  {t.personalLinkHint}
+                </span>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ══════════════════════ FOOTER ══════════════════════ */}
+      {/* ════════════════════ FOOTER ════════════════════ */}
       <footer
-        className="py-10 px-4 text-center"
         style={{
-          background: 'linear-gradient(180deg, #FDF8F0 0%, #F7E8E0 100%)',
-          borderTop: '1px solid rgba(196,154,108,0.15)',
+          padding: '3rem 1.5rem',
+          textAlign: 'center',
+          borderTop: '1px solid var(--border)',
         }}
       >
-        <TulipDivider />
-        <p className="text-stone-400 font-sans text-sm mt-2">{t.madeWithLove}</p>
+        <div className="section-line mb-6" aria-hidden="true" />
+        <p style={{
+          fontFamily: '"Inter", system-ui, sans-serif',
+          fontSize: '0.7rem',
+          color: 'var(--text-tertiary)',
+        }}>
+          {t.madeWithLove}
+        </p>
       </footer>
     </div>
   );

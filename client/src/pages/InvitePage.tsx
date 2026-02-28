@@ -5,13 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import CountdownTimer from '../components/CountdownTimer';
 import RSVPForm from '../components/RSVPForm';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import {
-  TulipSVG,
-  TulipDivider,
-  Petal,
-  OttomanCorner,
-  formatEventDate,
-} from '../components/decorative';
+import DarkModeToggle from '../components/ui/DarkModeToggle';
+import { SplitText, Reveal } from '../components/ui/AnimatedText';
+import MagneticButton from '../components/ui/MagneticButton';
 import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
 import { LanguageContext } from '../context/LanguageContext';
@@ -19,14 +15,52 @@ import type { Language } from '../lib/i18n';
 
 const COUPLE_PHOTO = '/IMG_2524.jpg';
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 36 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.85, delay: i * 0.14, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
+function formatEventDate(dateStr: string, lang: Language): string {
+  const d = new Date(dateStr);
+  const localeMap: Record<Language, string> = { en: 'en-US', tr: 'tr-TR', uz: 'uz-UZ' };
+  return d.toLocaleDateString(localeMap[lang] ?? 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// Floating ambient particles
+function Particles() {
+  const particles = Array.from({ length: 14 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 2 + 1,
+    delay: Math.random() * 6,
+    duration: Math.random() * 10 + 12,
+  }));
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          style={{
+            position: 'absolute',
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+            borderRadius: '50%',
+            background: p.id % 2 === 0 ? 'rgba(196,151,90,0.5)' : 'rgba(201,128,138,0.4)',
+          }}
+          animate={{
+            y: [0, -30, 0],
+            opacity: [0, 0.7, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function InvitePage() {
   const { token } = useParams<{ token: string }>();
@@ -43,35 +77,46 @@ export default function InvitePage() {
   });
 
   const { scrollY } = useScroll();
-  const bokehY       = useTransform(scrollY, [0, 800], [0, -140]);
-  const petal1Y      = useTransform(scrollY, [0, 800], [0, -176]);
-  const petal2Y      = useTransform(scrollY, [0, 800], [0, -112]);
-  const petal3Y      = useTransform(scrollY, [0, 800], [0, -144]);
-  const heroContentY = useTransform(scrollY, [0, 600], [0, -80]);
-  const titleScale   = useTransform(scrollY, [0, 380], [1, 0.88]);
-  const titleOpacity = useTransform(scrollY, [0, 320], [1, 0]);
+  const bgY       = useTransform(scrollY, [0, 600], [0, -120]);
+  const textY     = useTransform(scrollY, [0, 500], [0, -50]);
+  const titleOpacity = useTransform(scrollY, [0, 300], [1, 0]);
+  const photoScale = useTransform(scrollY, [0, 500], [1, 1.06]);
 
   const scrollToRSVP = () =>
     rsvpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  // ── Loading ──
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-ivory-100 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-tulip-300 border-t-tulip-500 rounded-full animate-spin" />
-          <p className="text-stone-400 font-sans text-sm">{t.loadingInvitation}</p>
-        </div>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+          style={{
+            width: 40,
+            height: 40,
+            border: '2px solid var(--border-warm)',
+            borderTopColor: 'var(--accent-gold)',
+            borderRadius: '50%',
+          }}
+          aria-label={t.loadingInvitation}
+        />
       </div>
     );
   }
 
+  // ── Error / not found ──
   if (isError || !data || !token) {
     return (
-      <div className="min-h-screen bg-ivory-100 flex items-center justify-center text-center px-4">
-        <div>
-          <TulipSVG size={48} color="#C9707A" className="mx-auto mb-4 opacity-50" />
-          <h1 className="font-serif text-2xl text-stone-600 mb-2">{t.invitationNotFound}</h1>
-          <p className="text-stone-400 font-sans text-sm">{t.invitationExpired}</p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--accent-rose)' }} aria-hidden="true">◎</p>
+          <h1 style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontStyle: 'italic', fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+            {t.invitationNotFound}
+          </h1>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '22rem', margin: '0 auto' }}>
+            {t.invitationExpired}
+          </p>
         </div>
       </div>
     );
@@ -80,6 +125,14 @@ export default function InvitePage() {
   const { invitation, guest, event } = data;
   const displayDate = formatEventDate(event.date, lang);
   const targetDateTime = `${event.date}T${event.time}:00`;
+
+  const coupleName = event.name.includes(' \u2014 ')
+    ? event.name.split(' \u2014 ')[0]
+    : event.name;
+
+  const eventCity = event.name.includes(' \u2014 ')
+    ? event.name.split(' \u2014 ')[1]
+    : null;
 
   const prefill = {
     name:       guest.name,
@@ -91,346 +144,448 @@ export default function InvitePage() {
   };
 
   return (
-    <div className="min-h-screen bg-ivory-100 text-stone-600 overflow-x-hidden">
-      <div className="fixed top-4 right-4 z-50">
-        <LanguageSwitcher />
-      </div>
+    <div
+      style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-primary)', overflowX: 'hidden' }}
+    >
+      {/* Grain overlay */}
+      <div className="grain-overlay" aria-hidden="true" />
 
-      {/* ══════════════════════ HERO ══════════════════════ */}
-      <section
-        className="relative min-h-screen flex flex-col items-center justify-center px-4 py-24 overflow-hidden"
-        aria-label="Personalized invitation"
-        style={{ background: 'linear-gradient(160deg, #FEFCF7 0%, #FDF8F0 30%, #F9EAE4 65%, #F7E8E0 100%)' }}
+      {/* Fixed nav */}
+      <header
+        className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-4"
+        style={{ background: 'transparent' }}
       >
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true"
-          style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 20%, rgba(232,180,184,0.28) 0%, transparent 65%), radial-gradient(ellipse 50% 40% at 80% 80%, rgba(196,154,108,0.14) 0%, transparent 55%)' }} />
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-overline"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
+          {t.cordiallyInvited}
+        </motion.p>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <DarkModeToggle />
+        </div>
+      </header>
 
-        {/* Layer 1: Bokeh ellipses */}
-        <motion.div className="absolute inset-0 pointer-events-none" style={{ y: bokehY }} aria-hidden="true">
-          <div className="absolute rounded-full" style={{ width: 320, height: 320, top: '6%', left: '3%', background: 'radial-gradient(circle, rgba(232,180,184,0.20) 0%, transparent 70%)', filter: 'blur(48px)' }} />
-          <div className="absolute rounded-full" style={{ width: 400, height: 400, top: '10%', right: '2%', background: 'radial-gradient(circle, rgba(196,154,108,0.15) 0%, transparent 70%)', filter: 'blur(56px)' }} />
-          <div className="absolute rounded-full" style={{ width: 260, height: 260, bottom: '20%', left: '6%', background: 'radial-gradient(circle, rgba(201,112,122,0.14) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+      {/* ════════════════════ HERO ════════════════════ */}
+      <section
+        style={{ position: 'relative', height: '100vh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        aria-label="Personal invitation hero"
+      >
+        {/* Background parallax */}
+        <motion.div
+          style={{ y: bgY, position: 'absolute', inset: '-20% -5%' }}
+          aria-hidden="true"
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--bg)' }} />
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(ellipse 80% 70% at 50% 30%, rgba(201,128,138,0.07) 0%, transparent 60%)',
+          }} />
         </motion.div>
 
-        {/* Layer 2 & 3: Petals */}
-        <motion.div className="petal-bg" style={{ y: petal1Y, top: '8%', left: '6%' }} aria-hidden="true">
-          <div className="animate-petal-drift"><Petal color="#E8B4B8" size={72} style={{ opacity: 0.45 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal1Y, top: '20%', left: '14%' }} aria-hidden="true">
-          <div style={{ animationDelay: '2s' }} className="animate-petal-drift"><Petal color="#C9707A" size={44} style={{ opacity: 0.35 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal2Y, top: '6%', right: '8%' }} aria-hidden="true">
-          <div style={{ animationDelay: '1s' }} className="animate-petal-drift"><Petal color="#E8B4B8" size={58} style={{ opacity: 0.42 }} /></div>
-        </motion.div>
-        <motion.div className="petal-bg" style={{ y: petal3Y, bottom: '18%', left: '4%' }} aria-hidden="true">
-          <div style={{ animationDelay: '0.5s' }} className="animate-petal-drift"><Petal color="#C49A6C" size={48} style={{ opacity: 0.32 }} /></div>
-        </motion.div>
+        {/* Particles */}
+        <div style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
+          <Particles />
+          {/* Ambient orbs */}
+          <div className="orb" style={{ width: 600, height: 600, top: '-15%', right: '-10%', background: 'radial-gradient(circle, rgba(201,128,138,0.08) 0%, transparent 65%)' }} />
+          <div className="orb" style={{ width: 400, height: 400, bottom: '-5%', left: '-8%', background: 'radial-gradient(circle, rgba(196,151,90,0.07) 0%, transparent 65%)' }} />
+        </div>
 
-        {/* Layer 4: Text + photo content */}
-        <motion.div style={{ y: heroContentY }} className="relative z-10 max-w-4xl mx-auto text-center w-full">
-
-          <motion.p custom={0} initial="hidden" animate="visible" variants={fadeUp}
-            className="font-sans text-tulip-600 uppercase tracking-[0.45em] text-xs sm:text-sm mb-4">
-            {t.cordiallyInvited}
-          </motion.p>
-
-          {/* Guest name greeting */}
-          <motion.p custom={1} initial="hidden" animate="visible" variants={fadeUp}
-            className="font-serif text-stone-500 italic mb-1"
-            style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)' }}>
-            {guest.name}
-          </motion.p>
-
-          {/* Couple names — fluid + scroll-shrink */}
-          <motion.h1
-            custom={2}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUp}
-            style={{ fontSize: 'clamp(2.6rem, 8.5vw, 7.5rem)', lineHeight: 1.05, scale: titleScale, opacity: titleOpacity }}
-            className="font-serif font-bold text-stone-700 text-shadow-soft mb-1"
+        {/* Content */}
+        <motion.div
+          style={{ y: textY, position: 'relative', zIndex: 10, width: '100%', maxWidth: '68rem', padding: '0 1.5rem', textAlign: 'center' }}
+        >
+          {/* Personal greeting */}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="text-overline mb-4"
+            style={{ color: 'var(--accent-rose)' }}
           >
-            {event.name.includes(' \u2014 ') ? event.name.split(' \u2014 ')[0] : event.name}
-          </motion.h1>
+            A Personal Invitation for
+          </motion.p>
 
-          {event.name.includes(' \u2014 ') && (
-            <motion.p custom={3} initial="hidden" animate="visible" variants={fadeUp}
-              className="font-sans text-stone-400 uppercase tracking-[0.35em] text-xs sm:text-sm mt-2 mb-1">
-              {event.name.split(' \u2014 ')[1]}
-            </motion.p>
-          )}
-
-          {/* Minimal separator */}
-          <motion.div custom={4} initial="hidden" animate="visible" variants={fadeUp}
-            className="flex items-center justify-center gap-3 my-5" aria-hidden="true">
-            <div className="h-px w-12 sm:w-20" style={{ background: 'linear-gradient(to right, transparent, rgba(201,112,122,0.35))' }} />
-            <span className="text-tulip-300 text-base font-serif">♡</span>
-            <div className="h-px w-12 sm:w-20" style={{ background: 'linear-gradient(to left, transparent, rgba(201,112,122,0.35))' }} />
+          {/* Guest name */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            style={{ marginBottom: '0.5rem' }}
+          >
+            <span style={{
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: 'clamp(1.4rem, 4vw, 2.2rem)',
+              color: 'var(--text-secondary)',
+              display: 'block',
+            }}>
+              {guest.name}
+            </span>
           </motion.div>
 
-          {/* Couple photo — large, prominent */}
-          <motion.div custom={5} initial="hidden" animate="visible" variants={fadeUp} className="flex justify-center mb-10">
-            <div className="relative animate-float">
-              <div className="absolute inset-0 rounded-full" style={{ boxShadow: '0 12px 60px rgba(201,112,122,0.28), 0 4px 20px rgba(201,112,122,0.18)' }} aria-hidden="true" />
-              <img src={COUPLE_PHOTO} alt="The happy couple"
-                className="w-44 h-44 sm:w-60 sm:h-60 rounded-full object-cover relative z-10"
-                style={{ border: '3px solid rgba(232,180,184,0.75)', outline: '1px solid rgba(196,154,108,0.3)', outlineOffset: '5px', objectPosition: 'center 45%' }} />
+          {/* Couple names — large hero type */}
+          <motion.div style={{ opacity: titleOpacity }}>
+            <div style={{ overflow: 'hidden', marginBottom: '0.25rem' }}>
+              <h1
+                aria-label={coupleName}
+                style={{
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  fontSize: 'clamp(3rem, 9vw, 8rem)',
+                  lineHeight: 0.92,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.02em',
+                  display: 'block',
+                  margin: '0 auto',
+                }}
+              >
+                <SplitText text={coupleName} delay={0.7} staggerChildren={0.06} />
+              </h1>
             </div>
+
+            {eventCity && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.2, duration: 0.6 }}
+                className="text-overline mt-2"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                {eventCity}
+              </motion.p>
+            )}
           </motion.div>
 
-          {/* Date / time / dress code */}
-          <motion.div custom={6} initial="hidden" animate="visible" variants={fadeUp}
-            className="flex flex-wrap justify-center gap-8 sm:gap-14 mb-12">
+          {/* Divider */}
+          <motion.div
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.0 }}
+            className="flex items-center justify-center gap-4 my-8"
+            aria-hidden="true"
+          >
+            <div style={{ height: 1, width: 60, background: 'linear-gradient(to right, transparent, var(--border-warm))' }} />
+            <span style={{ color: 'var(--accent-rose)', fontSize: '0.6rem' }}>♡</span>
+            <div style={{ height: 1, width: 60, background: 'linear-gradient(to left, transparent, var(--border-warm))' }} />
+          </motion.div>
+
+          {/* Photo card */}
+          <motion.div
+            initial={{ opacity: 0, y: 24, rotate: 2 }}
+            animate={{ opacity: 1, y: 0, rotate: 2 }}
+            whileHover={{ rotate: 0, scale: 1.03, y: -6 }}
+            transition={{ opacity: { duration: 0.8, delay: 0.9 }, y: { duration: 0.8, delay: 0.9 }, rotate: { type: 'spring', stiffness: 200 } }}
+            style={{ display: 'inline-block', marginBottom: '2.5rem', position: 'relative' }}
+          >
+            <div
+              style={{
+                padding: '0.625rem',
+                paddingBottom: '2.5rem',
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '0.5rem',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.3), 0 6px 16px rgba(0,0,0,0.15)',
+              }}
+            >
+              <motion.img
+                src={COUPLE_PHOTO}
+                alt="The happy couple"
+                style={{
+                  scale: photoScale,
+                  width: 'clamp(150px, 22vw, 240px)',
+                  height: 'clamp(180px, 28vw, 300px)',
+                  objectFit: 'cover',
+                  objectPosition: 'center 40%',
+                  borderRadius: '0.25rem',
+                  display: 'block',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '0.6rem',
+                  left: 0,
+                  right: 0,
+                  textAlign: 'center',
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: '0.7rem',
+                  color: 'var(--text-secondary)',
+                }}
+                aria-hidden="true"
+              >
+                {coupleName}
+              </div>
+            </div>
+            {/* Glow */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: -16,
+                borderRadius: '0.75rem',
+                background: 'radial-gradient(circle, rgba(201,128,138,0.12) 0%, transparent 70%)',
+                filter: 'blur(16px)',
+                zIndex: -1,
+                pointerEvents: 'none',
+              }}
+              aria-hidden="true"
+            />
+          </motion.div>
+
+          {/* Event quick info */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.1 }}
+            className="flex flex-wrap justify-center gap-8 sm:gap-14 mb-10"
+          >
             {[
               { label: t.date,      value: displayDate },
               { label: t.time,      value: event.time },
               { label: t.dressCode, value: event.dressCode ?? '—' },
-            ].map(({ label, value }, i) => (
-              <div key={i} className="text-center">
-                <p className="text-tulip-500 text-xs font-sans font-bold uppercase tracking-widest mb-1.5">{label}</p>
-                <p className="text-stone-600 font-serif text-base sm:text-lg italic">{value}</p>
+            ].map(({ label, value }) => (
+              <div key={label} style={{ textAlign: 'center' }}>
+                <p className="text-overline mb-1.5" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
+                <p style={{
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(0.85rem, 2vw, 1rem)',
+                  color: 'var(--text-primary)',
+                }}>
+                  {value}
+                </p>
               </div>
             ))}
           </motion.div>
 
-          <motion.div custom={7} initial="hidden" animate="visible" variants={fadeUp}>
-            <CountdownTimer targetDate={targetDateTime} />
-          </motion.div>
-
-          <motion.div custom={8} initial="hidden" animate="visible" variants={fadeUp} className="mt-12">
-            <button
+          {/* RSVP CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.3 }}
+          >
+            <MagneticButton
               onClick={scrollToRSVP}
-              className="btn-tulip"
-              aria-label={t.scrollDown}
+              className="btn-primary"
+              aria-label={t.rsvpButton}
             >
               {t.rsvpButton}
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M19 9l-7 7-7-7"/>
               </svg>
-            </button>
+            </MagneticButton>
           </motion.div>
         </motion.div>
 
-        <div
-          className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none"
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+          style={{
+            position: 'absolute',
+            bottom: '2.5rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
           aria-hidden="true"
-          style={{ background: 'linear-gradient(to top, #FAF3E6, transparent)' }}
-        />
-      </section>
-
-      {/* ══════════════════════ EVENT DETAILS ══════════════════════ */}
-      <section className="relative py-24 px-4 overflow-hidden" aria-label="Event details" style={{ backgroundColor: '#FAF3E6' }}>
-        {/* Static section background — no parallax so boundaries stay seamless */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(160deg, #FAF3E6 0%, #F7E8E0 50%, #F9EAE4 100%)',
-            }}
+        >
+          <span className="text-overline" style={{ color: 'var(--text-tertiary)', fontSize: '0.55rem' }}>SCROLL</span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ width: 1, height: 40, background: 'linear-gradient(to bottom, var(--border-warm), transparent)' }}
           />
-          <div className="absolute inset-0 tile-pattern opacity-5" />
-        </div>
-        {/* Top feather */}
-        <div
-          className="absolute top-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to bottom, #FAF3E6, transparent)' }}
-        />
-        {/* Bottom feather */}
-        <div
-          className="absolute bottom-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to top, #FAF3E6, transparent)' }}
-        />
+        </motion.div>
 
-        <div className="max-w-4xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75 }}
-            className="text-center mb-14"
-          >
-            <p className="text-tulip-500 text-xs font-sans font-bold uppercase tracking-[0.45em] mb-4">
-              {t.aboutEvent}
+        {/* Bottom fade */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 140,
+          background: 'linear-gradient(to top, var(--bg), transparent)',
+          pointerEvents: 'none',
+        }} aria-hidden="true" />
+      </section>
+
+      {/* ════════════════════ COUNTDOWN ════════════════════ */}
+      <section style={{ padding: '5rem 1.5rem' }} aria-label="Countdown timer">
+        <div style={{ maxWidth: '50rem', margin: '0 auto' }}>
+          <Reveal>
+            <p className="text-overline text-center mb-3" style={{ color: 'var(--accent-gold)' }}>
+              Counting Down
             </p>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-stone-700 italic mb-2 text-shadow-soft">
-              {t.eventSubheading}
+          </Reveal>
+          <Reveal delay={0.1}>
+            <h2 style={{
+              textAlign: 'center',
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: 'clamp(1.8rem, 5vw, 3rem)',
+              letterSpacing: '-0.02em',
+              color: 'var(--text-primary)',
+              marginBottom: '3rem',
+            }}>
+              Until the Big Day
             </h2>
-            <TulipDivider />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75, delay: 0.1 }}
-            className="relative card-glass overflow-hidden"
-          >
-            <OttomanCorner className="top-3 left-3 opacity-50" />
-            <OttomanCorner
-              className="top-3 right-3 opacity-50"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 left-3 opacity-50"
-              style={{ transform: 'scaleY(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 right-3 opacity-50"
-              style={{ transform: 'scale(-1,-1)' }}
-            />
-
-            <div className="p-8 sm:p-10 grid sm:grid-cols-2 gap-8">
-              <div>
-                <p className="text-gold-600 text-xs font-sans font-bold uppercase tracking-widest mb-2">
-                  {t.venue}
-                </p>
-                <h3 className="font-serif text-xl font-semibold text-stone-700 italic mb-1">
-                  {event.venueName}
-                </h3>
-                <p className="text-stone-400 font-sans text-sm leading-relaxed">
-                  {event.venueAddress}
-                </p>
-              </div>
-              <div className="sm:text-right">
-                <p className="text-gold-600 text-xs font-sans font-bold uppercase tracking-widest mb-2">
-                  {t.date}
-                </p>
-                <p className="font-serif text-xl font-semibold text-stone-700 italic">
-                  {displayDate}
-                </p>
-                <p className="text-stone-400 font-sans text-sm mt-1">{event.time}</p>
-              </div>
-            </div>
-
-            {event.mapsUrl && (
-              <div
-                className="h-52 sm:h-72"
-                style={{ borderTop: '1px solid rgba(196,154,108,0.15)' }}
-              >
-                <iframe
-                  src={event.mapsUrl}
-                  className="w-full h-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title={`Map showing ${event.venueName}`}
-                  aria-label={`Map of ${event.venueAddress}`}
-                  style={{ filter: 'saturate(0.7) brightness(1.05)' }}
-                />
-              </div>
-            )}
-          </motion.div>
+          </Reveal>
+          <Reveal delay={0.2}>
+            <CountdownTimer targetDate={targetDateTime} />
+          </Reveal>
         </div>
       </section>
 
-      {/* ══════════════════════ RSVP ══════════════════════ */}
+      {/* ════════════════════ VENUE ════════════════════ */}
+      <section style={{ padding: '2rem 1.5rem 5rem' }} aria-label="Event venue">
+        <div style={{ maxWidth: '48rem', margin: '0 auto' }}>
+          <Reveal>
+            <div
+              className="glass rounded-3xl overflow-hidden"
+              style={{ boxShadow: 'var(--shadow-lg)' }}
+            >
+              <div style={{ padding: '2rem 2.5rem', display: 'grid', gap: '1.5rem' }} className="sm:grid-cols-2">
+                <div>
+                  <p className="text-overline mb-2" style={{ color: 'var(--text-tertiary)' }}>{t.venue}</p>
+                  <p style={{
+                    fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: '1.2rem',
+                    color: 'var(--text-primary)',
+                    marginBottom: '0.25rem',
+                  }}>
+                    {event.venueName}
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {event.venueAddress}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-overline mb-2" style={{ color: 'var(--text-tertiary)' }}>{t.date}</p>
+                  <p style={{
+                    fontFamily: '"Cormorant Garamond", Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: '1.1rem',
+                    color: 'var(--text-primary)',
+                    marginBottom: '0.25rem',
+                  }}>
+                    {displayDate}
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{event.time}</p>
+                </div>
+              </div>
+
+              {event.mapsUrl && (
+                <div
+                  className="map-container"
+                  style={{ height: 240, borderTop: '1px solid var(--border)' }}
+                >
+                  <iframe
+                    src={event.mapsUrl}
+                    className="w-full h-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title={`Map showing ${event.venueName}`}
+                    aria-label={`Map of ${event.venueAddress}`}
+                  />
+                </div>
+              )}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ════════════════════ RSVP FORM ════════════════════ */}
       <section
         ref={rsvpRef}
         id="rsvp"
-        className="relative py-24 px-4 overflow-hidden"
-        aria-labelledby="rsvp-heading"
-        style={{ backgroundColor: '#FAF3E6' }}
+        style={{ padding: '5rem 1.5rem 8rem' }}
+        aria-labelledby="rsvp-form-heading"
       >
-        {/* Static section background */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(180deg, #FAF3E6 0%, #FEFCF7 50%, #FDF8F0 100%)',
-            }}
-          />
-        </div>
-        {/* Top feather */}
-        <div
-          className="absolute top-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to bottom, #FAF3E6, transparent)' }}
-        />
-        {/* Bottom feather — dissolves into footer */}
-        <div
-          className="absolute bottom-0 inset-x-0 h-20 pointer-events-none z-[2]"
-          aria-hidden="true"
-          style={{ background: 'linear-gradient(to top, #FDF8F0, transparent)' }}
-        />
-        <motion.div
-          className="petal-bg hidden sm:block"
-          style={{ y: petal3Y, top: '5%', left: '5%' }}
-          aria-hidden="true"
-        >
-          <div className="animate-float opacity-20">
-            <TulipSVG size={60} color="#C9707A" />
-          </div>
-        </motion.div>
+        <div style={{ maxWidth: '40rem', margin: '0 auto' }}>
+          <Reveal>
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+              <p className="text-overline mb-3" style={{ color: 'var(--accent-rose)' }}>
+                {t.kindlyReply}
+              </p>
+              <h2
+                id="rsvp-form-heading"
+                style={{
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontStyle: 'italic',
+                  fontWeight: 300,
+                  fontSize: 'clamp(2.2rem, 6vw, 3.5rem)',
+                  letterSpacing: '-0.02em',
+                  color: 'var(--text-primary)',
+                  marginBottom: '1rem',
+                }}
+              >
+                {t.rsvpHeading}
+              </h2>
+              <div className="section-line" aria-hidden="true" />
+            </div>
+          </Reveal>
 
-        <div className="max-w-lg mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75 }}
-            className="text-center mb-10"
-          >
-            <p className="text-tulip-500 text-xs font-sans font-bold uppercase tracking-[0.45em] mb-4">
-              {t.kindlyReply}
-            </p>
-            <h2
-              id="rsvp-heading"
-              className="font-serif text-3xl sm:text-4xl font-bold text-stone-700 italic text-shadow-soft"
+          <Reveal delay={0.15}>
+            <div
+              className="glass rounded-3xl noise"
+              style={{
+                padding: 'clamp(1.5rem, 5vw, 2.5rem)',
+                boxShadow: 'var(--shadow-lg)',
+                position: 'relative',
+              }}
             >
-              {t.rsvpHeading}
-            </h2>
-            <TulipDivider />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.75, delay: 0.1 }}
-            className="relative card-glass p-6 sm:p-8"
-          >
-            <OttomanCorner className="top-3 left-3 opacity-50" />
-            <OttomanCorner
-              className="top-3 right-3 opacity-50"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 left-3 opacity-50"
-              style={{ transform: 'scaleY(-1)' }}
-            />
-            <OttomanCorner
-              className="bottom-3 right-3 opacity-50"
-              style={{ transform: 'scale(-1,-1)' }}
-            />
-            <RSVPForm token={token} eventName={event.name} prefillData={prefill} />
-          </motion.div>
+              {/* Decorative top accent */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 60,
+                  height: 1,
+                  background: 'linear-gradient(90deg, transparent, var(--accent-gold), transparent)',
+                }}
+                aria-hidden="true"
+              />
+              <RSVPForm token={token} eventName={event.name} prefillData={prefill} />
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ══════════════════════ FOOTER ══════════════════════ */}
+      {/* ════════════════════ FOOTER ════════════════════ */}
       <footer
-        className="py-10 px-4 text-center"
         style={{
-          background: 'linear-gradient(180deg, #FDF8F0 0%, #F7E8E0 100%)',
-          borderTop: '1px solid rgba(196,154,108,0.15)',
+          padding: '3rem 1.5rem',
+          textAlign: 'center',
+          borderTop: '1px solid var(--border)',
         }}
       >
-        <TulipDivider />
-        <p className="text-stone-400 font-sans text-sm mt-2">{t.madeWithLove}</p>
+        <div className="section-line mb-6" aria-hidden="true" />
+        <p style={{
+          fontFamily: '"Inter", system-ui, sans-serif',
+          fontSize: '0.7rem',
+          color: 'var(--text-tertiary)',
+        }}>
+          {t.madeWithLove}
+        </p>
       </footer>
     </div>
   );

@@ -93,7 +93,9 @@ app.use('/api/rsvp', rsvpRouter);
 app.use('/api/admin', adminRouter);
 
 if (!isDev) {
-  const clientDist = resolve(__dirname, '../../../client/dist');
+  // Resolve from the server package root (process.cwd() when started from server/)
+  // which works whether running via tsx (src/) or compiled node (dist/..)
+  const clientDist = resolve(process.cwd(), '../client/dist');
   app.use(express.static(clientDist));
   app.get('*', (_req, res) => {
     res.sendFile(resolve(clientDist, 'index.html'));

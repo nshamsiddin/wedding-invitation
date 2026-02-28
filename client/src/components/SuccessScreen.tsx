@@ -1,107 +1,231 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '../lib/i18n';
+
+// Lightweight canvas confetti fallback — no external dependencies
+function launchConfetti() {
+  if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9990;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d')!;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ['#C4975A', '#C9808A', '#E8D0A0', '#F5EDD7', '#D4A870', '#FFFFFF'];
+  const particles = Array.from({ length: 80 }, () => ({
+    x: Math.random() * canvas.width,
+    y: canvas.height * (0.3 + Math.random() * 0.5),
+    vx: (Math.random() - 0.5) * 6,
+    vy: -(Math.random() * 8 + 4),
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size: Math.random() * 6 + 3,
+    angle: Math.random() * Math.PI * 2,
+    spin: (Math.random() - 0.5) * 0.2,
+    gravity: 0.15,
+    opacity: 1,
+  }));
+
+  let frame: number;
+  let tick = 0;
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    tick++;
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.angle += p.spin;
+      p.opacity -= 0.008;
+
+      if (p.opacity <= 0) return;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.opacity);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.5);
+      ctx.restore();
+    });
+
+    if (tick < 200) {
+      frame = requestAnimationFrame(draw);
+    } else {
+      canvas.remove();
+    }
+  }
+
+  setTimeout(() => { frame = requestAnimationFrame(draw); }, 250);
+  setTimeout(() => { cancelAnimationFrame(frame); canvas.remove(); }, 5000);
+}
 
 interface Props {
   guestName: string;
   status: 'attending' | 'declined' | 'maybe';
   guestCount: number;
-  eventName: string;
+  eventName?: string;
   isUpdate: boolean;
   onUpdateRsvp: () => void;
 }
 
-export default function SuccessScreen({ guestName, status, guestCount, eventName, isUpdate, onUpdateRsvp }: Props) {
+export default function SuccessScreen({
+  guestName,
+  status,
+  guestCount,
+  isUpdate,
+  onUpdateRsvp,
+}: Props) {
   const t = useTranslation();
 
-  const statusMessages: Record<string, { headline: string; sub: string }> = {
-    attending: { headline: t.attendingHeadline, sub: t.attendingSub(guestCount) },
-    declined:  { headline: t.declinedHeadline,  sub: t.declinedSub },
-    maybe:     { headline: t.maybeHeadline,     sub: t.maybeSub },
-  };
+  useEffect(() => {
+    if (status !== 'attending') return;
+    launchConfetti();
+  }, [status]);
 
-  const msg = statusMessages[status] ?? { headline: t.defaultHeadline, sub: t.defaultSub };
+  const content = {
+    attending: {
+      icon: '♡',
+      headline: t.attendingHeadline,
+      sub: t.attendingSub(guestCount),
+      iconColor: 'var(--accent-rose)',
+    },
+    declined: {
+      icon: '✦',
+      headline: t.declinedHeadline,
+      sub: t.declinedSub,
+      iconColor: 'var(--text-secondary)',
+    },
+    maybe: {
+      icon: '◎',
+      headline: t.maybeHeadline,
+      sub: t.maybeSub,
+      iconColor: 'var(--accent-gold)',
+    },
+  }[status] ?? {
+    icon: '✓',
+    headline: t.defaultHeadline,
+    sub: t.defaultSub,
+    iconColor: 'var(--accent-gold)',
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.92 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-      className="text-center py-8 px-4"
-      role="alert"
-      aria-live="polite"
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="text-center py-8"
     >
-      {/* Check icon ring */}
+      {/* Icon */}
       <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-        className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(201,112,122,0.10)',
-          border: '2px solid rgba(201,112,122,0.40)',
-          boxShadow: '0 4px 20px rgba(201,112,122,0.18)',
-        }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
+        className="text-5xl mb-6"
+        style={{ color: content.iconColor }}
+        aria-hidden="true"
       >
-        <svg
-          className="w-9 h-9"
-          style={{ color: '#C9707A' }}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
+        {content.icon}
       </motion.div>
 
-      <motion.div
+      {/* Confirmation label */}
+      <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.35, duration: 0.5 }}
+        className="text-overline mb-3"
+        style={{ color: 'var(--accent-gold)' }}
       >
-        <p className="text-tulip-500 font-sans text-xs uppercase tracking-widest font-bold mb-2">
-          {isUpdate ? t.rsvpUpdated : t.rsvpConfirmed}
-        </p>
-        <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-700 italic mb-3">
-          {msg.headline}
-        </h2>
-        <p className="text-stone-400 font-sans text-sm leading-relaxed max-w-sm mx-auto mb-6">
-          {msg.sub}
-        </p>
+        {isUpdate ? t.rsvpUpdated : t.rsvpConfirmed}
+      </motion.p>
 
-        {/* Detail card */}
-        <div
-          className="rounded-2xl p-4 mb-6 text-left max-w-sm mx-auto"
-          style={{
-            background: 'rgba(253,248,240,0.9)',
-            border: '1px solid rgba(196,154,108,0.25)',
-            boxShadow: '0 2px 12px rgba(196,154,108,0.10)',
-          }}
-        >
-          <p className="text-gold-600 text-xs font-sans font-bold uppercase tracking-widest mb-3">
-            {t.yourDetails}
-          </p>
-          <div className="space-y-1.5">
-            <p className="text-stone-600 font-sans text-sm">
-              <span className="text-stone-400">{t.detailName}: </span>
-              {guestName}
-            </p>
-            {eventName && (
-              <p className="text-stone-600 font-sans text-sm">
-                <span className="text-stone-400">{t.detailEvent}: </span>
-                {eventName}
-              </p>
-            )}
-          </div>
-        </div>
+      {/* Guest name */}
+      <motion.h3
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45, duration: 0.6 }}
+        style={{
+          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontStyle: 'italic',
+          fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+          fontWeight: 300,
+          color: 'var(--text-primary)',
+        }}
+      >
+        {guestName}
+      </motion.h3>
 
-        <button
-          onClick={onUpdateRsvp}
-          className="text-tulip-500 hover:text-tulip-600 font-sans text-sm underline underline-offset-4 transition-colors focus:outline-none focus:ring-2 focus:ring-tulip-400 rounded"
-        >
-          {t.updateRsvpLink}
-        </button>
-      </motion.div>
+      {/* Divider */}
+      <motion.div
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ delay: 0.55, duration: 0.5, ease: 'easeOut' }}
+        className="section-line my-5"
+        aria-hidden="true"
+      />
+
+      {/* Headline */}
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
+        style={{
+          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontSize: 'clamp(1.1rem, 3vw, 1.4rem)',
+          fontWeight: 400,
+          color: 'var(--text-primary)',
+          marginBottom: '0.5rem',
+        }}
+      >
+        {content.headline}
+      </motion.p>
+
+      {/* Sub */}
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7, duration: 0.6 }}
+        style={{
+          fontFamily: '"Inter", system-ui, sans-serif',
+          fontSize: '0.82rem',
+          lineHeight: 1.7,
+          color: 'var(--text-secondary)',
+          maxWidth: '28rem',
+          margin: '0 auto 2rem',
+        }}
+      >
+        {content.sub}
+      </motion.p>
+
+      {/* Update link */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.85 }}
+        onClick={onUpdateRsvp}
+        style={{
+          fontFamily: '"Inter", system-ui, sans-serif',
+          fontSize: '0.72rem',
+          fontWeight: 500,
+          letterSpacing: '0.08em',
+          textDecoration: 'underline',
+          textDecorationColor: 'var(--border-warm)',
+          textUnderlineOffset: '3px',
+          color: 'var(--text-secondary)',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          transition: 'color 0.2s',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-gold)')}
+        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+        aria-label={t.updateRsvpLink}
+      >
+        {t.updateRsvpLink}
+      </motion.button>
     </motion.div>
   );
 }
