@@ -2,11 +2,13 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import helmet from 'helmet';
 import { db, sqlite } from './db/index.js';
 import { sql } from 'drizzle-orm';
 import rsvpRouter from './routes/rsvp.js';
 import adminRouter from './routes/admin.js';
 import eventsRouter from './routes/events.js';
+import { clearRateLimitStore } from './middleware/rateLimit.js';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,9 +25,75 @@ for (const key of REQUIRED_ENV_VARS) {
   }
 }
 
+// BASE_URL is required in production to construct valid invitation links.
+if (process.env.NODE_ENV === 'production' && !process.env.BASE_URL) {
+  console.error('[startup] BASE_URL is required in production (e.g. https://wedding.example.com)');
+  process.exit(1);
+}
+
+// ─── Weak credential guard (production only) ──────────────────────────────────
+// In production, refuse to start if secrets are still set to the well-known
+// default values shipped in .env.example — a common misconfiguration.
+// Dev environments are intentionally exempt so local development is not disrupted.
+if (process.env.NODE_ENV === 'production') {
+  const KNOWN_WEAK_SECRETS = new Set([
+    'your-super-secret-key-change-in-production',
+    'changeme',
+    'password',
+    'secret',
+  ]);
+  if (KNOWN_WEAK_SECRETS.has(process.env.JWT_SECRET!)) {
+    console.error('[startup] JWT_SECRET must not use the default example value — generate a strong random secret');
+    console.error('[startup] Run: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+    process.exit(1);
+  }
+  if (KNOWN_WEAK_SECRETS.has(process.env.ADMIN_PASSWORD!)) {
+    console.error('[startup] ADMIN_PASSWORD must not use the default example value — set a strong bcrypt hash');
+    process.exit(1);
+  }
+  // Require bcrypt hash format in production
+  if (!process.env.ADMIN_PASSWORD!.startsWith('$2b$')) {
+    console.error('[startup] ADMIN_PASSWORD must be a bcrypt hash in production (prefix $2b$)');
+    console.error('[startup] Generate one with: node -e "require(\'bcryptjs\').hash(\'yourpassword\', 12).then(console.log)"');
+    process.exit(1);
+  }
+}
+
+// ─── DATABASE_PATH warning ────────────────────────────────────────────────────
+if (!process.env['DATABASE_PATH'] && process.env.NODE_ENV === 'production') {
+  console.warn('[startup] DATABASE_PATH is not set — using fallback ./guests.db in the current working directory.');
+  console.warn('[startup] Set DATABASE_PATH to an absolute path to avoid data loss on container restarts.');
+}
+
 const app = express();
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
 const isDev = process.env.NODE_ENV !== 'production';
+
+// ─── Security headers ─────────────────────────────────────────────────────────
+// Helmet sets sensible security headers: HSTS, X-Content-Type-Options,
+// X-Frame-Options, Referrer-Policy, etc.
+// CSP is configured to allowlist Google Maps (used for the embedded venue iframe).
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        // Google Maps embed requires frame-src and connect-src allowlisting
+        frameSrc: ["'self'", 'https://maps.google.com', 'https://www.google.com'],
+        connectSrc: ["'self'", 'https://maps.googleapis.com'],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: isDev ? null : [],
+      },
+    },
+    // HSTS only in production (breaks local HTTP dev)
+    strictTransportSecurity: isDev ? false : { maxAge: 31536000, includeSubDomains: true },
+  })
+);
 
 // ─── Schema creation (fresh installs) ────────────────────────────────────────
 
@@ -168,8 +236,15 @@ app.use(
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 // Used by load balancers and uptime monitors; no auth required.
+// Includes a live database ping so it reflects actual service health.
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  try {
+    sqlite.prepare('SELECT 1').get();
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error('[health] Database ping failed:', err);
+    res.status(503).json({ status: 'degraded', timestamp: new Date().toISOString() });
+  }
 });
 
 // ─── API routes ───────────────────────────────────────────────────────────────
@@ -196,8 +271,30 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+// ─── Server startup ───────────────────────────────────────────────────────────
+
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// ─── Graceful shutdown ────────────────────────────────────────────────────────
+// Clear rate limit stores and close the HTTP server cleanly on SIGTERM / SIGINT.
+// This allows the Node process to exit without hanging on open intervals or connections.
+function gracefulShutdown(signal: string): void {
+  console.log(`[shutdown] Received ${signal} — shutting down gracefully`);
+  clearRateLimitStore();
+  server.close(() => {
+    console.log('[shutdown] HTTP server closed');
+    process.exit(0);
+  });
+  // Force-exit after 10s if connections don't drain
+  setTimeout(() => {
+    console.error('[shutdown] Forced exit after timeout');
+    process.exit(1);
+  }, 10_000).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
 
 export default app;

@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { and, desc, eq, inArray, isNull, isNotNull, like, or } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
 // bcryptjs is used for password hashing support ($2b$ prefix detection).
 // It is the pure-JS alternative to bcrypt — no native compilation required.
 import bcrypt from 'bcryptjs';
 import { db, schema } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loginRateLimit } from '../middleware/rateLimit.js';
 import {
   adminLoginSchema,
   addGuestSchema,
@@ -23,7 +24,7 @@ const router = Router();
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+router.post('/login', loginRateLimit, async (req: Request, res: Response): Promise<void> => {
   const parsed = adminLoginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'Invalid credentials format' });
@@ -46,13 +47,20 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 
   // If ADMIN_PASSWORD starts with $2b$, treat it as a bcrypt hash and compare accordingly.
-  // Otherwise fall back to plaintext comparison for backward compatibility.
+  // Otherwise fall back to a constant-time comparison to prevent timing attacks.
   // To generate a bcrypt hash: node -e "require('bcryptjs').hash('your-password', 12).then(console.log)"
   let passwordMatch = false;
   if (expectedPassword.startsWith('$2b$')) {
     passwordMatch = await bcrypt.compare(password, expectedPassword);
   } else {
-    passwordMatch = password === expectedPassword;
+    // timingSafeEqual requires equal-length buffers; pad to the longer of the two so
+    // the comparison time does not vary with input length.
+    const a = Buffer.from(password);
+    const b = Buffer.from(expectedPassword);
+    const len = Math.max(a.length, b.length);
+    const aPadded = Buffer.concat([a, Buffer.alloc(len - a.length)]);
+    const bPadded = Buffer.concat([b, Buffer.alloc(len - b.length)]);
+    passwordMatch = a.length === b.length && timingSafeEqual(aPadded, bPadded);
   }
 
   if (!passwordMatch) {

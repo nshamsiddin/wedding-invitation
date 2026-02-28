@@ -1,10 +1,14 @@
 function escapeCsvField(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '';
   const str = String(value);
-  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-    return `"${str.replace(/"/g, '""')}"`;
+  // Neutralise CSV formula injection: spreadsheet applications (Excel, Google Sheets)
+  // interpret cells that start with =, +, -, or @ as formulas. Prefix with a tab
+  // character to prevent execution while keeping the value human-readable.
+  const safe = /^[=+\-@\t]/.test(str) ? `\t${str}` : str;
+  if (safe.includes(',') || safe.includes('"') || safe.includes('\n') || safe.includes('\r') || safe.includes('\t')) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return str;
+  return safe;
 }
 
 export interface CSVRow {
