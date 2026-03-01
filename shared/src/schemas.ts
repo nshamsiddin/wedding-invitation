@@ -11,12 +11,10 @@ export const rsvpFormSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be under 100 characters')
     .trim(),
-  email: z
-    .string()
-    .email('Please enter a valid email address')
-    .max(254, 'Email must be under 254 characters')
-    .toLowerCase()
-    .trim(),
+  // Email is display-only (never submitted to the server).
+  // The server returns a masked value like b***@example.com, so strict
+  // .email() validation would always block submission. Accept any string.
+  email: z.string().max(254).trim().optional().default(''),
   status: z.enum(['attending', 'declined', 'maybe'], {
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
