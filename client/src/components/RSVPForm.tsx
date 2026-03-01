@@ -180,22 +180,39 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         </div>
       )}
 
-      {/* Name (+ optional partner hint) */}
+      {/* Name — shown as a read-only display; couples show both names together */}
       <div>
-        <label htmlFor="rsvp-name" style={labelStyle}>{t.nameLabel}</label>
-        <input
-          id="rsvp-name"
-          type="text"
-          autoComplete="name"
-          {...register('name')}
-          disabled
-          style={{ ...getFocusedInputStyle('name'), opacity: 0.5 }}
-          placeholder={t.namePlaceholder}
-        />
-        {partnerName && (
-          <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: 'var(--text-tertiary)', fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-            &amp; {partnerName}
-          </p>
+        <label style={labelStyle}>{partnerName ? 'Guests' : t.nameLabel}</label>
+        {partnerName ? (
+          /* Couple: show both names in a single pill-style display */
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.65rem 0',
+              borderBottom: '1px solid var(--border-warm)',
+              fontFamily: '"DM Sans", system-ui, sans-serif',
+              fontSize: '0.9rem',
+              color: 'var(--text-primary)',
+              opacity: 0.85,
+            }}
+            aria-label={`Guests: ${prefillData?.name} and ${partnerName}`}
+          >
+            <span>{prefillData?.name}</span>
+            <span style={{ color: 'var(--accent-rose)', fontSize: '0.75rem', flexShrink: 0 }}>&amp;</span>
+            <span>{partnerName}</span>
+          </div>
+        ) : (
+          <input
+            id="rsvp-name"
+            type="text"
+            autoComplete="name"
+            {...register('name')}
+            disabled
+            style={{ ...getFocusedInputStyle('name'), opacity: 0.5 }}
+            placeholder={t.namePlaceholder}
+          />
         )}
         {errors.name && (
           <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">
