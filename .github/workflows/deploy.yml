@@ -1,0 +1,71 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Build & deploy to Hetzner
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ───────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── Node.js setup ──────────────────────────────────────────────────────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ── Install all dependencies (including devDeps needed for the build) ──
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Build shared types, React client, and Express server ───────────────
+      - name: Build
+        run: npm run build
+
+      # ── Sync compiled output + source to the server ────────────────────────
+      # Excludes: .env (secrets live only on the server), database files,
+      # and node_modules (reinstalled on server with --omit=dev below).
+      - name: Sync to server
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: >-
+            -avz --delete
+            --exclude='.env'
+            --exclude='*.db'
+            --exclude='*.db-wal'
+            --exclude='*.db-shm'
+            --exclude='node_modules'
+            --exclude='.git'
+            --exclude='backups'
+          path: ./
+          remote_path: /opt/invitation/
+          remote_host: ${{ secrets.SERVER_HOST }}
+          remote_user: deploy
+          remote_key: ${{ secrets.SERVER_SSH_KEY }}
+
+      # ── Install production-only deps and reload the app ────────────────────
+      # PM2 reload is zero-downtime: the old process keeps serving until the
+      # new one is ready, then the old one is gracefully shut down.
+      - name: Reload app
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/invitation
+
+            # Install / prune to production dependencies only
+            npm ci --omit=dev
+
+            # Reload without downtime; --update-env picks up any .env changes
+            pm2 reload ecosystem.config.cjs --update-env
+
+            # Confirm the process is online
+            pm2 show invitation | grep -E "status|restart"

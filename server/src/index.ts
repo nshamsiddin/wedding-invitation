@@ -66,6 +66,13 @@ if (!process.env['DATABASE_PATH'] && process.env.NODE_ENV === 'production') {
 }
 
 const app = express();
+
+// Trust the immediately upstream reverse proxy (Nginx) so that req.ip is
+// resolved from X-Forwarded-For rather than the proxy's loopback address.
+// Without this, all clients appear as the same IP and IP-based rate limiting
+// is broken. Set to 1 because there is exactly one trusted proxy in front.
+app.set('trust proxy', 1);
+
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
 const isDev = process.env.NODE_ENV !== 'production';
 
