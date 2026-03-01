@@ -15,6 +15,7 @@ interface PrefillData {
   status: AttendanceStatus;
   guestCount: number;
   dietary: string | null;
+  partnerDietary?: string | null;
   message: string | null;
 }
 
@@ -22,6 +23,7 @@ interface Props {
   token: string;
   eventName?: string;
   prefillData?: PrefillData;
+  partnerName?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -49,7 +51,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: '0.4rem',
 };
 
-export default function RSVPForm({ token, eventName = '', prefillData }: Props) {
+export default function RSVPForm({ token, eventName = '', prefillData, partnerName }: Props) {
   const [successResult, setSuccessResult] = useState<{
     name: string;
     status: 'attending' | 'declined' | 'maybe';
@@ -70,14 +72,15 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
     resolver: zodResolver(rsvpFormSchema),
     defaultValues: prefillData
       ? {
-          name:       prefillData.name,
-          email:      prefillData.email,
-          status:     prefillData.status as 'attending' | 'declined' | 'maybe',
-          guestCount: prefillData.guestCount,
-          dietary:    prefillData.dietary ?? '',
-          message:    prefillData.message ?? '',
+          name:           prefillData.name,
+          email:          prefillData.email,
+          status:         prefillData.status as 'attending' | 'declined' | 'maybe',
+          guestCount:     prefillData.guestCount,
+          dietary:        prefillData.dietary ?? '',
+          partnerDietary: prefillData.partnerDietary ?? '',
+          message:        prefillData.message ?? '',
         }
-      : { guestCount: 1, dietary: '', message: '' },
+      : { guestCount: 1, dietary: '', partnerDietary: '', message: '' },
   });
 
   const watchedStatus = watch('status');
@@ -89,6 +92,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
         status: values.status,
         guestCount: values.guestCount,
         dietary: values.dietary,
+        partnerDietary: values.partnerDietary,
         message: values.message,
       }),
     onSuccess: (data, variables) => {
@@ -107,6 +111,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
     return (
       <SuccessScreen
         guestName={successResult.name}
+        partnerName={partnerName}
         status={successResult.status}
         guestCount={successResult.guestCount}
         eventName={eventName}
@@ -175,7 +180,7 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
         </div>
       )}
 
-      {/* Name */}
+      {/* Name (+ optional partner hint) */}
       <div>
         <label htmlFor="rsvp-name" style={labelStyle}>{t.nameLabel}</label>
         <input
@@ -187,6 +192,11 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
           style={{ ...getFocusedInputStyle('name'), opacity: 0.5 }}
           placeholder={t.namePlaceholder}
         />
+        {partnerName && (
+          <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: 'var(--text-tertiary)', fontFamily: '"DM Sans", system-ui, sans-serif' }}>
+            &amp; {partnerName}
+          </p>
+        )}
         {errors.name && (
           <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">
             {errors.name.message}
@@ -280,25 +290,6 @@ export default function RSVPForm({ token, eventName = '', prefillData }: Props) 
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Dietary */}
-      <div>
-        <label htmlFor="rsvp-dietary" style={labelStyle}>
-          {t.dietaryLabel}{' '}
-          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-tertiary)' }}>
-            {t.dietaryOptional}
-          </span>
-        </label>
-        <input
-          id="rsvp-dietary"
-          type="text"
-          {...register('dietary')}
-          style={getFocusedInputStyle('dietary')}
-          onFocus={() => setFocusedField('dietary')}
-          onBlur={() => setFocusedField(null)}
-          placeholder={t.dietaryPlaceholder}
-        />
-      </div>
 
       {/* Message */}
       <div>

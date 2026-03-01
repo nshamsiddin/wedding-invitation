@@ -65,6 +65,7 @@ function launchConfetti() {
 
 interface Props {
   guestName: string;
+  partnerName?: string | null;
   status: 'attending' | 'declined' | 'maybe';
   guestCount: number;
   eventName?: string;
@@ -74,6 +75,7 @@ interface Props {
 
 export default function SuccessScreen({
   guestName,
+  partnerName,
   status,
   guestCount,
   isUpdate,
@@ -155,7 +157,7 @@ export default function SuccessScreen({
           color: 'var(--text-primary)',
         }}
       >
-        {guestName}
+        {guestName}{partnerName ? ` & ${partnerName}` : ''}
       </motion.h3>
 
       {/* Divider */}

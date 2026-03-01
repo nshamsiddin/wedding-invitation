@@ -33,6 +33,7 @@ export const rsvpFormSchema = z.object({
     .trim()
     .optional()
     .default(''),
+  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z
     .string()
     .max(1000, 'Message must be under 1000 characters')
@@ -50,6 +51,7 @@ export const rsvpSubmitSchema = z.object({
   status: z.enum(['attending', 'declined', 'maybe']),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
   dietary: z.string().max(500).trim().optional().default(''),
+  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
 });
 
@@ -60,6 +62,7 @@ export const rsvpEntrySchema = z.object({
   status: z.enum(['attending', 'declined', 'maybe']),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
   dietary: z.string().max(500).trim().optional().default(''),
+  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
 });
 
@@ -72,6 +75,7 @@ export const claimInvitationSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be under 100 characters')
     .trim(),
+  partnerName: z.string().max(100).trim().optional(),
   email: z
     .string()
     .email('Please enter a valid email address')
@@ -119,6 +123,7 @@ export const invitationSchema = z.object({
   status: z.enum(attendanceStatus),
   guestCount: z.number().int().min(1),
   dietary: z.string().nullable(),
+  partnerDietary: z.string().nullable().optional(),
   message: z.string().nullable(),
   updatedAt: z.string(),
 });
@@ -141,6 +146,7 @@ export type AdminInvitation = z.infer<typeof adminInvitationSchema>;
 export const adminGuestSchema = z.object({
   id: z.number(),
   name: z.string(),
+  partnerName: z.string().nullable().optional(),
   email: z.string().email(),
   phone: z.string().nullable(),
   createdAt: z.string(),
@@ -192,6 +198,7 @@ export const addGuestSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100).trim(),
   email: z.string().email('Please enter a valid email').max(254).toLowerCase().trim(),
   phone: z.string().max(30).trim().optional(),
+  partnerName: z.string().max(100).trim().optional(),
   eventIds: z
     .array(z.number().int().positive())
     .min(1, 'Select at least one event'),
@@ -207,6 +214,7 @@ export const updateGuestContactSchema = z.object({
   name: z.string().min(2).max(100).trim().optional(),
   email: z.string().email().max(254).toLowerCase().trim().optional(),
   phone: z.string().max(30).trim().nullable().optional(),
+  partnerName: z.string().max(100).trim().nullable().optional(),
 });
 
 export type UpdateGuestContactValues = z.infer<typeof updateGuestContactSchema>;
@@ -224,6 +232,7 @@ export const updateInvitationSchema = z.object({
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional(),
   guestCount: z.number().int().min(1).max(5).optional(),
   dietary: z.string().max(500).trim().optional(),
+  partnerDietary: z.string().max(500).trim().optional(),
   message: z.string().max(1000).trim().optional(),
 });
 
@@ -260,7 +269,7 @@ export interface RSVPCheckResponse {
 export interface PersonalTokenLookupResponse {
   type: 'personal';
   invitation: InvitationData;
-  guest: { id: number; name: string; email: string };
+  guest: { id: number; name: string; email: string; partnerName: string | null };
   event: EventData;
 }
 

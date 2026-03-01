@@ -208,6 +208,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         status: schema.guestInvitations.status,
         guestCount: schema.guestInvitations.guestCount,
         dietary: schema.guestInvitations.dietary,
+        partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         isOpen: schema.guestInvitations.isOpen,
         claimedAt: schema.guestInvitations.claimedAt,
@@ -236,6 +237,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
     const result = guestRows.map((g) => ({
       id: g.id,
       name: g.name,
+      partnerName: g.partnerName ?? null,
       email: g.email,
       phone: g.phone,
       createdAt: g.createdAt,
@@ -249,6 +251,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         status: inv.status,
         guestCount: inv.guestCount,
         dietary: inv.dietary,
+        partnerDietary: inv.partnerDietary ?? null,
         message: inv.message,
         isOpen: inv.isOpen,
         claimedAt: inv.claimedAt,
@@ -270,7 +273,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, email, phone, eventIds, status, guestCount, dietary, message } = parsed.data;
+  const { name, email, phone, partnerName, eventIds, status, guestCount, dietary, message } = parsed.data;
 
   try {
     const existing = await db
@@ -286,7 +289,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
 
     const [guest] = await db
       .insert(schema.guests)
-      .values({ name, email, phone: phone ?? null })
+      .values({ name, email, phone: phone ?? null, partnerName: partnerName ?? null })
       .returning();
 
     // Create invitations for each selected event
@@ -590,6 +593,7 @@ async function handleUpdateInvitation(req: Request, res: Response): Promise<void
       .set({
         ...updates,
         dietary: updates.dietary !== undefined ? (updates.dietary || null) : undefined,
+        partnerDietary: updates.partnerDietary !== undefined ? (updates.partnerDietary || null) : undefined,
         message: updates.message !== undefined ? (updates.message || null) : undefined,
         updatedAt: now,
       })
@@ -677,6 +681,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
       .select({
         guestId: schema.guests.id,
         name: schema.guests.name,
+        partnerName: schema.guests.partnerName,
         email: schema.guests.email,
         phone: schema.guests.phone,
         eventName: schema.events.name,
@@ -684,6 +689,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
         status: schema.guestInvitations.status,
         guestCount: schema.guestInvitations.guestCount,
         dietary: schema.guestInvitations.dietary,
+        partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         rsvpDate: schema.guestInvitations.createdAt,
         updatedAt: schema.guestInvitations.updatedAt,

@@ -35,6 +35,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         invStatus: schema.guestInvitations.status,
         invGuestCount: schema.guestInvitations.guestCount,
         invDietary: schema.guestInvitations.dietary,
+        invPartnerDietary: schema.guestInvitations.partnerDietary,
         invMessage: schema.guestInvitations.message,
         invUpdatedAt: schema.guestInvitations.updatedAt,
         invIsOpen: schema.guestInvitations.isOpen,
@@ -97,7 +98,12 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
     }
 
     const guestRows = await db
-      .select({ id: schema.guests.id, name: schema.guests.name, email: schema.guests.email })
+      .select({
+        id: schema.guests.id,
+        name: schema.guests.name,
+        email: schema.guests.email,
+        partnerName: schema.guests.partnerName,
+      })
       .from(schema.guests)
       .where(eq(schema.guests.id, r.invGuestId))
       .limit(1);
@@ -115,12 +121,14 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         status: r.invStatus,
         guestCount: r.invGuestCount,
         dietary: r.invDietary,
+        partnerDietary: r.invPartnerDietary ?? null,
         message: r.invMessage,
         updatedAt: r.invUpdatedAt,
       },
       guest: {
         id: guestRows[0].id,
         name: guestRows[0].name,
+        partnerName: guestRows[0].partnerName ?? null,
         // Email is masked to prevent PII leakage via a forwarded invitation URL.
         email: maskEmail(guestRows[0].email),
       },
@@ -186,6 +194,7 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
         status: data.status,
         guestCount: data.status === 'attending' ? (data.guestCount ?? 1) : 1,
         dietary: data.dietary ?? null,
+        partnerDietary: data.partnerDietary ?? null,
         message: data.message ?? null,
         updatedAt: now,
       })
@@ -210,7 +219,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
     return;
   }
 
-  const { token, name, email, phone, rsvpEntries } = parsed.data;
+  const { token, name, partnerName, email, phone, rsvpEntries } = parsed.data;
   const now = new Date().toISOString();
 
   try {
@@ -252,8 +261,10 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         guest = existingGuest;
       } else {
         const result = sqlite
-          .prepare('INSERT INTO guests (name, email, phone) VALUES (?, ?, ?) RETURNING id, name, email')
-          .get(name, email, phone ?? null) as { id: number; name: string; email: string };
+          .prepare(
+            'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, ?, ?, ?) RETURNING id, name, email'
+          )
+          .get(name, email, phone ?? null, partnerName ?? null) as { id: number; name: string; email: string };
         guest = result;
       }
 
@@ -263,7 +274,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         .prepare(
           `UPDATE guest_invitations
            SET guest_id = ?, claimed_at = ?, status = ?, guest_count = ?,
-               dietary = ?, message = ?, updated_at = ?
+               dietary = ?, partner_dietary = ?, message = ?, updated_at = ?
            WHERE id = ?`
         )
         .run(
@@ -272,6 +283,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
           entry.status,
           entry.status === 'attending' ? (entry.guestCount ?? 1) : 1,
           entry.dietary ?? null,
+          entry.partnerDietary ?? null,
           entry.message ?? null,
           now,
           invRow.id
@@ -293,9 +305,9 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         const newInv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, message)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
-             RETURNING id, token, status, guest_count, dietary, message, updated_at`
+               (guest_id, event_id, token, status, guest_count, dietary, partner_dietary, message)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             RETURNING id, token, status, guest_count, dietary, partner_dietary, message, updated_at`
           )
           .get(
             guest.id,
@@ -304,10 +316,12 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
             rsvpEntry.status,
             rsvpEntry.status === 'attending' ? (rsvpEntry.guestCount ?? 1) : 1,
             rsvpEntry.dietary ?? null,
+            rsvpEntry.partnerDietary ?? null,
             rsvpEntry.message ?? null
           ) as {
             id: number; token: string; status: string; guest_count: number;
-            dietary: string | null; message: string | null; updated_at: string;
+            dietary: string | null; partner_dietary: string | null;
+            message: string | null; updated_at: string;
           };
 
         additionalInvitations.push({
@@ -316,6 +330,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
           status: newInv.status,
           guestCount: newInv.guest_count,
           dietary: newInv.dietary,
+          partnerDietary: newInv.partner_dietary,
           message: newInv.message,
           updatedAt: newInv.updated_at,
         });
@@ -331,6 +346,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
             status: entry.status,
             guestCount: entry.guestCount ?? 1,
             dietary: entry.dietary ?? null,
+            partnerDietary: entry.partnerDietary ?? null,
             message: entry.message ?? null,
             updatedAt: now,
           },

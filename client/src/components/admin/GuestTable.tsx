@@ -170,6 +170,9 @@ export default function GuestTable({
               >
                 <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap max-w-[150px] truncate">
                   {guest.name}
+                  {guest.partnerName && (
+                    <p className="text-gray-400 text-xs font-normal mt-0.5">& {guest.partnerName}</p>
+                  )}
                   {guest.phone && (
                     <p className="text-gray-400 text-xs font-normal mt-0.5">{guest.phone}</p>
                   )}

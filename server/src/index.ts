@@ -120,11 +120,12 @@ db.run(sql`
 
 db.run(sql`
   CREATE TABLE IF NOT EXISTS guests (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    name       TEXT NOT NULL,
-    email      TEXT NOT NULL UNIQUE,
-    phone      TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name         TEXT NOT NULL,
+    email        TEXT NOT NULL UNIQUE,
+    phone        TEXT,
+    partner_name TEXT,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )
 `);
 
@@ -138,9 +139,10 @@ db.run(sql`
     status      TEXT NOT NULL DEFAULT 'pending'
                 CHECK(status IN ('attending','declined','maybe','pending')),
     guest_count INTEGER NOT NULL DEFAULT 1,
-    dietary     TEXT,
-    message     TEXT,
-    is_open     INTEGER NOT NULL DEFAULT 0,
+    dietary         TEXT,
+    message         TEXT,
+    partner_dietary TEXT,
+    is_open         INTEGER NOT NULL DEFAULT 0,
     claimed_at  TEXT,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -204,6 +206,21 @@ db.run(sql`
       console.log('[migration] Adding claimed_at column to guest_invitations…');
       sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN claimed_at TEXT').run();
     }
+    const hasPartnerDietary = cols.some((c) => c.name === 'partner_dietary');
+    if (!hasPartnerDietary) {
+      console.log('[migration] Adding partner_dietary column to guest_invitations…');
+      sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN partner_dietary TEXT').run();
+    }
+  }
+})();
+
+(function migrateGuestsPartnerName() {
+  type ColInfo = { name: string };
+  const cols = sqlite.prepare('PRAGMA table_info(guests)').all() as ColInfo[];
+  if (cols.length === 0) return; // Table was just created — already has correct schema
+  if (!cols.some((c) => c.name === 'partner_name')) {
+    console.log('[migration] Adding partner_name column to guests…');
+    sqlite.prepare('ALTER TABLE guests ADD COLUMN partner_name TEXT').run();
   }
 })();
 

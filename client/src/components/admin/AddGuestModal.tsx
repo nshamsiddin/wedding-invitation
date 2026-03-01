@@ -28,12 +28,13 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
       dietary: '',
       message: '',
       eventIds: [],
+      partnerName: '',
     },
   });
 
   useEffect(() => {
     if (isOpen) {
-      reset({ status: 'pending', guestCount: 1, dietary: '', message: '', eventIds: [] });
+      reset({ status: 'pending', guestCount: 1, dietary: '', message: '', eventIds: [], partnerName: '' });
     }
   }, [isOpen, reset]);
 
@@ -108,6 +109,13 @@ export default function AddGuestModal({ isOpen, onClose, onSubmit, isPending, ev
                   <label htmlFor="add-phone" className={LABEL_CLASS}>Phone</label>
                   <input id="add-phone" type="tel" {...register('phone')}
                     className={INPUT_CLASS} placeholder="+90 555 000 0000 (optional)" />
+                </div>
+
+                {/* Partner Name */}
+                <div>
+                  <label htmlFor="add-partner-name" className={LABEL_CLASS}>Partner Name</label>
+                  <input id="add-partner-name" type="text" {...register('partnerName')}
+                    className={INPUT_CLASS} placeholder="Jane Smith (optional)" />
                 </div>
 
                 {/* Event assignment */}

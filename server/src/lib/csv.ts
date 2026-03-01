@@ -14,6 +14,7 @@ function escapeCsvField(value: string | number | null | undefined): string {
 export interface CSVRow {
   guestId: number;
   name: string;
+  partnerName: string | null;
   email: string;
   phone: string | null;
   eventName: string;
@@ -21,6 +22,7 @@ export interface CSVRow {
   status: string;
   guestCount: number;
   dietary: string | null;
+  partnerDietary: string | null;
   message: string | null;
   rsvpDate: string;
   updatedAt: string;
@@ -28,15 +30,16 @@ export interface CSVRow {
 
 export function toCSV(rows: CSVRow[]): string {
   const headers = [
-    'Guest ID', 'Name', 'Email', 'Phone',
+    'Guest ID', 'Name', 'Partner Name', 'Email', 'Phone',
     'Event', 'Event Slug', 'Status', 'Guest Count',
-    'Dietary Restrictions', 'Message',
+    'Dietary Restrictions', 'Partner Dietary', 'Message',
     'RSVP Date', 'Updated At',
   ];
 
   const dataRows = rows.map((r) => [
     r.guestId,
     r.name,
+    r.partnerName ?? '',
     r.email,
     r.phone ?? '',
     r.eventName,
@@ -44,6 +47,7 @@ export function toCSV(rows: CSVRow[]): string {
     r.status,
     r.guestCount,
     r.dietary ?? '',
+    r.partnerDietary ?? '',
     r.message ?? '',
     r.rsvpDate,
     r.updatedAt,

@@ -50,11 +50,12 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS guests (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    name       TEXT NOT NULL,
-    email      TEXT NOT NULL UNIQUE,
-    phone      TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name         TEXT NOT NULL,
+    email        TEXT NOT NULL UNIQUE,
+    phone        TEXT,
+    partner_name TEXT,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
   CREATE TABLE IF NOT EXISTS guest_invitations (
@@ -65,9 +66,10 @@ db.exec(`
     status      TEXT NOT NULL DEFAULT 'pending'
                 CHECK(status IN ('attending','declined','maybe','pending')),
     guest_count INTEGER NOT NULL DEFAULT 1,
-    dietary     TEXT,
-    message     TEXT,
-    is_open     INTEGER NOT NULL DEFAULT 0,
+    dietary         TEXT,
+    message         TEXT,
+    partner_dietary TEXT,
+    is_open         INTEGER NOT NULL DEFAULT 0,
     claimed_at  TEXT,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),

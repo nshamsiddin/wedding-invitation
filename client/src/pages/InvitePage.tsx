@@ -516,13 +516,16 @@ export default function InvitePage() {
   const [firstName, secondName] = parseCoupleName(coupleName);
   const monogram = buildMonogram(firstName, secondName);
 
+  const partnerName = guest.partnerName ?? null;
+
   const prefill = {
-    name:       guest.name,
-    email:      guest.email,
-    status:     invitation.status,
-    guestCount: invitation.guestCount,
-    dietary:    invitation.dietary,
-    message:    invitation.message,
+    name:           guest.name,
+    email:          guest.email,
+    status:         invitation.status,
+    guestCount:     invitation.guestCount,
+    dietary:        invitation.dietary,
+    partnerDietary: invitation.partnerDietary ?? null,
+    message:        invitation.message,
   };
 
   return (
@@ -585,7 +588,7 @@ export default function InvitePage() {
             <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
           </motion.div>
 
-          {/* Guest name */}
+          {/* Guest name (and optional partner) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -593,7 +596,7 @@ export default function InvitePage() {
             style={{ marginBottom: '0.5rem' }}
           >
             <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(1.4rem, 4vw, 2.2rem)', color: ESPRESSO_DIM, display: 'block' }}>
-              {guest.name}
+              {guest.name}{partnerName ? ` & ${partnerName}` : ''}
             </span>
           </motion.div>
 
@@ -911,7 +914,7 @@ export default function InvitePage() {
               style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: 1, background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`, transformOrigin: 'center' }}
               aria-hidden="true"
             />
-            <RSVPForm token={token} eventName={event.name} prefillData={prefill} />
+            <RSVPForm token={token} eventName={event.name} prefillData={prefill} partnerName={partnerName} />
           </motion.div>
 
           {/* Footer note in natural flow at bottom of content */}

@@ -18,6 +18,9 @@ export const guests = sqliteTable('guests', {
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   phone: text('phone'),
+  // Optional partner/spouse name — stored at the guest level because a couple
+  // always attends together regardless of which event they are invited to.
+  partnerName: text('partner_name'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
@@ -35,6 +38,9 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   guestCount: integer('guest_count').notNull().default(1),
   dietary: text('dietary'),
   message: text('message'),
+  // Optional dietary restrictions for the guest's partner — per-event because
+  // dietary needs relate to what is being served at a specific event.
+  partnerDietary: text('partner_dietary'),
   // Open invitation: created without a specific guest; can be claimed once
   isOpen: integer('is_open', { mode: 'boolean' }).notNull().default(false),
   // Timestamp when an open invitation was claimed by a self-registrant

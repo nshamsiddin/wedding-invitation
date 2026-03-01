@@ -50,7 +50,7 @@ function ContactTab({
   });
 
   useEffect(() => {
-    reset({ name: guest.name, email: guest.email, phone: guest.phone ?? '' });
+    reset({ name: guest.name, email: guest.email, phone: guest.phone ?? '', partnerName: guest.partnerName ?? '' });
   }, [guest, reset]);
 
   return (
@@ -95,6 +95,17 @@ function ContactTab({
         />
       </div>
 
+      <div>
+        <label htmlFor="edit-partner-name" className={LABEL_CLASS}>Partner Name</label>
+        <input
+          id="edit-partner-name"
+          type="text"
+          {...register('partnerName')}
+          className={INPUT_CLASS}
+          placeholder="Optional"
+        />
+      </div>
+
       <div className="flex gap-3 pt-2 border-t border-gray-100">
         <button
           type="submit"
@@ -134,6 +145,7 @@ function InvitationTab({
       status: invitation.status,
       guestCount: invitation.guestCount,
       dietary: invitation.dietary ?? '',
+      partnerDietary: invitation.partnerDietary ?? '',
       message: invitation.message ?? '',
     });
   }, [invitation, reset]);
@@ -180,6 +192,19 @@ function InvitationTab({
           id={`inv-dietary-${invitation.id}`}
           type="text"
           {...register('dietary')}
+          className={INPUT_CLASS}
+          placeholder="None"
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`inv-partner-dietary-${invitation.id}`} className={LABEL_CLASS}>
+          Partner Dietary
+        </label>
+        <input
+          id={`inv-partner-dietary-${invitation.id}`}
+          type="text"
+          {...register('partnerDietary')}
           className={INPUT_CLASS}
           placeholder="None"
         />
