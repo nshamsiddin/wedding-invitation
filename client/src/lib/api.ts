@@ -16,6 +16,7 @@ import type {
   ClaimInvitationValues,
   ClaimInvitationResponse,
   CreateOpenInvitationValues,
+  PublicRsvpValues,
 } from '@invitation/shared';
 
 export type {
@@ -59,6 +60,10 @@ export const rsvpApi = {
   },
   claim: async (values: ClaimInvitationValues): Promise<ClaimInvitationResponse> => {
     const { data } = await api.post<ClaimInvitationResponse>('/rsvp/claim', values);
+    return data;
+  },
+  submitPublic: async (values: PublicRsvpValues): Promise<{ ok: boolean }> => {
+    const { data } = await api.post<{ ok: boolean }>('/rsvp/public', values);
     return data;
   },
 };

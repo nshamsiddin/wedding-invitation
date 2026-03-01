@@ -122,7 +122,7 @@ db.run(sql`
   CREATE TABLE IF NOT EXISTS guests (
     id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name         TEXT NOT NULL,
-    email        TEXT NOT NULL UNIQUE,
+    email        TEXT UNIQUE,
     phone        TEXT,
     partner_name TEXT,
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -143,6 +143,7 @@ db.run(sql`
     message         TEXT,
     partner_dietary TEXT,
     is_open         INTEGER NOT NULL DEFAULT 0,
+    is_public       INTEGER NOT NULL DEFAULT 0,
     claimed_at  TEXT,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -221,6 +222,45 @@ db.run(sql`
   if (!cols.some((c) => c.name === 'partner_name')) {
     console.log('[migration] Adding partner_name column to guests…');
     sqlite.prepare('ALTER TABLE guests ADD COLUMN partner_name TEXT').run();
+  }
+})();
+
+// Make guests.email nullable — SQLite cannot ALTER COLUMN, so recreate the table if needed.
+(function migrateGuestsEmailNullable() {
+  type ColInfo = { name: string; notnull: number };
+  const cols = sqlite.prepare('PRAGMA table_info(guests)').all() as ColInfo[];
+  if (cols.length === 0) return; // Just created above — already nullable
+  const emailCol = cols.find((c) => c.name === 'email');
+  if (!emailCol || emailCol.notnull === 0) return; // Already nullable
+  console.log('[migration] Recreating guests table to make email nullable…');
+  sqlite.pragma('foreign_keys = OFF');
+  sqlite.prepare(`
+    CREATE TABLE IF NOT EXISTS guests_v2 (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name         TEXT NOT NULL,
+      email        TEXT UNIQUE,
+      phone        TEXT,
+      partner_name TEXT,
+      created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )
+  `).run();
+  sqlite.prepare(`
+    INSERT INTO guests_v2 (id, name, email, phone, partner_name, created_at)
+    SELECT id, name, email, phone, partner_name, created_at FROM guests
+  `).run();
+  sqlite.prepare('DROP TABLE guests').run();
+  sqlite.prepare('ALTER TABLE guests_v2 RENAME TO guests').run();
+  sqlite.pragma('foreign_keys = ON');
+  console.log('[migration] guests email-nullable migration complete.');
+})();
+
+(function migrateGuestInvitationsIsPublic() {
+  type ColInfo = { name: string };
+  const cols = sqlite.prepare('PRAGMA table_info(guest_invitations)').all() as ColInfo[];
+  if (cols.length === 0) return; // Just created above
+  if (!cols.some((c) => c.name === 'is_public')) {
+    console.log('[migration] Adding is_public column to guest_invitations…');
+    sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0').run();
   }
 })();
 

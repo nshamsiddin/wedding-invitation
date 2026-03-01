@@ -410,7 +410,7 @@ router.post('/invitations/open', requireAuth, async (req: Request, res: Response
     return;
   }
 
-  const { eventIds } = parsed.data;
+  const { eventIds, isPublic } = parsed.data;
 
   try {
     // Verify all event IDs exist
@@ -438,6 +438,7 @@ router.post('/invitations/open', requireAuth, async (req: Request, res: Response
           status: 'pending',
           guestCount: 1,
           isOpen: true,
+          isPublic: isPublic ?? false,
           claimedAt: null,
         })
         .returning();
@@ -453,6 +454,7 @@ router.post('/invitations/open', requireAuth, async (req: Request, res: Response
         id: inv.id,
         token: inv.token,
         isOpen: true,
+        isPublic: isPublic ?? false,
         claimedAt: null,
         eventId: inv.eventId,
         eventSlug: eventRow[0]?.slug ?? null,
@@ -477,6 +479,7 @@ router.get('/invitations/open', requireAuth, async (_req: Request, res: Response
         id: schema.guestInvitations.id,
         token: schema.guestInvitations.token,
         isOpen: schema.guestInvitations.isOpen,
+        isPublic: schema.guestInvitations.isPublic,
         claimedAt: schema.guestInvitations.claimedAt,
         eventId: schema.guestInvitations.eventId,
         createdAt: schema.guestInvitations.createdAt,
@@ -485,15 +488,27 @@ router.get('/invitations/open', requireAuth, async (_req: Request, res: Response
       })
       .from(schema.guestInvitations)
       .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
-      .where(and(eq(schema.guestInvitations.isOpen, true), isNull(schema.guestInvitations.claimedAt)))
+      // Show all public links + unclaimed one-time links
+      .where(
+        and(
+          eq(schema.guestInvitations.isOpen, true),
+          // Include public links always; include one-time links only while unclaimed
+          // We can't express OR with Drizzle's typed .where easily, so we use
+          // a raw SQL fragment via isNull / isPublic check below.
+          // Solution: fetch all isOpen=1 rows and filter in JS.
+        )
+      )
       .orderBy(desc(schema.guestInvitations.createdAt));
 
     const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
+    // Public links are shown always; one-time links only while unclaimed
+    const filtered = rows.filter((r) => r.isPublic || r.claimedAt === null);
     res.json(
-      rows.map((r) => ({
+      filtered.map((r) => ({
         id: r.id,
         token: r.token,
         isOpen: r.isOpen,
+        isPublic: Boolean(r.isPublic),
         claimedAt: r.claimedAt,
         eventId: r.eventId,
         eventSlug: r.eventSlug,

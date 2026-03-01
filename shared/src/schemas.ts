@@ -74,12 +74,14 @@ export const claimInvitationSchema = z.object({
     .max(100, 'Name must be under 100 characters')
     .trim(),
   partnerName: z.string().max(100).trim().optional(),
+  // Optional for one-time open links (still validated when provided)
   email: z
     .string()
     .email('Please enter a valid email address')
     .max(254, 'Email must be under 254 characters')
     .toLowerCase()
-    .trim(),
+    .trim()
+    .optional(),
   phone: z.string().max(30).trim().optional(),
   rsvpEntries: z.array(rsvpEntrySchema).min(1, 'At least one RSVP entry is required'),
 });
@@ -145,7 +147,8 @@ export const adminGuestSchema = z.object({
   id: z.number(),
   name: z.string(),
   partnerName: z.string().nullable().optional(),
-  email: z.string().email(),
+  // Nullable: guests who registered via a public link have no email
+  email: z.string().nullable(),
   phone: z.string().nullable(),
   createdAt: z.string(),
   invitations: z.array(adminInvitationSchema),
@@ -172,6 +175,7 @@ export const openInvitationSchema = z.object({
   id: z.number(),
   token: z.string(),
   isOpen: z.literal(true),
+  isPublic: z.boolean().default(false),
   claimedAt: z.string().nullable(),
   eventId: z.number(),
   eventSlug: z.string().nullable(),
@@ -236,9 +240,30 @@ export const updateInvitationSchema = z.object({
 
 export type UpdateInvitationValues = z.infer<typeof updateInvitationSchema>;
 
+// Public RSVP — submitted via a permanent public link (no email required)
+export const publicRsvpSchema = z.object({
+  token: z.string().uuid('Invalid invitation token'),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be under 100 characters')
+    .trim(),
+  partnerName: z.string().max(100).trim().optional(),
+  phone: z.string().max(30).trim().optional(),
+  status: z.enum(['attending', 'declined', 'maybe'], {
+    errorMap: () => ({ message: 'Please select an attendance option' }),
+  }),
+  guestCount: z.number().int().min(1).max(5).optional().default(1),
+  message: z.string().max(1000).trim().optional().default(''),
+  eventId: z.number().int().positive(),
+});
+
+export type PublicRsvpValues = z.infer<typeof publicRsvpSchema>;
+
 // Admin: create open (generic) invitation link
 export const createOpenInvitationSchema = z.object({
   eventIds: z.array(z.number().int().positive()).min(1, 'Select at least one event'),
+  isPublic: z.boolean().optional().default(false),
 });
 
 export type CreateOpenInvitationValues = z.infer<typeof createOpenInvitationSchema>;
@@ -274,6 +299,7 @@ export interface PersonalTokenLookupResponse {
 export interface OpenTokenLookupResponse {
   type: 'open';
   token: string;
+  isPublic: boolean;
   events: Array<{ id: number; slug: string; name: string; date: string }>;
 }
 

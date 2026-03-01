@@ -50,6 +50,15 @@ function OpenInvitationRow({
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
             Open Link
           </span>
+          {inv.isPublic ? (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200" title="Permanent — reusable by anyone">
+              ∞ Public
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200" title="One-time — locked after first use">
+              1×
+            </span>
+          )}
           <span className="text-xs text-gray-600 font-sans">{inv.eventName ?? inv.eventSlug}</span>
         </div>
         <p className="text-xs text-gray-400 font-mono mt-0.5 truncate max-w-[200px]">{inv.token.slice(0, 8)}…</p>
@@ -92,6 +101,7 @@ export default function DashboardPage() {
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
   const [showOpenLinkModal, setShowOpenLinkModal] = useState(false);
   const [openLinkEventIds, setOpenLinkEventIds] = useState<number[]>([]);
+  const [openLinkIsPublic, setOpenLinkIsPublic] = useState(false);
 
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['admin', 'events'],
@@ -191,6 +201,7 @@ export default function DashboardPage() {
     onSuccess: (data) => {
       setShowOpenLinkModal(false);
       setOpenLinkEventIds([]);
+      setOpenLinkIsPublic(false);
       toast.success(`Created ${data.length} open invitation link${data.length !== 1 ? 's' : ''}`);
       qc.invalidateQueries({ queryKey: ['admin', 'invitations', 'open'] });
       // Copy first URL to clipboard automatically
@@ -321,7 +332,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-2">
               <h2 id="open-inv-heading" className="font-sans font-semibold text-sm text-gray-900">
                 Open Links
-                <span className="ml-2 text-xs font-normal text-gray-400">{openInvitations.length} unclaimed</span>
+                <span className="ml-2 text-xs font-normal text-gray-400">{openInvitations.length} active</span>
               </h2>
             </div>
             <div className="space-y-2">
@@ -450,6 +461,31 @@ export default function DashboardPage() {
                   Creates a shareable link that any new guest can use to self-register. Select the event(s) to cover.
                 </p>
 
+                {/* Permanent / one-time toggle */}
+                <div className="mb-4 p-3 rounded-lg border border-gray-200 bg-gray-50">
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={openLinkIsPublic}
+                      onClick={() => setOpenLinkIsPublic((v) => !v)}
+                      className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 ${openLinkIsPublic ? 'bg-amber-500' : 'bg-gray-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${openLinkIsPublic ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                    <div>
+                      <p className="text-xs font-medium text-gray-800 font-sans">
+                        Permanent link <span className="ml-1 text-xs font-normal text-amber-600">{openLinkIsPublic ? '∞ reusable' : '1× one-time'}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 font-sans mt-0.5">
+                        {openLinkIsPublic
+                          ? 'Anyone can fill this link — no email required, phone for deduplication.'
+                          : 'Single-use link locked after the first person claims it.'}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
                 <fieldset className="mb-4">
                   <legend className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Events</legend>
                   <div className="space-y-2">
@@ -493,7 +529,7 @@ export default function DashboardPage() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setShowOpenLinkModal(false); setOpenLinkEventIds([]); }}
+                    onClick={() => { setShowOpenLinkModal(false); setOpenLinkEventIds([]); setOpenLinkIsPublic(false); }}
                     className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-xs py-2 rounded-lg"
                   >
                     Cancel
@@ -504,7 +540,7 @@ export default function DashboardPage() {
                         toast.error('Select at least one event');
                         return;
                       }
-                      createOpenInvMutation.mutate({ eventIds: openLinkEventIds });
+                      createOpenInvMutation.mutate({ eventIds: openLinkEventIds, isPublic: openLinkIsPublic });
                     }}
                     disabled={createOpenInvMutation.isPending || openLinkEventIds.length === 0}
                     className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:cursor-not-allowed"

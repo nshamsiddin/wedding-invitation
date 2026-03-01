@@ -14,7 +14,7 @@ import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
 import { LanguageContext } from '../context/LanguageContext';
 import type { Language } from '../lib/i18n';
-import { claimInvitationSchema, type ClaimInvitationValues } from '@invitation/shared';
+import { claimInvitationSchema, publicRsvpSchema, type ClaimInvitationValues, type PublicRsvpValues } from '@invitation/shared';
 import {
   SideVinesFirefly,
   FloatingPetals,
@@ -152,14 +152,141 @@ function ScrollCue({ inView }: { inView: boolean }) {
   );
 }
 
+// ─── Public RSVP form (permanent, reusable link) ─────────────────────────────
+interface PublicInviteFormProps {
+  token: string;
+  eventId: number;
+  onSuccess: () => void;
+}
+
+function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) {
+  const STATUS_OPTIONS = [
+    { value: 'attending', label: 'Attending' },
+    { value: 'declined',  label: 'Declined' },
+    { value: 'maybe',     label: 'Maybe' },
+  ] as const;
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<PublicRsvpValues>({
+    resolver: zodResolver(publicRsvpSchema),
+    defaultValues: {
+      token,
+      eventId,
+      status: 'attending',
+      guestCount: 1,
+      message: '',
+    },
+  });
+
+  const status = watch('status');
+
+  const submitMutation = useMutation({
+    mutationFn: rsvpApi.submitPublic,
+    onSuccess: () => {
+      toast.success('RSVP received!');
+      onSuccess();
+    },
+    onError: () => {
+      toast.error('Failed to submit. Please try again.');
+    },
+  });
+
+  const INPUT_CLASS = 'w-full rounded-lg px-3 py-2.5 text-sm placeholder-opacity-50 focus:outline-none focus:ring-2 transition-colors';
+  const glassInput = {
+    background: 'var(--glass-bg)',
+    border: '1px solid var(--border-warm)',
+    color: 'var(--text-primary)',
+    backdropFilter: 'blur(8px)',
+  };
+
+  return (
+    <form onSubmit={handleSubmit((values) => submitMutation.mutate(values))} noValidate className="space-y-5">
+      <input type="hidden" {...register('token')} />
+      <input type="hidden" {...register('eventId', { valueAsNumber: true })} />
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="pub-name" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+            Your Name <span style={{ color: 'var(--accent-rose)' }}>*</span>
+          </label>
+          <input id="pub-name" type="text" autoFocus {...register('name')} className={INPUT_CLASS} style={glassInput} placeholder="Your full name" />
+          {errors.name && <p className="mt-1 text-xs" style={{ color: 'var(--accent-rose)' }}>{errors.name.message}</p>}
+        </div>
+        <div>
+          <label htmlFor="pub-partner" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+            Partner's Name <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(if attending together)</span>
+          </label>
+          <input id="pub-partner" type="text" {...register('partnerName')} className={INPUT_CLASS} style={glassInput} placeholder="Partner's full name" />
+        </div>
+        <div>
+          <label htmlFor="pub-phone" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+            Phone <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input id="pub-phone" type="tel" {...register('phone')} className={INPUT_CLASS} style={glassInput} placeholder="+1 555 000 0000" />
+        </div>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="pub-status" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+              Attendance <span style={{ color: 'var(--accent-rose)' }}>*</span>
+            </label>
+            <select id="pub-status" {...register('status')} className={`${INPUT_CLASS} appearance-none`} style={glassInput}>
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            {errors.status && <p className="mt-1 text-xs" style={{ color: 'var(--accent-rose)' }}>{errors.status.message}</p>}
+          </div>
+          {status === 'attending' && (
+            <div>
+              <label htmlFor="pub-count" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+                Guests
+              </label>
+              <select id="pub-count" {...register('guestCount', { valueAsNumber: true })} className={`${INPUT_CLASS} appearance-none`} style={glassInput}>
+                {[1, 2, 3, 4, 5].map((n) => (<option key={n} value={n}>{n}</option>))}
+              </select>
+            </div>
+          )}
+        </div>
+        <div className="mt-3">
+          <label htmlFor="pub-message" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+            Message
+          </label>
+          <textarea id="pub-message" rows={2} {...register('message')} className={`${INPUT_CLASS} resize-none`} style={glassInput} placeholder="Optional note to the couple" />
+        </div>
+      </div>
+
+      <button type="submit" disabled={submitMutation.isPending} className="btn-primary w-full" style={{ marginTop: '1rem' }}>
+        {submitMutation.isPending ? 'Sending…' : 'Send RSVP'}
+      </button>
+    </form>
+  );
+}
+
 // ─── Self-registration form for open invitations ─────────────────────────────
 interface OpenInviteFormProps {
   token: string;
+  isPublic: boolean;
   events: Array<{ id: number; slug: string; name: string; date: string }>;
   onSuccess: () => void;
 }
 
-function OpenInviteForm({ token, events, onSuccess }: OpenInviteFormProps) {
+function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormProps) {
+  if (isPublic) {
+    return (
+      <PublicInviteForm
+        token={token}
+        eventId={events[0]?.id ?? 0}
+        onSuccess={onSuccess}
+      />
+    );
+  }
   const STATUS_OPTIONS = [
     { value: 'attending', label: 'Attending' },
     { value: 'declined',  label: 'Declined' },
@@ -496,6 +623,7 @@ export default function InvitePage() {
               ) : (
                 <OpenInviteForm
                   token={data.token}
+                  isPublic={data.isPublic}
                   events={data.events}
                   onSuccess={() => setClaimSuccess(true)}
                 />

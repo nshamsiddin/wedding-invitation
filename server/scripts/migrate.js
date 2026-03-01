@@ -52,7 +52,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS guests (
     id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name         TEXT NOT NULL,
-    email        TEXT NOT NULL UNIQUE,
+    email        TEXT UNIQUE,
     phone        TEXT,
     partner_name TEXT,
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -70,6 +70,7 @@ db.exec(`
     message         TEXT,
     partner_dietary TEXT,
     is_open         INTEGER NOT NULL DEFAULT 0,
+    is_public       INTEGER NOT NULL DEFAULT 0,
     claimed_at  TEXT,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),

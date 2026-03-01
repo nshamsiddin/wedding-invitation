@@ -16,7 +16,8 @@ export const events = sqliteTable('events', {
 export const guests = sqliteTable('guests', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
-  email: text('email').notNull().unique(),
+  // Nullable: guests who register via a public link do not provide an email
+  email: text('email').unique(),
   phone: text('phone'),
   // Optional partner/spouse name — stored at the guest level because a couple
   // always attends together regardless of which event they are invited to.
@@ -43,6 +44,8 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   partnerDietary: text('partner_dietary'),
   // Open invitation: created without a specific guest; can be claimed once
   isOpen: integer('is_open', { mode: 'boolean' }).notNull().default(false),
+  // Permanent public invitation: reusable by any number of guests, never consumed
+  isPublic: integer('is_public', { mode: 'boolean' }).notNull().default(false),
   // Timestamp when an open invitation was claimed by a self-registrant
   claimedAt: text('claimed_at'),
   createdAt: text('created_at')

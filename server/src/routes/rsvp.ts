@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db, schema, sqlite } from '../db/index.js';
-import { rsvpSubmitSchema, claimInvitationSchema } from '@invitation/shared';
+import { rsvpSubmitSchema, claimInvitationSchema, publicRsvpSchema } from '@invitation/shared';
 import { rsvpRateLimit, claimRateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
@@ -39,6 +39,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         invMessage: schema.guestInvitations.message,
         invUpdatedAt: schema.guestInvitations.updatedAt,
         invIsOpen: schema.guestInvitations.isOpen,
+        invIsPublic: schema.guestInvitations.isPublic,
         invClaimedAt: schema.guestInvitations.claimedAt,
         invGuestId: schema.guestInvitations.guestId,
         eventId: schema.events.id,
@@ -64,7 +65,8 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
     const r = invRows[0];
 
     // Open invitation that has already been claimed — reject further use
-    if (r.invIsOpen && r.invClaimedAt !== null) {
+    // Public links are never consumed, so skip this check for them.
+    if (r.invIsOpen && !r.invIsPublic && r.invClaimedAt !== null) {
       res.status(409).json({
         type: 'claimed',
         error: 'This invitation link has already been used.',
@@ -72,13 +74,12 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Open invitation that is still unclaimed — return events list for self-registration
-    if (r.invIsOpen && r.invGuestId === null) {
-      // Collect all open invitation rows for this same token (there's only one per token,
-      // but the token is linked to one event per row)
+    // Open invitation (one-time or permanent public) — return events list for self-registration
+    if (r.invIsOpen) {
       res.json({
         type: 'open',
         token: r.invToken,
+        isPublic: Boolean(r.invIsPublic),
         events: [
           {
             id: r.eventId,
@@ -130,7 +131,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         name: guestRows[0].name,
         partnerName: guestRows[0].partnerName ?? null,
         // Email is masked to prevent PII leakage via a forwarded invitation URL.
-        email: maskEmail(guestRows[0].email),
+        email: guestRows[0].email ? maskEmail(guestRows[0].email) : null,
       },
       event: {
         id: r.eventId,
@@ -369,6 +370,128 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
   } catch (error) {
     console.error('Claim invitation error:', error);
     res.status(500).json({ error: 'Failed to process registration. Please try again.' });
+  }
+});
+
+// POST /api/rsvp/public — submit an RSVP via a permanent public link.
+// Unlike /claim, the template row is never mutated: a new guest + invitation row are
+// created for each submission. Phone number is used for deduplication when provided.
+router.post('/public', claimRateLimit, async (req: Request, res: Response): Promise<void> => {
+  const parsed = publicRsvpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+
+  const { token, name, partnerName, phone, status, guestCount, message, eventId } = parsed.data;
+  const now = new Date().toISOString();
+
+  try {
+    type PublicResult =
+      | { ok: true; guestId: number; invitationId: number }
+      | { ok: false; status: number; error: string };
+
+    const publicTransaction = sqlite.transaction((): PublicResult => {
+      // 1. Validate the token is a permanent public invitation for the given event
+      const templateRow = sqlite
+        .prepare(
+          `SELECT id, event_id FROM guest_invitations
+           WHERE token = ? AND is_open = 1 AND is_public = 1 AND event_id = ?
+           LIMIT 1`
+        )
+        .get(token, eventId) as { id: number; event_id: number } | undefined;
+
+      if (!templateRow) {
+        return { ok: false, status: 404, error: 'Public invitation link not found or invalid.' };
+      }
+
+      // 2. Phone-based deduplication — reuse existing guest if phone matches
+      let guestId: number;
+
+      if (phone) {
+        const existingByPhone = sqlite
+          .prepare('SELECT id FROM guests WHERE phone = ? LIMIT 1')
+          .get(phone) as { id: number } | undefined;
+
+        if (existingByPhone) {
+          guestId = existingByPhone.id;
+          // Update the guest's name and partnerName in case they changed
+          sqlite
+            .prepare('UPDATE guests SET name = ?, partner_name = ? WHERE id = ?')
+            .run(name, partnerName ?? null, guestId);
+        } else {
+          const inserted = sqlite
+            .prepare(
+              'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, NULL, ?, ?) RETURNING id'
+            )
+            .get(name, phone, partnerName ?? null) as { id: number };
+          guestId = inserted.id;
+        }
+      } else {
+        // No phone — always create a new guest row (anonymous submission)
+        const inserted = sqlite
+          .prepare(
+            'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, NULL, NULL, ?) RETURNING id'
+          )
+          .get(name, partnerName ?? null) as { id: number };
+        guestId = inserted.id;
+      }
+
+      // 3. Upsert invitation row for this guest+event (update if already exists)
+      const existingInv = sqlite
+        .prepare(
+          'SELECT id FROM guest_invitations WHERE guest_id = ? AND event_id = ? AND is_open = 0 LIMIT 1'
+        )
+        .get(guestId, eventId) as { id: number } | undefined;
+
+      let invitationId: number;
+      if (existingInv) {
+        sqlite
+          .prepare(
+            `UPDATE guest_invitations
+             SET status = ?, guest_count = ?, message = ?, updated_at = ?
+             WHERE id = ?`
+          )
+          .run(
+            status,
+            status === 'attending' ? (guestCount ?? 1) : 1,
+            message ?? null,
+            now,
+            existingInv.id
+          );
+        invitationId = existingInv.id;
+      } else {
+        const newInv = sqlite
+          .prepare(
+            `INSERT INTO guest_invitations (guest_id, event_id, token, status, guest_count, message, is_open)
+             VALUES (?, ?, ?, ?, ?, ?, 0)
+             RETURNING id`
+          )
+          .get(
+            guestId,
+            eventId,
+            randomUUID(),
+            status,
+            status === 'attending' ? (guestCount ?? 1) : 1,
+            message ?? null
+          ) as { id: number };
+        invitationId = newInv.id;
+      }
+
+      return { ok: true, guestId, invitationId };
+    });
+
+    const result = publicTransaction();
+
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error('Public RSVP submit error:', error);
+    res.status(500).json({ error: 'Failed to save RSVP. Please try again.' });
   }
 });
 
