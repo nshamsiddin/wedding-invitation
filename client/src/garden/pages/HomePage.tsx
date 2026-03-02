@@ -156,10 +156,10 @@ function CountdownDigit({ value, label }: { value: number; label: string }) {
       </AnimatePresence>
       <span style={{
         fontFamily: '"DM Sans", system-ui, sans-serif',
-        fontSize: '0.48rem',
-        letterSpacing: '0.28em',
+        fontSize: '0.65rem',
+        letterSpacing: '0.22em',
         textTransform: 'uppercase',
-        color: G.espressoFaint,
+        color: G.espressoDim,
         display: 'block',
         marginTop: '0.3rem',
       }}>
@@ -578,7 +578,7 @@ function DotNav({
       aria-label="Slide navigation"
       style={{
         position: 'fixed',
-        right: 'clamp(0rem, 1vw, 0.25rem)',
+        right: '1rem',
         top: '50%',
         transform: 'translateY(-50%)',
         zIndex: 500,
@@ -610,9 +610,9 @@ function DotNav({
         >
           <motion.div
             animate={{
-              width: current === i ? 8 : 6,
-              height: current === i ? 8 : 6,
-              backgroundColor: current === i ? G.rose : G.espressoFaint,
+              width: current === i ? 9 : 6,
+              height: current === i ? 9 : 6,
+              backgroundColor: current === i ? G.rose : G.espressoDim,
             }}
             transition={{ duration: 0.25 }}
             style={{ borderRadius: '50%', flexShrink: 0 }}
@@ -732,8 +732,8 @@ export default function GardenHomePage() {
         }}
       >
         <p style={{
-          fontFamily: sans, fontSize: '0.5rem', fontWeight: 500,
-          letterSpacing: '0.38em', textTransform: 'uppercase', color: G.espressoFaint,
+          fontFamily: sans, fontSize: '0.72rem', fontWeight: 500,
+          letterSpacing: '0.25em', textTransform: 'uppercase', color: G.espressoDim,
         }}>
           {firstName[0]}&thinsp;&amp;&thinsp;{secondName[0]} · 2026
         </p>
@@ -789,8 +789,8 @@ export default function GardenHomePage() {
           >
             <div style={{ width: 36, height: 1, background: G.gold, opacity: 0.7 }} aria-hidden="true" />
             <span style={{
-              fontFamily: sans, fontSize: '0.5rem',
-              letterSpacing: '0.4em', textTransform: 'uppercase',
+              fontFamily: sans, fontSize: '0.72rem',
+              letterSpacing: '0.28em', textTransform: 'uppercase',
               color: G.gold, fontWeight: 500,
             }}>
               {tl.cordiallyInvited}
@@ -862,8 +862,8 @@ export default function GardenHomePage() {
             animate={s1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
             transition={{ duration: 0.8, delay: 1.1 }}
             style={{
-              fontFamily: sans, fontSize: '0.54rem',
-              letterSpacing: '0.38em', textTransform: 'uppercase',
+              fontFamily: sans, fontSize: '0.75rem',
+              letterSpacing: '0.25em', textTransform: 'uppercase',
               color: G.gold, marginTop: 'clamp(1rem, 2.5vh, 1.8rem)',
             }}
           >
@@ -895,9 +895,9 @@ export default function GardenHomePage() {
               <div style={{ width: 3, height: 5, borderRadius: '999px', background: G.rose }} />
             </motion.div>
             <span style={{
-              fontFamily: sans, fontSize: '0.48rem',
-              letterSpacing: '0.32em', textTransform: 'uppercase',
-              color: G.espressoFaint,
+              fontFamily: sans, fontSize: '0.65rem',
+              letterSpacing: '0.22em', textTransform: 'uppercase',
+              color: G.espressoDim,
             }}>
               {tl.scrollDown}
             </span>
@@ -935,7 +935,7 @@ export default function GardenHomePage() {
             animate={s2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
             transition={{ duration: 0.8 }}
             style={{
-              fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em',
+              fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em',
               textTransform: 'uppercase', color: G.sageDim, marginBottom: '2.5rem',
             }}
           >
@@ -991,9 +991,9 @@ export default function GardenHomePage() {
               <span className="gdn-gold-shimmer">{secondName}</span>
             </p>
             <p style={{
-              fontFamily: sans, fontSize: '0.56rem',
-              letterSpacing: '0.25em', textTransform: 'uppercase',
-              color: G.espressoFaint, marginTop: '1.2rem',
+              fontFamily: sans, fontSize: '0.75rem',
+              letterSpacing: '0.18em', textTransform: 'uppercase',
+              color: G.espressoDim, marginTop: '1.2rem',
             }}>
               {EVENT_CONFIG.displayDate[lang] ?? EVENT_CONFIG.displayDate.en}
             </p>
@@ -1051,8 +1051,8 @@ export default function GardenHomePage() {
                 animate={inV ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
                 transition={{ duration: 0.7, delay: 0.1 }}
                 style={{
-                  fontFamily: sans, fontSize: '0.5rem',
-                  letterSpacing: '0.4em', textTransform: 'uppercase',
+                  fontFamily: sans, fontSize: '0.72rem',
+                  letterSpacing: '0.28em', textTransform: 'uppercase',
                   color: ev.accent, marginBottom: '0.6rem', fontWeight: 500,
                 }}
               >
@@ -1102,7 +1102,7 @@ export default function GardenHomePage() {
                 </p>
                 <p style={{
                   fontFamily: serif, fontStyle: 'italic',
-                  fontSize: '1rem', color: G.espressoFaint,
+                  fontSize: '1rem', color: G.espressoDim,
                 }}>
                   {ev.venue}
                 </p>
@@ -1153,8 +1153,8 @@ export default function GardenHomePage() {
                     to={`/${ev.slug}`}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                      fontFamily: sans, fontSize: '0.56rem',
-                      letterSpacing: '0.2em', textTransform: 'uppercase',
+                      fontFamily: sans, fontSize: '0.75rem',
+                      letterSpacing: '0.15em', textTransform: 'uppercase',
                       color: ev.accent, fontWeight: 500, textDecoration: 'none',
                       padding: '0.7rem 1.6rem',
                       minHeight: '44px',
@@ -1289,7 +1289,7 @@ export default function GardenHomePage() {
             animate={s5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
             transition={{ duration: 0.7, delay: 0.1 }}
             style={{
-              fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em',
+              fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em',
               textTransform: 'uppercase', color: G.rose, fontWeight: 500,
               marginBottom: '0.75rem',
             }}
@@ -1342,7 +1342,7 @@ export default function GardenHomePage() {
             animate={s5 ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.7 }}
             style={{
-              fontFamily: sans, fontSize: '0.62rem', color: G.espressoFaint,
+              fontFamily: sans, fontSize: '0.75rem', color: G.espressoDim,
               lineHeight: 1.6,
             }}
           >
@@ -1437,8 +1437,8 @@ export default function GardenHomePage() {
             animate={s6 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             style={{
-              fontFamily: sans, fontSize: '0.52rem', letterSpacing: '0.35em',
-              textTransform: 'uppercase', color: G.espressoFaint,
+              fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.22em',
+              textTransform: 'uppercase', color: G.espressoDim,
               marginBottom: '2.5rem',
             }}
           >
@@ -1467,19 +1467,19 @@ export default function GardenHomePage() {
               <motion.div key={ev.slug} whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}>
                 <Link
                   to={`/${ev.slug}`}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    fontFamily: sans, fontSize: '0.54rem',
-                    letterSpacing: '0.2em', textTransform: 'uppercase',
-                    color: ev.accent, fontWeight: 500, textDecoration: 'none',
-                    padding: '0.65rem 1.4rem',
-                    minHeight: '44px',
-                    border: `1px solid ${ev.accent}55`,
-                    borderRadius: '999px',
-                    background: 'rgba(253,250,245,0.6)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                  }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      fontFamily: sans, fontSize: '0.75rem',
+                      letterSpacing: '0.15em', textTransform: 'uppercase',
+                      color: ev.accent, fontWeight: 500, textDecoration: 'none',
+                      padding: '0.65rem 1.4rem',
+                      minHeight: '44px',
+                      border: `1px solid ${ev.accent}55`,
+                      borderRadius: '999px',
+                      background: 'rgba(253,250,245,0.6)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                    }}
                 >
                   {ev.city} →
                 </Link>
@@ -1492,8 +1492,8 @@ export default function GardenHomePage() {
             animate={s6 ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.9 }}
             style={{
-              fontFamily: sans, fontSize: '0.48rem', letterSpacing: '0.2em',
-              textTransform: 'uppercase', color: G.espressoFaint,
+              fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.15em',
+              textTransform: 'uppercase', color: G.espressoDim,
               marginTop: 'clamp(2rem, 5vh, 3.5rem)',
             }}
           >

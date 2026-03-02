@@ -30,4 +30,5 @@ export const EVENT_CONFIG = {
     tr: '15 Ağustos 2026',
     uz: '15 Avgust 2026',
   },
+  contactEmail: 'wedding@berfin-shamsiddin.com',
 } as const;

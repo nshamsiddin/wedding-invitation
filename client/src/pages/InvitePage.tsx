@@ -1,6 +1,6 @@
 import { useRef, useContext, useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useInView } from 'framer-motion';
@@ -23,22 +23,22 @@ import {
   generatePetals,
 } from '../garden/components/GardenAtmosphere';
 
-// ─── Palette values ───────────────────────────────────────────────────────────
-const PARCHMENT   = '#FDFAF5';
-const CREAM       = '#F5EFE4';
-const ESPRESSO    = '#2A1F1A';
-const ESPRESSO_DIM   = 'rgba(42,31,26,0.6)';
-const ESPRESSO_FAINT = 'rgba(42,31,26,0.28)';
-const GOLD        = '#B8924A';
-const GOLD_DIM    = 'rgba(184,146,74,0.45)';
-const ROSE        = '#C4848C';
+import {
+  PARCHMENT,
+  CREAM,
+  ESPRESSO,
+  ESPRESSO_DIM,
+  ESPRESSO_FAINT,
+  GOLD,
+  GOLD_DIM,
+  ROSE,
+  COUPLE_PHOTO,
+} from '../garden/tokens';
 
 const serif = '"Bodoni Moda", Georgia, serif';
 const sans  = '"DM Sans", system-ui, sans-serif';
 
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
-
-const COUPLE_PHOTO = '/IMG_2524.jpg';
 
 // iOS 26 liquid-glass: specular on Bodoni's hairline strokes → solid stems → translucent base
 const NAME_GRADIENT: CSSProperties = {
@@ -145,7 +145,7 @@ function ScrollCue({ inView }: { inView: boolean }) {
       >
         <div style={{ width: 3, height: 5, borderRadius: '999px', background: ROSE }} />
       </motion.div>
-      <span style={{ fontFamily: sans, fontSize: '0.48rem', letterSpacing: '0.32em', textTransform: 'uppercase', color: ESPRESSO_FAINT }}>
+      <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM }}>
         {t.scrollDown}
       </span>
     </motion.div>
@@ -170,6 +170,7 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<PublicRsvpValues>({
     resolver: zodResolver(publicRsvpSchema),
@@ -183,6 +184,14 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
   });
 
   const status = watch('status');
+  const guestCount = watch('guestCount');
+
+  // Clear partner name when dropping back to 1 guest
+  useEffect(() => {
+    if ((guestCount ?? 1) <= 1) {
+      setValue('partnerName', '');
+    }
+  }, [guestCount, setValue]);
 
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublic,
@@ -204,7 +213,14 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
   };
 
   return (
-    <form onSubmit={handleSubmit((values) => submitMutation.mutate(values))} noValidate className="space-y-5">
+    <motion.form
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      onSubmit={handleSubmit((values) => submitMutation.mutate(values))}
+      noValidate
+      className="space-y-5"
+    >
       <input type="hidden" {...register('token')} />
       <input type="hidden" {...register('eventId', { valueAsNumber: true })} />
 
@@ -216,12 +232,14 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
           <input id="pub-name" type="text" autoFocus {...register('name')} className={INPUT_CLASS} style={glassInput} placeholder="Your full name" />
           {errors.name && <p className="mt-1 text-xs" style={{ color: 'var(--accent-rose)' }}>{errors.name.message}</p>}
         </div>
-        <div>
-          <label htmlFor="pub-partner" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Partner's Name <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(if attending together)</span>
-          </label>
-          <input id="pub-partner" type="text" {...register('partnerName')} className={INPUT_CLASS} style={glassInput} placeholder="Partner's full name" />
-        </div>
+        {(guestCount ?? 1) > 1 && (
+          <div>
+            <label htmlFor="pub-partner" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+              Partner's Name <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <input id="pub-partner" type="text" {...register('partnerName')} className={INPUT_CLASS} style={glassInput} placeholder="Partner's full name" />
+          </div>
+        )}
         <div>
           <label htmlFor="pub-phone" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
             Phone <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
@@ -265,7 +283,7 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
       <button type="submit" disabled={submitMutation.isPending} className="btn-primary w-full" style={{ marginTop: '1rem' }}>
         {submitMutation.isPending ? 'Sending…' : 'Send RSVP'}
       </button>
-    </form>
+    </motion.form>
   );
 }
 
@@ -332,7 +350,14 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit((values) => claimMutation.mutate(values))} noValidate className="space-y-5">
+    <motion.form
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      onSubmit={handleSubmit((values) => claimMutation.mutate(values))}
+      noValidate
+      className="space-y-5"
+    >
       <input type="hidden" {...register('token')} />
 
       <div className="space-y-4">
@@ -410,10 +435,17 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
         </div>
       ))}
 
-      <button type="submit" disabled={claimMutation.isPending} className="btn-primary w-full" style={{ marginTop: '1rem' }}>
+      <motion.button
+        type="submit"
+        disabled={claimMutation.isPending}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        className="btn-primary w-full"
+        style={{ marginTop: '1rem', opacity: claimMutation.isPending ? 0.7 : 1 }}
+      >
         {claimMutation.isPending ? 'Registering…' : 'Confirm Registration'}
-      </button>
-    </form>
+      </motion.button>
+    </motion.form>
   );
 }
 
@@ -513,9 +545,23 @@ export default function InvitePage() {
           <h1 style={{ fontFamily: serif, fontStyle: 'italic', fontSize: '2rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
             {t.invitationNotFound}
           </h1>
-          <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, maxWidth: '22rem', margin: '0 auto' }}>
+          <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, maxWidth: '22rem', margin: '0 auto 1.5rem' }}>
             {t.invitationExpired}
           </p>
+          <Link
+            to="/"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+              fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.1em',
+              color: GOLD, textDecoration: 'none', fontWeight: 500,
+              padding: '0.65rem 1.4rem',
+              border: `1px solid ${GOLD_DIM}`,
+              borderRadius: '999px',
+              background: 'rgba(253,250,245,0.6)',
+            }}
+          >
+            ← Return to homepage
+          </Link>
         </div>
       </div>
     );
@@ -546,11 +592,22 @@ export default function InvitePage() {
 
   // ── Open (unclaimed) invitation — self-registration form ──
   if (data.type === 'open') {
-    return (
-      <div style={{ minHeight: '100vh', background: PARCHMENT, color: ESPRESSO, overflowX: 'hidden' }}>
-        <div className="grain-overlay" aria-hidden="true" />
-        <SideVinesFirefly />
+    const openEventName  = data.events[0]?.name ?? '';
+    const openCityPart   = openEventName.includes(' \u2014 ') ? openEventName.split(' \u2014 ')[1] : null;
+    const openCouplePart = openEventName.includes(' \u2014 ') ? openEventName.split(' \u2014 ')[0] : openEventName;
+    const [openFirst, openSecond] = parseCoupleName(openCouplePart);
+    const openMonogram = buildMonogram(openFirst, openSecond);
 
+    return (
+      <div
+        ref={wrapRef}
+        className="garden-wrap"
+        style={{ background: PARCHMENT, color: ESPRESSO }}
+      >
+        <div className="grain-overlay" aria-hidden="true" />
+        <SideVinesFirefly wrapRef={wrapRef} />
+
+        {/* ── Fixed nav ── */}
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -566,55 +623,188 @@ export default function InvitePage() {
             transition: 'background 0.4s, backdrop-filter 0.4s, border-color 0.4s',
           }}
         >
-          <p style={{ fontFamily: sans, fontSize: '0.5rem', fontWeight: 500, letterSpacing: '0.38em', textTransform: 'uppercase', color: ESPRESSO_FAINT }}>
-            {t.cordiallyInvited}
-          </p>
+          <Link
+            to="/"
+            style={{ textDecoration: 'none' }}
+            aria-label="Return to homepage"
+          >
+            <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+              onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
+            >
+              {openMonogram}
+            </p>
+          </Link>
           <LanguageSwitcher />
         </motion.header>
 
-        <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6rem 1.5rem 4rem', position: 'relative', overflow: 'hidden', background: PARCHMENT }}>
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 65% 55% at 50% 45%, rgba(240,200,204,0.25) 0%, transparent 70%)' }} />
+        {/* ════════════════════ HERO ════════════════════ */}
+        <section
+          className="garden-slide"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: PARCHMENT }}
+          aria-label="Invitation hero"
+        >
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 65% 55% at 50% 45%, rgba(240,200,204,0.3) 0%, transparent 70%)' }} />
           <FloatingPetals petals={HERO_PETALS} />
           <VineCornerTL inView={true} />
           <VineCornerBR inView={true} />
 
-          <div style={{ maxWidth: '40rem', width: '100%', position: 'relative', zIndex: 10 }}>
-            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem' }}
-              >
-                <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.7 }} aria-hidden="true" />
-                <span style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
-                  {t.youveBeenInvited}
-                </span>
-                <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.7 }} aria-hidden="true" />
-              </motion.div>
+          <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '68rem', padding: 'clamp(5rem, 10vh, 8rem) clamp(1.5rem, 6vw, 4rem) clamp(3rem, 7vh, 5rem)', textAlign: 'center' }}>
+            {/* "YOU'VE BEEN INVITED" overline */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
+            >
+              <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
+              <span style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+                {t.youveBeenInvited}
+              </span>
+              <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
+            </motion.div>
+
+            {/* Couple name — same large gradient reveal as personal invite */}
+            {openSecond ? (
+              <>
+                <motion.h1
+                  initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.3, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                >
+                  {openFirst}
+                </motion.h1>
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.7, delay: 0.9 }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', margin: 'clamp(0.2rem, 0.6vw, 0.5rem) 0', transformOrigin: 'center' }}
+                  aria-hidden="true"
+                >
+                  <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
+                  <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
+                  <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
+                </motion.div>
+                <motion.h1
+                  initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.3, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                >
+                  {openSecond}
+                </motion.h1>
+              </>
+            ) : (
               <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.8 }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2rem, 6vw, 3.5rem)', color: ESPRESSO, marginBottom: '1.5rem' }}
+                initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 1.3, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', ...NAME_GRADIENT }}
+              >
+                {openCouplePart}
+              </motion.h1>
+            )}
+
+            {openCityPart && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.0, duration: 0.6 }}
+                style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
+              >
+                {openCityPart}
+              </motion.p>
+            )}
+
+            {/* ♡ divider */}
+            <motion.div
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{ scaleX: 1, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.0 }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: 'clamp(1.5rem, 3vh, 2rem) 0' }}
+              aria-hidden="true"
+            >
+              <div style={{ height: 1, width: 60, background: `linear-gradient(to right, transparent, ${GOLD_DIM})` }} />
+              <span style={{ color: ROSE, fontSize: '0.6rem' }}>♡</span>
+              <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
+            </motion.div>
+
+            {/* Register CTA */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.1 }}
+            >
+              <MagneticButton onClick={scrollToRSVP} className="btn-primary" aria-label={t.pleaseRegister}>
+                {t.pleaseRegister}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </MagneticButton>
+            </motion.div>
+
+            <ScrollCue inView={true} />
+          </div>
+        </section>
+
+        {/* ════════════════════ REGISTRATION FORM ════════════════════ */}
+        <section
+          ref={rsvpRef}
+          id="rsvp"
+          className="garden-slide-tall"
+          style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: CREAM }}
+          aria-labelledby="open-register-heading"
+        >
+          <VineCornerBR inView={rsvpInView} />
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 60% 55% at 50% 50%, rgba(240,200,204,0.18) 0%, transparent 70%)' }} />
+
+          <div style={{ maxWidth: '40rem', margin: '0 auto', width: '100%', padding: 'clamp(4.5rem,8vh,6rem) 1.5rem 0', position: 'relative', zIndex: 5 }}>
+            <FlowerIcon inView={rsvpInView} />
+
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
+                style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
+              >
+                {t.youveBeenInvited}
+              </motion.p>
+              <motion.h2
+                id="open-register-heading"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, margin: '0 0 1rem' }}
               >
                 {t.pleaseRegister}
-              </motion.h1>
-              <GardenDivider />
+              </motion.h2>
+              <motion.div
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 1.2, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                style={{ height: 1, maxWidth: '16rem', margin: '0 auto', background: `linear-gradient(to right, transparent, ${ROSE}, transparent)`, transformOrigin: 'center' }}
+                aria-hidden="true"
+              />
             </div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
               className="glass rounded-3xl noise"
               style={{ padding: 'clamp(1.5rem, 5vw, 2.5rem)', boxShadow: 'var(--shadow-lg)', position: 'relative' }}
             >
-              {/* Animated top accent line replaces static 60px line */}
               <motion.div
                 initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 1.2, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 1.2, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: 1, background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`, transformOrigin: 'center' }}
                 aria-hidden="true"
               />
@@ -628,6 +818,27 @@ export default function InvitePage() {
                   onSuccess={() => setClaimSuccess(true)}
                 />
               )}
+            </motion.div>
+
+            {/* Footer note */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 1, delay: 0.8 }}
+              style={{ textAlign: 'center', paddingTop: '2rem', paddingBottom: 'clamp(1.5rem, 4vh, 2.5rem)' }}
+            >
+              <motion.div
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                style={{ height: 1, maxWidth: '10rem', margin: '0 auto 0.6rem', background: `linear-gradient(to right, transparent, ${GOLD_DIM}, transparent)`, transformOrigin: 'center' }}
+                aria-hidden="true"
+              />
+              <p style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.1em', color: ESPRESSO_DIM }}>
+                {t.madeWithLove}
+              </p>
             </motion.div>
           </div>
         </section>
@@ -681,9 +892,18 @@ export default function InvitePage() {
           transition: 'background 0.4s, backdrop-filter 0.4s, border-color 0.4s',
         }}
       >
-        <p style={{ fontFamily: sans, fontSize: '0.5rem', fontWeight: 500, letterSpacing: '0.38em', textTransform: 'uppercase', color: ESPRESSO_FAINT }}>
-          {monogram}
-        </p>
+        <Link
+          to="/"
+          style={{ textDecoration: 'none' }}
+          aria-label="Return to homepage"
+        >
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+            onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
+          >
+            {monogram}
+          </p>
+        </Link>
         <LanguageSwitcher />
       </motion.header>
 
@@ -775,7 +995,7 @@ export default function InvitePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.2, duration: 0.6 }}
-              style={{ fontFamily: sans, fontSize: '0.54rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
+              style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
             >
               {eventCity}
             </motion.p>
@@ -862,7 +1082,7 @@ export default function InvitePage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.8 }}
-            style={{ textAlign: 'center', fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
+            style={{ textAlign: 'center', fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
           >
             {t.countingDown}
           </motion.p>
@@ -900,7 +1120,7 @@ export default function InvitePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{ duration: 0.8 }}
-              style={{ fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
+              style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
             >
               {t.venue}
             </motion.p>
@@ -945,7 +1165,7 @@ export default function InvitePage() {
                   boxShadow: '0 4px 20px rgba(42,31,26,0.06)',
                 }}
               >
-                <p style={{ fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: ESPRESSO_FAINT, marginBottom: '0.75rem' }}>
+                <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.75rem' }}>
                   {card.label}
                 </p>
                 <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: ESPRESSO, marginBottom: card.sub ? '0.25rem' : 0, lineHeight: 1.3 }}>
@@ -1002,7 +1222,7 @@ export default function InvitePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{ duration: 0.7, delay: 0.1 }}
-              style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
+              style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
             >
               {t.kindlyReply}
             </motion.p>
@@ -1061,7 +1281,7 @@ export default function InvitePage() {
               style={{ height: 1, maxWidth: '10rem', margin: '0 auto 0.6rem', background: `linear-gradient(to right, transparent, ${GOLD_DIM}, transparent)`, transformOrigin: 'center' }}
               aria-hidden="true"
             />
-            <p style={{ fontFamily: sans, fontSize: '0.62rem', letterSpacing: '0.12em', color: ESPRESSO_FAINT }}>
+            <p style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.1em', color: ESPRESSO_DIM }}>
               {t.madeWithLove}
             </p>
           </motion.div>

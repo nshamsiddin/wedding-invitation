@@ -202,6 +202,20 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
       .where(eq(schema.guestInvitations.token, data.token))
       .returning();
 
+    // Apply name corrections to the guest record when provided
+    if (data.name !== undefined || data.partnerName !== undefined) {
+      const inv = updated[0];
+      if (inv?.guestId) {
+        const nameUpdate: Partial<typeof schema.guests.$inferInsert> = {};
+        if (data.name !== undefined) nameUpdate.name = data.name;
+        if (data.partnerName !== undefined) nameUpdate.partnerName = data.partnerName;
+        await db
+          .update(schema.guests)
+          .set(nameUpdate)
+          .where(eq(schema.guests.id, inv.guestId));
+      }
+    }
+
     res.json({ invitation: updated[0], updated: true });
   } catch (error) {
     console.error('RSVP submit error:', error);

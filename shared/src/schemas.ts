@@ -32,6 +32,7 @@ export const rsvpFormSchema = z.object({
     .optional()
     .default(''),
   partnerDietary: z.string().max(500).trim().optional().default(''),
+  partnerName: z.string().max(100).trim().optional().default(''),
   message: z
     .string()
     .max(1000, 'Message must be under 1000 characters')
@@ -51,6 +52,9 @@ export const rsvpSubmitSchema = z.object({
   dietary: z.string().max(500).trim().optional().default(''),
   partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
+  // Optional name corrections: guests may fix a misspelling via the edit toggle
+  name: z.string().min(2).max(100).trim().optional(),
+  partnerName: z.string().max(100).trim().optional(),
 });
 
 // ─── Open invitation claim ────────────────────────────────────────────────────

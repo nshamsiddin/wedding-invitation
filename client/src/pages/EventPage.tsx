@@ -1,8 +1,10 @@
-import { useRef, useContext, useState, useEffect } from 'react';
+import { useRef, useContext, useState, useEffect, useCallback } from 'react';
 import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import CountdownTimer from '../components/CountdownTimer';
+import { EVENT_CONFIG } from '../config/event';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import MagneticButton from '../components/ui/MagneticButton';
 import { rsvpApi } from '../lib/api';
@@ -18,22 +20,22 @@ import {
   generatePetals,
 } from '../garden/components/GardenAtmosphere';
 
-// ─── Palette values (inline, no G object per spec) ────────────────────────────
-const PARCHMENT   = '#FDFAF5';
-const CREAM       = '#F5EFE4';
-const ESPRESSO    = '#2A1F1A';
-const ESPRESSO_DIM   = 'rgba(42,31,26,0.6)';
-const ESPRESSO_FAINT = 'rgba(42,31,26,0.28)';
-const GOLD        = '#B8924A';
-const GOLD_DIM    = 'rgba(184,146,74,0.45)';
-const ROSE        = '#C4848C';
+import {
+  PARCHMENT,
+  CREAM,
+  ESPRESSO,
+  ESPRESSO_DIM,
+  ESPRESSO_FAINT,
+  GOLD,
+  GOLD_DIM,
+  ROSE,
+  COUPLE_PHOTO,
+} from '../garden/tokens';
 
 const serif = '"Bodoni Moda", Georgia, serif';
 const sans  = '"DM Sans", system-ui, sans-serif';
 
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
-
-const COUPLE_PHOTO = '/IMG_2524.jpg';
 
 // iOS 26 liquid-glass: specular on Bodoni's hairline strokes → solid stems → translucent base
 const NAME_GRADIENT: CSSProperties = {
@@ -145,13 +147,95 @@ function ScrollCue({ inView }: { inView: boolean }) {
         <div style={{ width: 3, height: 5, borderRadius: '999px', background: ROSE }} />
       </motion.div>
       <span style={{
-        fontFamily: sans, fontSize: '0.48rem',
-        letterSpacing: '0.32em', textTransform: 'uppercase',
-        color: ESPRESSO_FAINT,
+        fontFamily: sans, fontSize: '0.65rem',
+        letterSpacing: '0.22em', textTransform: 'uppercase',
+        color: ESPRESSO_DIM,
       }}>
         {t.scrollDown}
       </span>
     </motion.div>
+  );
+}
+
+// ─── Section dot navigation ──────────────────────────────────────────────────
+function EventDotNav({
+  current,
+  total,
+  wrapRef,
+  sectionRefs,
+  onSetActive,
+  onDotClick,
+}: {
+  current: number;
+  total: number;
+  wrapRef: React.RefObject<HTMLDivElement | null>;
+  sectionRefs: React.RefObject<HTMLElement | null>[];
+  onSetActive: (i: number) => void;
+  onDotClick: (i: number) => void;
+}) {
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    sectionRefs.forEach((ref, i) => {
+      const el = ref.current;
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) onSetActive(i); },
+        { root: wrapRef.current, threshold: 0.45 },
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach(o => o.disconnect());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
+
+  return (
+    <nav
+      aria-label="Section navigation"
+      style={{
+        position: 'fixed',
+        right: '1rem',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 500,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      {Array.from({ length: total }, (_, i) => (
+        <motion.button
+          key={i}
+          onClick={() => onDotClick(i)}
+          aria-label={`Go to section ${i + 1}`}
+          aria-current={current === i ? 'true' : undefined}
+          whileHover={{ scale: 1.2 }}
+          whileTap={{ scale: 0.9 }}
+          style={{
+            width: 44, height: 44,
+            borderRadius: '50%',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            outline: 'none',
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <motion.div
+            animate={{
+              width: current === i ? 8 : 6,
+              height: current === i ? 8 : 6,
+              backgroundColor: current === i ? ROSE : ESPRESSO_DIM,
+            }}
+            transition={{ duration: 0.25 }}
+            style={{ borderRadius: '50%', flexShrink: 0 }}
+          />
+        </motion.button>
+      ))}
+    </nav>
   );
 }
 
@@ -162,10 +246,14 @@ export default function EventPage({ slug }: Props) {
   const heroRef      = useRef<HTMLElement>(null);
   const countdownRef = useRef<HTMLElement>(null);
   const detailsRef   = useRef<HTMLElement>(null);
+  const mapRef       = useRef<HTMLElement>(null);
   const rsvpRef      = useRef<HTMLElement>(null);
 
   const countdownInView = useInView(countdownRef, { root: wrapRef, once: true, amount: 0.3 });
   const rsvpInView     = useInView(rsvpRef,       { root: wrapRef, once: true, amount: 0.3 });
+
+  // Dot nav active section tracking
+  const [activeSection, setActiveSection] = useState(0);
 
   const t    = useTranslation();
   const { language } = useContext(LanguageContext);
@@ -194,6 +282,11 @@ export default function EventPage({ slug }: Props) {
 
   const scrollToDetails = () =>
     detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Section refs for dot nav — built after we know whether map exists
+  const sectionScrollTo = useCallback((ref: React.RefObject<HTMLElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   // ── Loading ──
   if (isLoading) {
@@ -228,7 +321,21 @@ export default function EventPage({ slug }: Props) {
           <h1 style={{ fontFamily: serif, fontStyle: 'italic', fontSize: '1.8rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
             {t.invitationNotFound}
           </h1>
-          <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM }}>{t.invitationNotFoundSub}</p>
+          <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, marginBottom: '1.5rem' }}>{t.invitationNotFoundSub}</p>
+          <Link
+            to="/"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+              fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.1em',
+              color: GOLD, textDecoration: 'none', fontWeight: 500,
+              padding: '0.65rem 1.4rem',
+              border: `1px solid ${GOLD_DIM}`,
+              borderRadius: '999px',
+              background: 'rgba(253,250,245,0.6)',
+            }}
+          >
+            ← Return to homepage
+          </Link>
         </div>
       </div>
     );
@@ -265,9 +372,18 @@ export default function EventPage({ slug }: Props) {
             transition: 'background 0.4s, backdrop-filter 0.4s, border-color 0.4s',
           }}
         >
-          <p style={{ fontFamily: sans, fontSize: '0.5rem', fontWeight: 500, letterSpacing: '0.38em', textTransform: 'uppercase', color: ESPRESSO_FAINT }}>
-            {monogram}
-          </p>
+          <Link
+            to="/"
+            style={{ textDecoration: 'none' }}
+            aria-label="Return to homepage"
+          >
+            <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+              onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
+            >
+              {monogram}
+            </p>
+          </Link>
           <LanguageSwitcher />
         </motion.header>
 
@@ -286,7 +402,7 @@ export default function EventPage({ slug }: Props) {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '2.5rem' }}
             >
               <div style={{ width: 36, height: 1, background: GOLD, opacity: 0.7 }} aria-hidden="true" />
-              <span style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: GOLD, fontWeight: 500 }}>
+              <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: GOLD, fontWeight: 500 }}>
                 {t.cordiallyInvited}
               </span>
               <div style={{ width: 36, height: 1, background: GOLD, opacity: 0.7 }} aria-hidden="true" />
@@ -338,7 +454,7 @@ export default function EventPage({ slug }: Props) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.0 }}
-                style={{ fontFamily: sans, fontSize: '0.54rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
+                style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
               >
                 {eventCity}
               </motion.p>
@@ -373,7 +489,7 @@ export default function EventPage({ slug }: Props) {
               style={{ textAlign: 'center' }}
             >
               <FlowerIcon inView={true} />
-              <p style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}>
+              <p style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}>
                 {t.kindlyReply}
               </p>
               <h2 style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(1.4rem, 3.5vw, 2rem)', lineHeight: 1.2, color: ESPRESSO, marginBottom: '1.25rem' }}>
@@ -383,15 +499,38 @@ export default function EventPage({ slug }: Props) {
               <p style={{ fontFamily: sans, fontSize: '0.78rem', lineHeight: 1.7, color: ESPRESSO_DIM, marginTop: '1.25rem', maxWidth: '26rem', marginLeft: 'auto', marginRight: 'auto' }}>
                 {t.personalInviteRequiredSub}
               </p>
-              <p style={{ fontFamily: sans, fontSize: '0.62rem', color: ESPRESSO_FAINT, lineHeight: 1.6, marginTop: '1rem' }}>
+              <p style={{ fontFamily: sans, fontSize: '0.75rem', color: ESPRESSO_DIM, lineHeight: 1.6, marginTop: '1rem' }}>
                 {t.personalLinkHint}
               </p>
+              <div style={{ marginTop: '2rem' }}>
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 1.0, delay: 1.6, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ height: 1, maxWidth: '10rem', margin: '0 auto 1.25rem', background: `linear-gradient(to right, transparent, ${GOLD_DIM}, transparent)`, transformOrigin: 'center' }}
+                  aria-hidden="true"
+                />
+                <a
+                  href={`mailto:${EVENT_CONFIG.contactEmail}?subject=Invitation%20Link%20Help`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                    fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.08em',
+                    color: GOLD, textDecoration: 'none', fontWeight: 500,
+                    padding: '0.6rem 1.2rem',
+                    border: `1px solid ${GOLD_DIM}`,
+                    borderRadius: '999px',
+                    background: 'rgba(253,250,245,0.5)',
+                  }}
+                >
+                  Need help? Contact us →
+                </a>
+              </div>
             </motion.div>
           </div>
         </section>
 
         <footer style={{ padding: '2.5rem 1.5rem', textAlign: 'center', borderTop: `1px solid ${ESPRESSO_FAINT}` }}>
-          <p style={{ fontFamily: sans, fontSize: '0.7rem', color: ESPRESSO_FAINT }}>{t.madeWithLove}</p>
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', color: ESPRESSO_DIM }}>{t.madeWithLove}</p>
         </footer>
       </div>
     );
@@ -413,6 +552,11 @@ export default function EventPage({ slug }: Props) {
     { label: t.dressCode, value: fullEvent.dressCode ?? '—', sub: null },
   ];
 
+  const hasMap = !!fullEvent.mapsUrl;
+  const sectionRefs = hasMap
+    ? [heroRef, countdownRef, detailsRef, mapRef, rsvpRef]
+    : [heroRef, countdownRef, detailsRef, rsvpRef];
+
   return (
     <div
       ref={wrapRef}
@@ -423,6 +567,16 @@ export default function EventPage({ slug }: Props) {
 
       {/* Firefly canvas — fixed, covers all sections */}
       <SideVinesFirefly wrapRef={wrapRef} />
+
+      {/* ── Section dot navigation ── */}
+      <EventDotNav
+        current={activeSection}
+        total={sectionRefs.length}
+        wrapRef={wrapRef}
+        sectionRefs={sectionRefs}
+        onSetActive={setActiveSection}
+        onDotClick={(i) => sectionScrollTo(sectionRefs[i])}
+      />
 
       {/* ── Fixed nav ── */}
       <motion.header
@@ -440,9 +594,18 @@ export default function EventPage({ slug }: Props) {
           transition: 'background 0.4s, backdrop-filter 0.4s, border-color 0.4s',
         }}
       >
-        <p style={{ fontFamily: sans, fontSize: '0.5rem', fontWeight: 500, letterSpacing: '0.38em', textTransform: 'uppercase', color: ESPRESSO_FAINT }}>
-          {monogram}
-        </p>
+        <Link
+          to="/"
+          style={{ textDecoration: 'none' }}
+          aria-label="Return to homepage"
+        >
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+            onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
+          >
+            {monogram}
+          </p>
+        </Link>
         <LanguageSwitcher />
       </motion.header>
 
@@ -472,7 +635,7 @@ export default function EventPage({ slug }: Props) {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '2.5rem' }}
           >
             <div style={{ width: 36, height: 1, background: GOLD, opacity: 0.7 }} aria-hidden="true" />
-            <span style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: GOLD, fontWeight: 500 }}>
+            <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: GOLD, fontWeight: 500 }}>
               {t.cordiallyInvited}
             </span>
             <div style={{ width: 36, height: 1, background: GOLD, opacity: 0.7 }} aria-hidden="true" />
@@ -525,7 +688,7 @@ export default function EventPage({ slug }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.0, duration: 0.8 }}
-              style={{ fontFamily: sans, fontSize: '0.54rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
+              style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.5rem, 1.5vh, 1rem)' }}
             >
               {eventCity}
             </motion.p>
@@ -555,7 +718,7 @@ export default function EventPage({ slug }: Props) {
             }}>
               <img
                 src={COUPLE_PHOTO}
-                alt="The happy couple"
+                alt={secondName ? `${firstName} and ${secondName}` : firstName}
                 style={{
                   width: 'clamp(140px, 22vw, 260px)',
                   height: 'clamp(170px, 28vw, 320px)',
@@ -615,7 +778,7 @@ export default function EventPage({ slug }: Props) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.8 }}
-            style={{ textAlign: 'center', fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
+            style={{ textAlign: 'center', fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
           >
             {t.countingDown}
           </motion.p>
@@ -658,7 +821,7 @@ export default function EventPage({ slug }: Props) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{ duration: 0.8 }}
-              style={{ fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
+              style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
             >
               {t.aboutEvent}
             </motion.p>
@@ -703,7 +866,7 @@ export default function EventPage({ slug }: Props) {
                   boxShadow: '0 4px 20px rgba(42,31,26,0.06)',
                 }}
               >
-                <p style={{ fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: ESPRESSO_FAINT, marginBottom: '0.75rem' }}>
+                <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.75rem' }}>
                   {detail.label}
                 </p>
                 <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', fontWeight: 400, color: ESPRESSO, marginBottom: detail.sub ? '0.25rem' : 0, lineHeight: 1.3 }}>
@@ -723,6 +886,7 @@ export default function EventPage({ slug }: Props) {
       {/* ════════════════════ VENUE MAP ════════════════════ */}
       {fullEvent.mapsUrl && (
         <section
+          ref={mapRef}
           className="garden-slide"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: CREAM }}
           aria-label="Venue location"
@@ -734,7 +898,7 @@ export default function EventPage({ slug }: Props) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.8 }}
-                style={{ fontFamily: sans, fontSize: '0.55rem', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
+                style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
               >
                 {t.venue}
               </motion.p>
@@ -790,7 +954,7 @@ export default function EventPage({ slug }: Props) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
+            style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
           >
             {t.kindlyReply}
           </motion.p>
@@ -830,7 +994,7 @@ export default function EventPage({ slug }: Props) {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            style={{ fontFamily: sans, fontSize: '0.7rem', color: ESPRESSO_FAINT, lineHeight: 1.6 }}
+            style={{ fontFamily: sans, fontSize: '0.78rem', color: ESPRESSO_DIM, lineHeight: 1.6 }}
           >
             {t.personalInviteRequiredSub}
           </motion.p>
@@ -852,7 +1016,7 @@ export default function EventPage({ slug }: Props) {
             style={{ height: 1, maxWidth: '12rem', margin: '0 auto 0.75rem', background: `linear-gradient(to right, transparent, ${GOLD_DIM}, transparent)`, transformOrigin: 'center' }}
             aria-hidden="true"
           />
-          <p style={{ fontFamily: sans, fontSize: '0.62rem', letterSpacing: '0.12em', color: ESPRESSO_FAINT }}>
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.1em', color: ESPRESSO_DIM }}>
             {t.madeWithLove}
           </p>
         </motion.div>

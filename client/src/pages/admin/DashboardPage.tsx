@@ -43,20 +43,23 @@ function OpenInvitationRow({
     }
   };
 
+  const isPermanent = inv.isPublic;
+
   return (
-    <div className="flex items-center justify-between py-2 px-3 bg-amber-50 border border-amber-100 rounded-lg gap-3">
+    <div className={`flex items-center justify-between py-2.5 px-3 rounded-lg gap-3 border ${
+      isPermanent
+        ? 'bg-violet-50 border-violet-200'
+        : 'bg-amber-50 border-amber-100'
+    }`}>
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
-            Open Link
-          </span>
-          {inv.isPublic ? (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200" title="Permanent — reusable by anyone">
-              ∞ Public
+          {isPermanent ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-600 text-white" title="Permanent link — reusable by anyone, no limit">
+              <span aria-hidden="true">∞</span> Permanent
             </span>
           ) : (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200" title="One-time — locked after first use">
-              1×
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200" title="One-time — locked after first use">
+              1× One-time
             </span>
           )}
           <span className="text-xs text-gray-600 font-sans">{inv.eventName ?? inv.eventSlug}</span>
@@ -66,7 +69,11 @@ function OpenInvitationRow({
       <div className="flex items-center gap-1 flex-shrink-0">
         <button
           onClick={handleCopy}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-sans bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-sans bg-white transition-colors focus:outline-none focus:ring-1 ${
+            isPermanent
+              ? 'border border-violet-300 text-violet-700 hover:bg-violet-50 focus:ring-violet-400'
+              : 'border border-amber-200 text-amber-700 hover:bg-amber-50 focus:ring-amber-400'
+          }`}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />

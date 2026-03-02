@@ -36,7 +36,10 @@ export interface RSVPSubmitBody {
   status: 'attending' | 'declined' | 'maybe';
   guestCount?: number;
   dietary?: string;
+  partnerDietary?: string;
   message?: string;
+  name?: string;
+  partnerName?: string;
 }
 
 export const api = axios.create({
