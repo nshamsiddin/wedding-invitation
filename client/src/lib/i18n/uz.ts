@@ -5,8 +5,9 @@ export const uz: Translations = {
 
   // Hero
   cordiallyInvited: 'Sizi to\'yimizga taklif etishdan mamnunmiz',
-  rsvpButton: 'RSVP',
-  scrollDown: 'RSVP\'ga o\'tish',
+  rsvpButton: 'Tasdiqlash',
+  scrollDown: 'Pastga aylantiring',
+  scrollCta: 'Hikoyamizni kashf eting',
 
   // Event details section
   aboutEvent: 'Bayram',
@@ -25,7 +26,7 @@ export const uz: Translations = {
 
   // RSVP section
   kindlyReply: 'Iltimos Javob Bering',
-  rsvpHeading: 'RSVP',
+  rsvpHeading: 'Ishtirokni Tasdiqlash',
   rsvpDeadlineNote: 'Iltimos shu sanagacha javob bering:',
 
   // RSVP form fields
@@ -65,7 +66,7 @@ export const uz: Translations = {
   rsvpUpdated: 'RSVP Yangilandi',
   attendingHeadline: 'Siz bilan nishonlashni sabrsizlik bilan kutamiz!',
   attendingSub: (count: number) =>
-    `${count} ${count === 1 ? 'mehmon' : 'mehmon'} uchun kelishingizni tasdiqladingiz. Ko'proq ma'lumot uchun siz bilan bog'lanamiz.`,
+    `${count} mehmon uchun kelishingizni tasdiqladingiz. Ko'proq ma'lumot uchun siz bilan bog'lanamiz.`,
   declinedHeadline: 'Sizni sog\'inib qolamiz!',
   declinedSub: 'Xabar berganingiz uchun rahmat. Bayramda sizni ko\'rishni istardik.',
   maybeHeadline: 'Kela olishingizni umid qilamiz!',
@@ -94,7 +95,7 @@ export const uz: Translations = {
   personalInviteRequired: 'Shaxsiy Taklif Talab Etiladi',
   personalInviteRequiredSub:
     'Ishtirokingizni tasdiqlash uchun taklifnomangizda berilgan shaxsiy havoladan foydalaning. Har bir mehmon o\'z RSVP sahifasi uchun noyob havola oladi.',
-  personalLinkHint: 'Shaxsiy havolangiz uchun taklifnomangizni tekshiring',
+  personalLinkHint: 'Shaxsiy havolangiz siz bilan SMS, WhatsApp yoki chop etilgan taklif orqali ulashildi.',
 
   // HomePage
   chooseCity: 'To\'y tantanangizni tanlang',
@@ -107,11 +108,39 @@ export const uz: Translations = {
   madeWithLove: 'Berfin & Shamsiddin uchun ♡ bilan yaratildi',
 
   // EventPage / InvitePage — garden additions
-  countingDown: 'Ortigacha',
+  countingDown: 'Orqaga hisoblash',
   untilTheDay: 'Birgalikda Nishonlaguncha',
-  personalInvitationFor: 'Shaxsiy Taklif',
-  youveBeenInvited: 'Siz taklif etildingiz',
+  personalInvitationFor: 'Shaxsiy Taklifnoma',
+  youveBeenInvited: 'Siz taklif etilgansiz',
   pleaseRegister: "Iltimos, Ro'yxatdan O'ting",
   invitationAlreadyClaimed: 'Bu taklif allaqachon ishlatilgan',
   invitationAlreadyClaimedSub: "Bu havola avval ishlatilgan. Xato deb hisoblasangiz, juftlik bilan bog'laning.",
+
+  editName: "O'zgartirish",
+  lockName: 'Qulflash',
+
+  writtenInBlooms: 'Gullar Bilan Yozilgan',
+  coupleQuote: '"Ikki jon, bir muhabbat, abadiy birgalikda gullaydi."',
+  joinUsInGarden: "Bog'imizga Taklif Etamiz",
+  foreverAndAlways: 'Abadiyatgacha · 2026',
+
+  whosComing: 'Kimlar Keladi',
+  aNoteToUs: 'Bizga Xabar',
+  partnerNameLabel: 'Hamrohingiz Ismi',
+  partnerNamePlaceholder: 'Hamrohingizning to\'liq ismi',
+  guestsShortLabel: 'Mehmonlar',
+  attendanceShortLabel: 'Ishtirok',
+  phoneLabel: 'Telefon',
+  chapter: 'Bob',
+  returnToHomepage: 'Bosh sahifaga qaytish',
+  needHelp: 'Yordam kerakmi? Biz bilan bog\'laning',
+  rsvpReceived: 'Ishtirok tasdiqlandi!',
+  submitFailed: 'Yuborib bo\'lmadi. Iltimos, qayta urinib ko\'ring.',
+  registrationComplete: 'Ro\'yxatdan o\'tish yakunlandi!',
+  registerFailed: 'Ro\'yxatdan o\'tib bo\'lmadi. Iltimos, qayta urinib ko\'ring.',
+  confirmRegistration: 'Ro\'yxatdan O\'tishni Tasdiqlash',
+  registering: 'Ro\'yxatdan o\'tilmoqda…',
+  youreRegistered: 'Ro\'yxatdan o\'tdingiz!',
+  thankYouRegistering: 'Ro\'yxatdan o\'tganingiz uchun rahmat. Siz bilan birga nishonlashni sabrsizlik bilan kutamiz.',
+  happyCoupleAlt: 'Baxtli juftlik',
 };

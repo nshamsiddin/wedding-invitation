@@ -43,9 +43,9 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontFamily: '"DM Sans", system-ui, sans-serif',
-  fontSize: '0.62rem',
+  fontSize: '0.8rem',
   fontWeight: 500,
-  letterSpacing: '0.15em',
+  letterSpacing: '0.1em',
   textTransform: 'uppercase',
   color: 'var(--text-tertiary)',
   marginBottom: '0.4rem',
@@ -151,9 +151,9 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
   const sectionLabelStyle: React.CSSProperties = {
     fontFamily: '"DM Sans", system-ui, sans-serif',
-    fontSize: '0.65rem',
+    fontSize: '0.85rem',
     fontWeight: 600,
-    letterSpacing: '0.18em',
+    letterSpacing: '0.12em',
     textTransform: 'uppercase',
     color: 'var(--text-tertiary)',
     marginBottom: '0.1rem',
@@ -208,12 +208,12 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
       {/* ── Section 1: Who's coming ── */}
       <div style={sectionCardStyle}>
-        <p style={sectionLabelStyle}>Who's coming</p>
+        <p style={sectionLabelStyle}>{t.whosComing}</p>
 
         {/* Name */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-            <label style={{ ...labelStyle, marginBottom: 0 }}>{partnerName ? 'Guests' : t.nameLabel}</label>
+            <label style={{ ...labelStyle, marginBottom: 0 }}>{partnerName ? t.guestsShortLabel : t.nameLabel}</label>
             <button
               type="button"
               onClick={() => setEditingNames((v) => !v)}
@@ -222,10 +222,11 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                padding: '0.2rem',
+                padding: '0.2rem 0.4rem',
                 color: editingNames ? 'var(--accent-gold)' : 'var(--text-tertiary)',
                 display: 'flex',
                 alignItems: 'center',
+                gap: '0.3rem',
                 transition: 'color 0.2s',
               }}
             >
@@ -240,6 +241,14 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               )}
+              <span style={{
+                fontSize: '0.72rem',
+                fontFamily: '"DM Sans", system-ui, sans-serif',
+                fontWeight: 500,
+                letterSpacing: '0.05em',
+              }}>
+                {editingNames ? t.lockName : t.editName}
+              </span>
             </button>
           </div>
 
@@ -269,7 +278,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                   style={getFocusedInputStyle('partnerName')}
                   onFocus={() => setFocusedField('partnerName')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="Partner's name"
+                  placeholder={t.partnerNamePlaceholder}
                 />
               )}
             </div>
@@ -346,10 +355,10 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                     {symbol}
                   </span>
                   <span style={{
-                    fontSize: '0.65rem',
+                    fontSize: '0.85rem',
                     fontFamily: '"DM Sans", system-ui, sans-serif',
                     fontWeight: 500,
-                    letterSpacing: '0.08em',
+                    letterSpacing: '0.04em',
                     textTransform: 'uppercase' as const,
                   }}>
                     {label}
@@ -395,7 +404,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
       {/* ── Section 2: A note to us ── */}
       <div style={sectionCardStyle}>
-        <p style={sectionLabelStyle}>A note to us</p>
+        <p style={sectionLabelStyle}>{t.aNoteToUs}</p>
         <div>
           <label htmlFor="rsvp-message" style={labelStyle}>
             {t.messageLabel}{' '}

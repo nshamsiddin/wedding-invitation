@@ -55,9 +55,9 @@ export default {
         sage:    { DEFAULT: '#9BAF8E' },
       },
       fontFamily: {
-        serif:   ['"Cormorant Garamond"', 'Georgia', 'serif'],
-        display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
-        body:    ['"Inter"', 'system-ui', 'sans-serif'],
+        serif:   ['"GlossilyEnigmatic"', 'cursive'],
+        display: ['"GlossilyEnigmatic"', 'cursive'],
+        body:    ['"DM Sans"', 'system-ui', 'sans-serif'],
         sans:    ['"Inter"', 'system-ui', 'sans-serif'],
       },
       animation: {

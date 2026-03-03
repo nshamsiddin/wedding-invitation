@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Custom Fonts ───────────────────────────────────────────────── */
+/* GlossilyEnigmatic: exclude digits (U+0030–0039) so they fall back to DM Sans */
+@font-face {
+  font-family: 'GlossilyEnigmatic';
+  src: url('/fonts/GlossilyEnigmatic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-002F, U+003A-10FFFF;
+}
+
 /* ─── CSS Custom Properties ─────────────────────────────────────── */
 :root {
   --bg:          #FAF7F2;
@@ -12,13 +23,18 @@
   --text-primary:   #1A1210;
   --text-secondary: rgba(26, 18, 16, 0.55);
   --text-tertiary:  rgba(26, 18, 16, 0.35);
-  --accent-gold:    #C4975A;
-  --accent-rose:    #C9808A;
+  --accent-gold:    #B8924A;
+  --accent-rose:    #C4848C;
   --glass-bg:    rgba(255, 255, 255, 0.65);
   --glass-border: rgba(255, 255, 255, 0.8);
   --shadow-sm: 0 2px 12px rgba(0,0,0,0.06);
   --shadow-md: 0 8px 32px rgba(0,0,0,0.08);
   --shadow-lg: 0 24px 80px rgba(0,0,0,0.10);
+  /* ── Display font: Glossily Enigmatic for names & cities; digits fall back to Cormorant Garamond ── */
+  --font-display: 'GlossilyEnigmatic', 'Cormorant Garamond', 'DM Sans', cursive;
+  --font-display-style: normal;
+  /* ── Digits: Cormorant Garamond for elegant countdown numbers ── */
+  --font-digits: 'Cormorant Garamond', Georgia, serif;
 }
 
 .dark {
@@ -100,15 +116,15 @@ a, button, [role="button"], input, select, textarea, label[for] {
 
 /* ─── Typography ─────────────────────────────────────────────────── */
 .text-display {
-  font-family: 'Bodoni Moda', Georgia, serif;
+  font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: -0.02em;
   line-height: 0.95;
 }
 
 .text-display-italic {
-  font-family: 'Bodoni Moda', Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-display);
+  font-style: var(--font-display-style);
   font-weight: 400;
   letter-spacing: -0.01em;
   line-height: 0.95;
@@ -116,9 +132,9 @@ a, button, [role="button"], input, select, textarea, label[for] {
 
 .text-overline {
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
 }
 
@@ -505,7 +521,7 @@ a, button, [role="button"], input, select, textarea, label[for] {
 .garden-slide {
   scroll-snap-align: start;
   height: 100dvh;
-  overflow: hidden;
+  overflow: clip;
   position: relative;
 }
 .garden-slide-tall {
@@ -513,6 +529,7 @@ a, button, [role="button"], input, select, textarea, label[for] {
   height: 100dvh;
   overflow-y: scroll;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   position: relative;
   scrollbar-width: none;
 }

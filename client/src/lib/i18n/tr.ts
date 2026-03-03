@@ -5,8 +5,9 @@ export const tr: Translations = {
 
   // Hero
   cordiallyInvited: 'Sizi düğünümüze davet etmekten onur duyuyoruz',
-  rsvpButton: 'RSVP',
-  scrollDown: 'RSVP\'ye gidin',
+  rsvpButton: 'Onayla',
+  scrollDown: 'Aşağı kaydırın',
+  scrollCta: 'Hikayemizi keşfedin',
 
   // Event details section
   aboutEvent: 'Kutlama',
@@ -25,7 +26,7 @@ export const tr: Translations = {
 
   // RSVP section
   kindlyReply: 'Lütfen Yanıt Verin',
-  rsvpHeading: 'RSVP',
+  rsvpHeading: 'Katılım Onayı',
   rsvpDeadlineNote: 'Lütfen şu tarihe kadar yanıtlayın:',
 
   // RSVP form fields
@@ -65,7 +66,7 @@ export const tr: Translations = {
   rsvpUpdated: 'RSVP Güncellendi',
   attendingHeadline: 'Sizinle kutlamayı sabırsızlıkla bekliyoruz!',
   attendingSub: (count: number) =>
-    `${count} ${count === 1 ? 'kişilik' : 'kişilik'} katılımınızı onayladınız. Daha fazla ayrıntı için sizinle iletişime geçeceğiz.`,
+    `${count} kişilik katılımınızı onayladınız. Daha fazla ayrıntı için sizinle iletişime geçeceğiz.`,
   declinedHeadline: 'Sizi özleyeceğiz!',
   declinedSub: 'Bize bildirdiğiniz için teşekkür ederiz. Kutlamada yanımızda olmanızı çok isterdik.',
   maybeHeadline: 'Umarız katılabilirsiniz!',
@@ -94,7 +95,7 @@ export const tr: Translations = {
   personalInviteRequired: 'Kişisel Davetiye Gerekli',
   personalInviteRequiredSub:
     'Katılımınızı onaylamak için davetiyenizde yer alan kişisel bağlantıyı kullanın. Her misafir kendi RSVP sayfası için benzersiz bir bağlantı alır.',
-  personalLinkHint: 'Kişisel bağlantınız için davetiyenizi kontrol edin',
+  personalLinkHint: 'Kişisel bağlantınız size SMS, WhatsApp veya basılı davetiye ile gönderildi.',
 
   // HomePage
   chooseCity: 'Düğün kutlamanızı seçin',
@@ -104,14 +105,42 @@ export const tr: Translations = {
   celebrationBegun: 'Kutlama başladı!',
 
   // Footer
-  madeWithLove: 'Berfin & Şamsiddin için ♡ ile yapıldı',
+  madeWithLove: 'Berfin & Shamsiddin için ♡ ile yapıldı',
 
   // EventPage / InvitePage — garden additions
   countingDown: 'Geri Sayım',
   untilTheDay: 'Birlikte Kutlayana Kadar',
-  personalInvitationFor: 'Kişisel Davetiye',
-  youveBeenInvited: 'Davet edildiniz',
+  personalInvitationFor: 'Kişisel Davetiyeniz',
+  youveBeenInvited: 'Davetlisiniz',
   pleaseRegister: 'Lütfen Kayıt Olun',
   invitationAlreadyClaimed: 'Bu davetiye zaten kullanılmış',
   invitationAlreadyClaimedSub: 'Bu bağlantı daha önce kullanılmış. Hata olduğunu düşünüyorsanız lütfen çift ile iletişime geçin.',
+
+  editName: 'Düzenle',
+  lockName: 'Kilitle',
+
+  writtenInBlooms: 'Çiçeklerle Yazılmış',
+  coupleQuote: '"İki ruh, bir aşk, birlikte sonsuza dek çiçekleniyor."',
+  joinUsInGarden: 'Bahçemize Katılın',
+  foreverAndAlways: 'Sonsuza Dek · 2026',
+
+  whosComing: 'Kimler Geliyor',
+  aNoteToUs: 'Bize Bir Not',
+  partnerNameLabel: 'Eşinizin Adı',
+  partnerNamePlaceholder: 'Eşinizin tam adı',
+  guestsShortLabel: 'Misafirler',
+  attendanceShortLabel: 'Katılım',
+  phoneLabel: 'Telefon',
+  chapter: 'Bölüm',
+  returnToHomepage: 'Ana sayfaya dön',
+  needHelp: 'Yardım mı lazım? Bize ulaşın',
+  rsvpReceived: 'Katılım onayı alındı!',
+  submitFailed: 'Gönderilemedi. Lütfen tekrar deneyin.',
+  registrationComplete: 'Kayıt tamamlandı!',
+  registerFailed: 'Kayıt başarısız. Lütfen tekrar deneyin.',
+  confirmRegistration: 'Kaydı Onayla',
+  registering: 'Kaydediliyor…',
+  youreRegistered: 'Kaydınız tamamlandı!',
+  thankYouRegistering: 'Kaydınız için teşekkür ederiz. Sizinle kutlamayı dört gözle bekliyoruz.',
+  happyCoupleAlt: 'Mutlu çift',
 };

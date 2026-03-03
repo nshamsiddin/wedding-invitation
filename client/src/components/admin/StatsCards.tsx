@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import type { AdminEvent } from '../../lib/api';
+import { PARCHMENT, ESPRESSO_DIM, GOLD_DIM } from '../../garden/tokens';
 
 interface Props {
   events: AdminEvent[];
@@ -9,10 +10,10 @@ interface Props {
 
 function SkeletonCard() {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-      <div className="h-3 w-20 rounded mb-3 bg-gray-200 animate-pulse" />
-      <div className="h-8 w-12 rounded mb-1 bg-gray-200 animate-pulse" />
-      <div className="h-2 w-24 rounded bg-gray-100 animate-pulse" />
+    <div className="rounded-xl p-5 shadow-sm" style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}>
+      <div className="h-3 w-20 rounded mb-3 animate-pulse" style={{ background: GOLD_DIM }} />
+      <div className="h-8 w-12 rounded mb-1 animate-pulse" style={{ background: GOLD_DIM }} />
+      <div className="h-2 w-24 rounded animate-pulse" style={{ background: GOLD_DIM }} />
     </div>
   );
 }
@@ -66,14 +67,15 @@ function StatCard({ label, value, sub, valueColor, iconColor, iconKey, index }: 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm"
+      className="rounded-xl p-5 shadow-sm"
+      style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
     >
       <p className={`flex items-center gap-1.5 ${iconColor} text-xs font-sans uppercase tracking-wider mb-2`}>
         {ICONS[iconKey]}
-        <span className="text-gray-500">{label}</span>
+        <span style={{ color: ESPRESSO_DIM }}>{label}</span>
       </p>
       <p className={`font-sans text-3xl font-bold tabular-nums ${valueColor} mb-0.5`}>{value}</p>
-      {sub && <p className="text-gray-400 text-xs font-sans">{sub}</p>}
+      {sub && <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>{sub}</p>}
     </motion.div>
   );
 }
@@ -106,12 +108,12 @@ export default function StatsCards({ events, selectedEventId, isLoading }: Props
   }
 
   const cards: CardProps[] = [
-    { label: 'Invited',    value: stats.total,          valueColor: 'text-gray-900',    iconColor: 'text-gray-400',    iconKey: 'total',     index: 0 },
+    { label: 'Invited',    value: stats.total,          valueColor: 'text-[#2A1F1A]',  iconColor: 'text-[#2A1F1A]/60', iconKey: 'total',     index: 0 },
     { label: 'Attending',  value: stats.attending,      valueColor: 'text-emerald-700', iconColor: 'text-emerald-500', iconKey: 'attending', index: 1 },
     { label: 'Declined',   value: stats.declined,       valueColor: 'text-red-700',     iconColor: 'text-red-400',     iconKey: 'declined',  index: 2 },
     { label: 'Maybe',      value: stats.maybe,          valueColor: 'text-yellow-700',  iconColor: 'text-yellow-500',  iconKey: 'maybe',     index: 3 },
-    { label: 'No Response',value: stats.pending,        valueColor: 'text-gray-500',    iconColor: 'text-gray-400',    iconKey: 'pending',   index: 4 },
-    { label: 'Headcount',  value: stats.totalHeadcount, valueColor: 'text-blue-600',    iconColor: 'text-blue-500',    iconKey: 'headcount', index: 5, sub: 'attending guests' },
+    { label: 'No Response',value: stats.pending,        valueColor: 'text-[#2A1F1A]/60', iconColor: 'text-[#2A1F1A]/50', iconKey: 'pending',   index: 4 },
+    { label: 'Headcount',  value: stats.totalHeadcount, valueColor: 'text-[#B8924A]',  iconColor: 'text-[#B8924A]',    iconKey: 'headcount', index: 5, sub: 'attending guests' },
   ];
 
   return (

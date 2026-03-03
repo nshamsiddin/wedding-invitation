@@ -50,7 +50,12 @@ function ContactTab({
   });
 
   useEffect(() => {
-    reset({ name: guest.name, email: guest.email, phone: guest.phone ?? '', partnerName: guest.partnerName ?? '' });
+    reset({
+      name: guest.name,
+      email: guest.email ?? undefined,
+      phone: guest.phone ?? undefined,
+      partnerName: guest.partnerName ?? undefined,
+    });
   }, [guest, reset]);
 
   return (

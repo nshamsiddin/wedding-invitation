@@ -11,6 +11,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // allowedHosts lists domains the Vite dev server will accept Host headers from.
+    // The ngrok domain is needed here so the dev server serves requests tunnelled
+    // through ngrok. This file is dev-only; production serves the built static assets
+    // directly from Express and Vite is not involved.
+    allowedHosts: ['towy-delaine-wanderingly.ngrok-free.dev'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

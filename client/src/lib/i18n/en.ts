@@ -3,6 +3,7 @@ export type Translations = {
   cordiallyInvited: string;
   rsvpButton: string;
   scrollDown: string;
+  scrollCta: string;
   aboutEvent: string;
   eventSubheading: string;
   venue: string;
@@ -83,6 +84,40 @@ export type Translations = {
   pleaseRegister: string;
   invitationAlreadyClaimed: string;
   invitationAlreadyClaimedSub: string;
+  // RSVPForm — name editing toggle
+  editName: string;
+  lockName: string;
+  // HomePage — hardcoded strings now translated
+  writtenInBlooms: string;
+  coupleQuote: string;
+  joinUsInGarden: string;
+  foreverAndAlways: string;
+  // RSVPForm — section labels
+  whosComing: string;
+  aNoteToUs: string;
+  // Partner name field
+  partnerNameLabel: string;
+  partnerNamePlaceholder: string;
+  // Short form labels (used in open/public RSVP forms)
+  guestsShortLabel: string;
+  attendanceShortLabel: string;
+  phoneLabel: string;
+  // Navigation
+  chapter: string;
+  returnToHomepage: string;
+  needHelp: string;
+  // Toast messages
+  rsvpReceived: string;
+  submitFailed: string;
+  registrationComplete: string;
+  registerFailed: string;
+  // Registration form
+  confirmRegistration: string;
+  registering: string;
+  youreRegistered: string;
+  thankYouRegistering: string;
+  // Image alt text
+  happyCoupleAlt: string;
 };
 
 export const en: Translations = {
@@ -92,6 +127,7 @@ export const en: Translations = {
   cordiallyInvited: 'You are cordially invited to the wedding of',
   rsvpButton: 'RSVP',
   scrollDown: 'Scroll to RSVP',
+  scrollCta: 'Discover our story',
 
   // Event details section
   aboutEvent: 'The Celebration',
@@ -179,7 +215,7 @@ export const en: Translations = {
   personalInviteRequired: 'Personal Invitation Required',
   personalInviteRequiredSub:
     'To confirm your attendance, please use the personal link included in your invitation. Each guest receives a unique link to their own RSVP.',
-  personalLinkHint: 'Check your invitation for your personal link',
+  personalLinkHint: 'Your personal link was sent to you by SMS, WhatsApp, or printed card.',
 
   // HomePage
   chooseCity: 'Choose your wedding celebration',
@@ -189,7 +225,7 @@ export const en: Translations = {
   celebrationBegun: 'The celebration has begun!',
 
   // Footer
-  madeWithLove: 'Made with ♡ for Berfin & Şamsiddin',
+  madeWithLove: 'Made with ♡ for Berfin & Shamsiddin',
 
   // EventPage / InvitePage — garden additions
   countingDown: 'Counting Down',
@@ -199,4 +235,32 @@ export const en: Translations = {
   pleaseRegister: 'Please Register',
   invitationAlreadyClaimed: 'This invitation has already been claimed',
   invitationAlreadyClaimedSub: 'This link has already been used. If you believe this is an error, please contact the couple directly.',
+
+  editName: 'Edit',
+  lockName: 'Lock',
+
+  writtenInBlooms: 'Written in blooms',
+  coupleQuote: '"Two souls, one love, blooming together forever."',
+  joinUsInGarden: 'Join us in the garden',
+  foreverAndAlways: 'Forever & Always · 2026',
+
+  whosComing: "Who's Coming",
+  aNoteToUs: 'A Note to Us',
+  partnerNameLabel: "Partner's Name",
+  partnerNamePlaceholder: "Partner's full name",
+  guestsShortLabel: 'Guests',
+  attendanceShortLabel: 'Attendance',
+  phoneLabel: 'Phone',
+  chapter: 'Chapter',
+  returnToHomepage: 'Return to homepage',
+  needHelp: 'Need help? Contact us',
+  rsvpReceived: 'RSVP received!',
+  submitFailed: 'Failed to submit. Please try again.',
+  registrationComplete: 'Registration complete!',
+  registerFailed: 'Failed to register. Please try again.',
+  confirmRegistration: 'Confirm Registration',
+  registering: 'Registering…',
+  youreRegistered: "You're registered!",
+  thankYouRegistering: 'Thank you for registering. We look forward to celebrating with you.',
+  happyCoupleAlt: 'The happy couple',
 };

@@ -1,7 +1,7 @@
 export const EVENT_CONFIG = {
   names: {
     en: "Berfin & Shamsiddin",
-    tr: "Berfin & Şamsiddin",
+    tr: "Berfin & Shamsiddin",
     uz: "Berfin & Shamsiddin",
   },
   date: '2026-09-12T18:00:00',

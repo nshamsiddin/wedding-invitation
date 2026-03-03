@@ -31,8 +31,10 @@ import {
   ROSE,
   COUPLE_PHOTO,
 } from '../garden/tokens';
+import { formatEventDate } from '../lib/formatDate';
 
-const serif = '"Bodoni Moda", Georgia, serif';
+const serif = 'var(--font-display)';
+const serifStyle = 'var(--font-display-style)' as 'normal' | 'italic';
 const sans  = '"DM Sans", system-ui, sans-serif';
 
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
@@ -51,12 +53,6 @@ const NAME_GRADIENT: CSSProperties = {
   WebkitTextFillColor: 'transparent',
   color: 'transparent',
 };
-
-function formatEventDate(dateStr: string, lang: Language): string {
-  const d = new Date(dateStr);
-  const localeMap: Record<Language, string> = { en: 'en-US', tr: 'tr-TR', uz: 'uz-UZ' };
-  return d.toLocaleDateString(localeMap[lang] ?? 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
 
 function parseCoupleName(rawName: string): [string, string | null] {
   const parts = rawName.split(' & ');
@@ -138,7 +134,7 @@ function ScrollCue({ inView }: { inView: boolean }) {
         transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
         style={{
           width: '1.1rem', height: '1.85rem', borderRadius: '999px',
-          border: `1px solid ${ESPRESSO_FAINT}`,
+          border: '1px solid rgba(42,31,26,0.12)',
           display: 'flex', alignItems: 'flex-start',
           justifyContent: 'center', paddingTop: '0.26rem',
         }}
@@ -151,7 +147,7 @@ function ScrollCue({ inView }: { inView: boolean }) {
         letterSpacing: '0.22em', textTransform: 'uppercase',
         color: ESPRESSO_DIM,
       }}>
-        {t.scrollDown}
+        {t.scrollCta}
       </span>
     </motion.div>
   );
@@ -203,38 +199,46 @@ function EventDotNav({
         alignItems: 'center',
       }}
     >
-      {Array.from({ length: total }, (_, i) => (
-        <motion.button
-          key={i}
-          onClick={() => onDotClick(i)}
-          aria-label={`Go to section ${i + 1}`}
-          aria-current={current === i ? 'true' : undefined}
-          whileHover={{ scale: 1.2 }}
-          whileTap={{ scale: 0.9 }}
-          style={{
-            width: 44, height: 44,
-            borderRadius: '50%',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            outline: 'none',
-            background: 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <motion.div
-            animate={{
-              width: current === i ? 8 : 6,
-              height: current === i ? 8 : 6,
-              backgroundColor: current === i ? ROSE : ESPRESSO_DIM,
+      {Array.from({ length: total }, (_, i) => {
+        const isActive = current === i;
+        const accent = i >= 3 ? '#6B8F71' : ROSE; // sage for venue/rsvp sections
+        return (
+          <motion.button
+            key={i}
+            onClick={() => onDotClick(i)}
+            aria-label={`Go to section ${i + 1}`}
+            aria-current={isActive ? 'true' : undefined}
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              width: 44, height: 44,
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              outline: 'none',
+              background: 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
-            transition={{ duration: 0.25 }}
-            style={{ borderRadius: '50%', flexShrink: 0 }}
-          />
-        </motion.button>
-      ))}
+          >
+            <motion.svg
+              viewBox="0 0 12 16"
+              width={isActive ? 14 : 10}
+              height={isActive ? 18 : 14}
+              style={{ flexShrink: 0 }}
+              animate={{ opacity: isActive ? 0.9 : 0.4 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ellipse
+                cx="6" cy="8" rx="5" ry="7"
+                fill={accent}
+                transform="rotate(-20 6 8)"
+              />
+            </motion.svg>
+          </motion.button>
+        );
+      })}
     </nav>
   );
 }
@@ -318,7 +322,7 @@ export default function EventPage({ slug }: Props) {
             ))}
             <circle cx="24" cy="24" r="5" fill={GOLD} opacity="0.7" />
           </svg>
-          <h1 style={{ fontFamily: serif, fontStyle: 'italic', fontSize: '1.8rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
+          <h1 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: '1.8rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
             {t.invitationNotFound}
           </h1>
           <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, marginBottom: '1.5rem' }}>{t.invitationNotFoundSub}</p>
@@ -334,7 +338,7 @@ export default function EventPage({ slug }: Props) {
               background: 'rgba(253,250,245,0.6)',
             }}
           >
-            ← Return to homepage
+            ← {t.returnToHomepage}
           </Link>
         </div>
       </div>
@@ -375,19 +379,19 @@ export default function EventPage({ slug }: Props) {
           <Link
             to="/"
             style={{ textDecoration: 'none' }}
-            aria-label="Return to homepage"
+          aria-label={t.returnToHomepage}
+        >
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+            onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
           >
-            <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
-              onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
-            >
-              {monogram}
-            </p>
-          </Link>
-          <LanguageSwitcher />
-        </motion.header>
+            {monogram}
+          </p>
+        </Link>
+        <LanguageSwitcher />
+      </motion.header>
 
-        {/* Teaser hero */}
+      {/* Teaser hero */}
         <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6rem 1.5rem 4rem', position: 'relative', overflow: 'hidden' }}>
           <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 65% 55% at 50% 45%, rgba(240,200,204,0.3) 0%, transparent 70%)' }} />
           <FloatingPetals petals={HERO_PETALS} />
@@ -409,12 +413,12 @@ export default function EventPage({ slug }: Props) {
             </motion.div>
 
             {secondName ? (
-              <>
+              <div style={{ padding: '0.2em 0' }}>
                 <motion.h1
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                  style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {firstName}
                 </motion.h1>
@@ -426,27 +430,29 @@ export default function EventPage({ slug }: Props) {
                   aria-hidden="true"
                 >
                   <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
-                  <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
+                  <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
                   <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
                 </motion.div>
                 <motion.h1
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                  style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {secondName}
                 </motion.h1>
-              </>
+              </div>
             ) : (
-              <motion.h1
-                initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
-              >
-                {rawCoupleName}
-              </motion.h1>
+              <div style={{ padding: '0.2em 0' }}>
+                <motion.h1
+                  initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                >
+                  {rawCoupleName}
+                </motion.h1>
+              </div>
             )}
 
             {eventCity && (
@@ -476,7 +482,7 @@ export default function EventPage({ slug }: Props) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.2 }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1rem, 3vw, 1.25rem)', color: ESPRESSO_DIM, marginBottom: '3rem' }}
+              style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(1rem, 3vw, 1.25rem)', color: ESPRESSO_DIM, marginBottom: '3rem' }}
             >
               {displayDateTeaser}
             </motion.p>
@@ -492,9 +498,9 @@ export default function EventPage({ slug }: Props) {
               <p style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}>
                 {t.kindlyReply}
               </p>
-              <h2 style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(1.4rem, 3.5vw, 2rem)', lineHeight: 1.2, color: ESPRESSO, marginBottom: '1.25rem' }}>
+              <p style={{ fontFamily: serif, fontWeight: 300, fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', letterSpacing: '0.02em', lineHeight: 1.2, color: ESPRESSO_DIM, marginBottom: '1.25rem' }}>
                 {t.personalInviteRequired}
-              </h2>
+              </p>
               <GardenDivider color={ROSE} maxWidth="16rem" />
               <p style={{ fontFamily: sans, fontSize: '0.78rem', lineHeight: 1.7, color: ESPRESSO_DIM, marginTop: '1.25rem', maxWidth: '26rem', marginLeft: 'auto', marginRight: 'auto' }}>
                 {t.personalInviteRequiredSub}
@@ -522,7 +528,7 @@ export default function EventPage({ slug }: Props) {
                     background: 'rgba(253,250,245,0.5)',
                   }}
                 >
-                  Need help? Contact us →
+                  {t.needHelp} →
                 </a>
               </div>
             </motion.div>
@@ -597,7 +603,7 @@ export default function EventPage({ slug }: Props) {
         <Link
           to="/"
           style={{ textDecoration: 'none' }}
-          aria-label="Return to homepage"
+          aria-label={t.returnToHomepage}
         >
           <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
             onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
@@ -643,12 +649,12 @@ export default function EventPage({ slug }: Props) {
 
           {/* Couple names */}
           {secondName ? (
-            <>
+            <div style={{ padding: '0.2em 0' }}>
               <motion.h1
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {firstName}
               </motion.h1>
@@ -660,27 +666,29 @@ export default function EventPage({ slug }: Props) {
                 aria-hidden="true"
               >
                 <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
-                <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
+                <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
                 <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
               </motion.div>
               <motion.h1
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {secondName}
               </motion.h1>
-            </>
+            </div>
           ) : (
-            <motion.h1
-              initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
-            >
-              {rawCoupleName}
-            </motion.h1>
+            <div style={{ padding: '0.2em 0' }}>
+              <motion.h1
+                initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 1.3, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(3rem, 11vw, 11rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+              >
+                {rawCoupleName}
+              </motion.h1>
+            </div>
           )}
 
           {eventCity && (
@@ -730,7 +738,7 @@ export default function EventPage({ slug }: Props) {
               />
               <div style={{
                 position: 'absolute', bottom: '0.75rem', left: 0, right: 0, textAlign: 'center',
-                fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+                fontFamily: serif, fontStyle: serifStyle, fontWeight: 300,
                 fontSize: '0.75rem', color: ESPRESSO_DIM, letterSpacing: '0.05em',
               }} aria-hidden="true">
                 {rawCoupleName}
@@ -788,7 +796,7 @@ export default function EventPage({ slug }: Props) {
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             style={{
-              textAlign: 'center', fontFamily: serif, fontStyle: 'italic', fontWeight: 300,
+              textAlign: 'center', fontFamily: serif, fontStyle: serifStyle, fontWeight: 300,
               fontSize: 'clamp(2rem, 5vw, 3.5rem)', letterSpacing: '-0.02em',
               color: ESPRESSO, marginBottom: '3.5rem',
             }}
@@ -830,7 +838,7 @@ export default function EventPage({ slug }: Props) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2rem, 5vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, marginBottom: '1.5rem' }}
+              style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 300, fontSize: 'clamp(2rem, 5vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, marginBottom: '1.5rem' }}
             >
               {t.eventSubheading}
             </motion.h2>
@@ -869,7 +877,7 @@ export default function EventPage({ slug }: Props) {
                 <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.75rem' }}>
                   {detail.label}
                 </p>
-                <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', fontWeight: 400, color: ESPRESSO, marginBottom: detail.sub ? '0.25rem' : 0, lineHeight: 1.3 }}>
+                <p style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', fontWeight: 400, color: ESPRESSO, marginBottom: detail.sub ? '0.25rem' : 0, lineHeight: 1.3 }}>
                   {detail.value}
                 </p>
                 {detail.sub && (
@@ -907,7 +915,7 @@ export default function EventPage({ slug }: Props) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.02em', color: ESPRESSO }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 300, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.02em', color: ESPRESSO }}
               >
                 {fullEvent.venueName}
               </motion.h2>
@@ -965,7 +973,7 @@ export default function EventPage({ slug }: Props) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: ESPRESSO, margin: '0 0 1rem' }}
+            style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 300, fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: ESPRESSO, margin: '0 0 1rem' }}
           >
             {t.rsvpHeading}
           </motion.h2>

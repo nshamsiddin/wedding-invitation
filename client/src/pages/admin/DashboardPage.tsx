@@ -12,6 +12,7 @@ import type {
   CreateOpenInvitationValues,
 } from '@invitation/shared';
 import { adminApi } from '../../lib/api';
+import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM, ROSE } from '../../garden/tokens';
 import StatsCards from '../../components/admin/StatsCards';
 import GuestTable from '../../components/admin/GuestTable';
 import AddGuestModal from '../../components/admin/AddGuestModal';
@@ -46,34 +47,34 @@ function OpenInvitationRow({
   const isPermanent = inv.isPublic;
 
   return (
-    <div className={`flex items-center justify-between py-2.5 px-3 rounded-lg gap-3 border ${
-      isPermanent
-        ? 'bg-violet-50 border-violet-200'
-        : 'bg-amber-50 border-amber-100'
-    }`}>
+    <div className="flex items-center justify-between py-2.5 px-3 rounded-lg gap-3 border" style={{
+      background: isPermanent ? 'rgba(196,132,140,0.12)' : 'rgba(184,146,74,0.12)',
+      borderColor: isPermanent ? 'rgba(196,132,140,0.35)' : GOLD_DIM,
+    }}>
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {isPermanent ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-600 text-white" title="Permanent link — reusable by anyone, no limit">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: ROSE, color: PARCHMENT }} title="Permanent link — reusable by anyone, no limit">
               <span aria-hidden="true">∞</span> Permanent
             </span>
           ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200" title="One-time — locked after first use">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(184,146,74,0.15)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }} title="One-time — locked after first use">
               1× One-time
             </span>
           )}
-          <span className="text-xs text-gray-600 font-sans">{inv.eventName ?? inv.eventSlug}</span>
+          <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>{inv.eventName ?? inv.eventSlug}</span>
         </div>
-        <p className="text-xs text-gray-400 font-mono mt-0.5 truncate max-w-[200px]">{inv.token.slice(0, 8)}…</p>
+        <p className="text-xs font-mono mt-0.5 truncate max-w-[200px]" style={{ color: ESPRESSO_DIM }}>{inv.token.slice(0, 8)}…</p>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
         <button
           onClick={handleCopy}
-          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-sans bg-white transition-colors focus:outline-none focus:ring-1 ${
-            isPermanent
-              ? 'border border-violet-300 text-violet-700 hover:bg-violet-50 focus:ring-violet-400'
-              : 'border border-amber-200 text-amber-700 hover:bg-amber-50 focus:ring-amber-400'
-          }`}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-sans transition-colors focus:outline-none focus:ring-1"
+          style={{
+            background: PARCHMENT,
+            border: `1px solid ${isPermanent ? 'rgba(196,132,140,0.4)' : GOLD_DIM}`,
+            color: isPermanent ? ROSE : ESPRESSO,
+          }}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -235,26 +236,29 @@ export default function DashboardPage() {
   const selectedEvent = selectedEventId !== null ? events.find((e) => e.id === selectedEventId) : null;
 
   return (
-    <div className="admin-page min-h-screen bg-gray-50 text-gray-900">
+    <div className="admin-page min-h-screen" style={{ background: CREAM, color: ESPRESSO }}>
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+      <header className="sticky top-0 z-30" style={{ background: PARCHMENT, borderBottom: `1px solid ${GOLD_DIM}` }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center flex-shrink-0" aria-hidden="true">
-              <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `rgba(184,146,74,0.1)`, border: `1px solid ${GOLD_DIM}` }} aria-hidden="true">
+              <svg className="w-4 h-4" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <div>
-              <p className="font-sans font-semibold text-gray-900 text-sm leading-none">Guest Admin</p>
-              <p className="text-gray-500 text-xs font-sans mt-0.5 hidden sm:block">B & S · Wedding 2026</p>
+              <p className="font-sans font-semibold text-sm leading-none" style={{ color: ESPRESSO }}>Guest Admin</p>
+              <p className="text-xs font-sans mt-0.5 hidden sm:block" style={{ color: ESPRESSO_DIM }}>B & S · Wedding 2026</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+              style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
               aria-label="Export CSV"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -264,7 +268,10 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => logoutMutation.mutate()}
-              className="px-3 py-1.5 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 hover:text-gray-900 text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+              style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
               aria-label="Sign out"
             >
               Sign out
@@ -280,11 +287,12 @@ export default function DashboardPage() {
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setSelectedEventId(null)}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className="px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+              style={
                 selectedEventId === null
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
+                  ? { background: GOLD, color: PARCHMENT }
+                  : { background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }
+              }
             >
               All Events
             </button>
@@ -292,14 +300,15 @@ export default function DashboardPage() {
               <button
                 key={ev.id}
                 onClick={() => setSelectedEventId(ev.id)}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className="px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+                style={
                   selectedEventId === ev.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
+                    ? { background: GOLD, color: PARCHMENT }
+                    : { background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }
+                }
               >
                 {ev.slug.charAt(0).toUpperCase() + ev.slug.slice(1)}
-                <span className={`ml-1.5 ${selectedEventId === ev.id ? 'opacity-70' : 'text-gray-400'}`}>{ev.stats.total}</span>
+                <span className="ml-1.5" style={{ opacity: selectedEventId === ev.id ? 0.7 : 0.6 }}>{ev.stats.total}</span>
               </button>
             ))}
           </div>
@@ -310,14 +319,14 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-2 flex flex-wrap gap-x-5 gap-y-1"
             >
-              <span className="text-gray-500 text-xs font-sans flex items-center gap-1.5">
-                <svg className="w-3 h-3 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <span className="text-xs font-sans flex items-center gap-1.5" style={{ color: ESPRESSO_DIM }}>
+                <svg className="w-3 h-3 flex-shrink-0" style={{ color: ESPRESSO_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 {selectedEvent.date} at {selectedEvent.time}
               </span>
-              <span className="text-gray-500 text-xs font-sans flex items-center gap-1.5">
-                <svg className="w-3 h-3 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <span className="text-xs font-sans flex items-center gap-1.5" style={{ color: ESPRESSO_DIM }}>
+                <svg className="w-3 h-3 flex-shrink-0" style={{ color: ESPRESSO_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -337,9 +346,9 @@ export default function DashboardPage() {
         {openInvitations.length > 0 && (
           <section aria-labelledby="open-inv-heading">
             <div className="flex items-center justify-between mb-2">
-              <h2 id="open-inv-heading" className="font-sans font-semibold text-sm text-gray-900">
+              <h2 id="open-inv-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
                 Open Links
-                <span className="ml-2 text-xs font-normal text-gray-400">{openInvitations.length} active</span>
+                <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>{openInvitations.length} active</span>
               </h2>
             </div>
             <div className="space-y-2">
@@ -358,10 +367,10 @@ export default function DashboardPage() {
         <section aria-labelledby="guests-heading">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
             <div className="flex-1">
-              <h2 id="guests-heading" className="font-sans font-semibold text-sm text-gray-900">
+              <h2 id="guests-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
                 Guest List
                 {!guestsLoading && (
-                  <span className="ml-2 text-xs font-normal text-gray-400">
+                  <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>
                     {guests.length} {guests.length === 1 ? 'guest' : 'guests'}
                   </span>
                 )}
@@ -370,7 +379,7 @@ export default function DashboardPage() {
             <div className="flex flex-wrap gap-2">
               {/* Search */}
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: ESPRESSO_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -379,7 +388,8 @@ export default function DashboardPage() {
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search name or email…"
                   aria-label="Search guests"
-                  className="pl-8 pr-3 py-1.5 bg-white border border-gray-300 focus:border-blue-500 rounded-lg text-gray-900 text-xs font-sans placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors w-48"
+                  className="pl-8 pr-3 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus:ring-2 transition-colors w-48"
+                  style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
                 />
               </div>
 
@@ -388,7 +398,8 @@ export default function DashboardPage() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 aria-label="Filter by attendance status"
-                className="px-3 py-1.5 bg-white border border-gray-300 focus:border-blue-500 rounded-lg text-gray-700 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors appearance-none"
+                className="px-3 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus:ring-2 transition-colors appearance-none"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               >
                 {STATUS_FILTER_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -398,7 +409,8 @@ export default function DashboardPage() {
               {/* Generate open link */}
               <button
                 onClick={() => setShowOpenLinkModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 whitespace-nowrap"
+                style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
                 aria-label="Generate open invitation link"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -410,7 +422,8 @@ export default function DashboardPage() {
               {/* Add guest */}
               <button
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap"
+                style={{ background: GOLD, color: PARCHMENT }}
                 aria-label="Add a new guest"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -422,7 +435,8 @@ export default function DashboardPage() {
               {/* Mobile CSV */}
               <button
                 onClick={handleExportCSV}
-                className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-sans rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans rounded-lg transition-colors focus:outline-none focus:ring-2"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
                 aria-label="Export CSV"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -459,32 +473,34 @@ export default function DashboardPage() {
               role="dialog" aria-modal="true" aria-labelledby="open-link-title">
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-                className="bg-white border border-gray-200 rounded-xl p-6 w-full max-w-sm shadow-lg"
+                className="rounded-xl p-6 w-full max-w-sm shadow-lg"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
               >
-                <h3 id="open-link-title" className="font-sans font-semibold text-sm text-gray-900 mb-1">
+                <h3 id="open-link-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>
                   Generate Open Invitation Link
                 </h3>
-                <p className="text-xs text-gray-500 font-sans mb-4">
+                <p className="text-xs font-sans mb-4" style={{ color: ESPRESSO_DIM }}>
                   Creates a shareable link that any new guest can use to self-register. Select the event(s) to cover.
                 </p>
 
                 {/* Permanent / one-time toggle */}
-                <div className="mb-4 p-3 rounded-lg border border-gray-200 bg-gray-50">
+                <div className="mb-4 p-3 rounded-lg border" style={{ borderColor: GOLD_DIM, background: CREAM }}>
                   <label className="flex items-start gap-3 cursor-pointer select-none">
                     <button
                       type="button"
                       role="switch"
                       aria-checked={openLinkIsPublic}
                       onClick={() => setOpenLinkIsPublic((v) => !v)}
-                      className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 ${openLinkIsPublic ? 'bg-amber-500' : 'bg-gray-300'}`}
+                      className="mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2"
+                      style={{ background: openLinkIsPublic ? GOLD : 'rgba(184,146,74,0.3)' }}
                     >
                       <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${openLinkIsPublic ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
                     <div>
-                      <p className="text-xs font-medium text-gray-800 font-sans">
-                        Permanent link <span className="ml-1 text-xs font-normal text-amber-600">{openLinkIsPublic ? '∞ reusable' : '1× one-time'}</span>
+                      <p className="text-xs font-medium font-sans" style={{ color: ESPRESSO }}>
+                        Permanent link <span className="ml-1 text-xs font-normal" style={{ color: GOLD }}>{openLinkIsPublic ? '∞ reusable' : '1× one-time'}</span>
                       </p>
-                      <p className="text-xs text-gray-400 font-sans mt-0.5">
+                      <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
                         {openLinkIsPublic
                           ? 'Anyone can fill this link — no email required, phone for deduplication.'
                           : 'Single-use link locked after the first person claims it.'}
@@ -494,16 +510,18 @@ export default function DashboardPage() {
                 </div>
 
                 <fieldset className="mb-4">
-                  <legend className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Events</legend>
+                  <legend className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: ESPRESSO_DIM }}>Events</legend>
                   <div className="space-y-2">
                     {events.map((ev) => {
                       const checked = openLinkEventIds.includes(ev.id);
                       return (
                         <label
                           key={ev.id}
-                          className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                            checked ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:bg-gray-50'
-                          }`}
+                          className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors"
+                          style={{
+                            background: checked ? 'rgba(184,146,74,0.12)' : PARCHMENT,
+                            borderColor: checked ? GOLD : GOLD_DIM,
+                          }}
                         >
                           <input
                             type="checkbox"
@@ -517,7 +535,7 @@ export default function DashboardPage() {
                               }
                             }}
                           />
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${checked ? 'bg-amber-500 border-amber-500' : 'border-gray-300 bg-white'}`}>
+                          <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0" style={{ background: checked ? GOLD : PARCHMENT, borderColor: checked ? GOLD : GOLD_DIM }}>
                             {checked && (
                               <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -525,8 +543,8 @@ export default function DashboardPage() {
                             )}
                           </div>
                           <div>
-                            <p className="font-medium text-sm font-sans text-gray-800">{ev.name}</p>
-                            <p className="text-xs text-gray-400">{ev.date}</p>
+                            <p className="font-medium text-sm font-sans" style={{ color: ESPRESSO }}>{ev.name}</p>
+                            <p className="text-xs" style={{ color: ESPRESSO_DIM }}>{ev.date}</p>
                           </div>
                         </label>
                       );
@@ -537,7 +555,8 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setShowOpenLinkModal(false); setOpenLinkEventIds([]); setOpenLinkIsPublic(false); }}
-                    className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-xs py-2 rounded-lg"
+                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
                   >
                     Cancel
                   </button>
@@ -550,7 +569,8 @@ export default function DashboardPage() {
                       createOpenInvMutation.mutate({ eventIds: openLinkEventIds, isPublic: openLinkIsPublic });
                     }}
                     disabled={createOpenInvMutation.isPending || openLinkEventIds.length === 0}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:cursor-not-allowed"
+                    className="flex-1 disabled:opacity-50 font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed"
+                    style={{ background: GOLD, color: PARCHMENT }}
                   >
                     {createOpenInvMutation.isPending ? 'Creating…' : 'Generate Link'}
                   </button>
@@ -601,7 +621,8 @@ export default function DashboardPage() {
               role="dialog" aria-modal="true" aria-labelledby="delete-guest-title">
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-                className="bg-white border border-gray-200 rounded-xl p-6 w-full max-w-sm shadow-lg">
+                className="rounded-xl p-6 w-full max-w-sm shadow-lg"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}>
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
                     <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -609,15 +630,16 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 id="delete-guest-title" className="font-sans font-semibold text-sm text-gray-900 mb-1">Remove guest?</h3>
-                    <p className="text-gray-600 text-xs font-sans leading-relaxed">
-                      <span className="text-gray-900 font-medium">{deletingGuest.name}</span> and all their invitations will be permanently deleted.
+                    <h3 id="delete-guest-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>Remove guest?</h3>
+                    <p className="text-xs font-sans leading-relaxed" style={{ color: ESPRESSO_DIM }}>
+                      <span className="font-medium" style={{ color: ESPRESSO }}>{deletingGuest.name}</span> and all their invitations will be permanently deleted.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-5">
                   <button onClick={() => setDeletingGuest(null)}
-                    className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}>
                     Cancel
                   </button>
                   <button onClick={() => deleteGuestMutation.mutate(deletingGuest.id)}
@@ -643,7 +665,8 @@ export default function DashboardPage() {
               role="dialog" aria-modal="true" aria-labelledby="delete-inv-title">
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-                className="bg-white border border-gray-200 rounded-xl p-6 w-full max-w-sm shadow-lg">
+                className="rounded-xl p-6 w-full max-w-sm shadow-lg"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}>
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
                     <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -651,15 +674,16 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 id="delete-inv-title" className="font-sans font-semibold text-sm text-gray-900 mb-1">Remove from event?</h3>
-                    <p className="text-gray-600 text-xs font-sans leading-relaxed">
-                      Invitation for <span className="text-gray-900 font-medium">{deletingInvitation.eventName ?? deletingInvitation.eventSlug}</span> will be removed. The guest record is kept.
+                    <h3 id="delete-inv-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>Remove from event?</h3>
+                    <p className="text-xs font-sans leading-relaxed" style={{ color: ESPRESSO_DIM }}>
+                      Invitation for <span className="font-medium" style={{ color: ESPRESSO }}>{deletingInvitation.eventName ?? deletingInvitation.eventSlug}</span> will be removed. The guest record is kept.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-5">
                   <button onClick={() => setDeletingInvitation(null)}
-                    className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}>
                     Cancel
                   </button>
                   <button onClick={() => deleteInvMutation.mutate(deletingInvitation.id)}

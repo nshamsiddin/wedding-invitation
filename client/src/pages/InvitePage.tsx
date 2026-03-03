@@ -1,4 +1,4 @@
-import { useRef, useContext, useState, useEffect } from 'react';
+import { useRef, useContext, useState, useEffect, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -22,6 +22,7 @@ import {
   VineCornerBR,
   generatePetals,
 } from '../garden/components/GardenAtmosphere';
+import { OttomanArch, BotanicalArch } from '../garden/components/ArchOrnaments';
 
 import {
   PARCHMENT,
@@ -32,10 +33,11 @@ import {
   GOLD,
   GOLD_DIM,
   ROSE,
-  COUPLE_PHOTO,
 } from '../garden/tokens';
+import { formatEventDate } from '../lib/formatDate';
 
-const serif = '"Bodoni Moda", Georgia, serif';
+const serif = 'var(--font-display)';
+const serifStyle = 'var(--font-display-style)' as 'normal' | 'italic';
 const sans  = '"DM Sans", system-ui, sans-serif';
 
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
@@ -54,12 +56,6 @@ const NAME_GRADIENT: CSSProperties = {
   WebkitTextFillColor: 'transparent',
   color: 'transparent',
 };
-
-function formatEventDate(dateStr: string, lang: Language): string {
-  const d = new Date(dateStr);
-  const localeMap: Record<Language, string> = { en: 'en-US', tr: 'tr-TR', uz: 'uz-UZ' };
-  return d.toLocaleDateString(localeMap[lang] ?? 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
 
 function parseCoupleName(rawName: string): [string, string | null] {
   const parts = rawName.split(' & ');
@@ -137,7 +133,7 @@ function ScrollCue({ inView }: { inView: boolean }) {
         transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
         style={{
           width: '1.1rem', height: '1.85rem', borderRadius: '999px',
-          border: `1px solid ${ESPRESSO_FAINT}`,
+          border: '1px solid rgba(42,31,26,0.12)',
           display: 'flex', alignItems: 'flex-start',
           justifyContent: 'center', paddingTop: '0.26rem',
         }}
@@ -146,7 +142,7 @@ function ScrollCue({ inView }: { inView: boolean }) {
         <div style={{ width: 3, height: 5, borderRadius: '999px', background: ROSE }} />
       </motion.div>
       <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM }}>
-        {t.scrollDown}
+        {t.scrollCta}
       </span>
     </motion.div>
   );
@@ -160,10 +156,11 @@ interface PublicInviteFormProps {
 }
 
 function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) {
+  const t = useTranslation();
   const STATUS_OPTIONS = [
-    { value: 'attending', label: 'Attending' },
-    { value: 'declined',  label: 'Declined' },
-    { value: 'maybe',     label: 'Maybe' },
+    { value: 'attending', label: t.attendingOption },
+    { value: 'declined',  label: t.decliningOption },
+    { value: 'maybe',     label: t.maybeOption },
   ] as const;
 
   const {
@@ -196,11 +193,11 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublic,
     onSuccess: () => {
-      toast.success('RSVP received!');
+      toast.success(t.rsvpReceived);
       onSuccess();
     },
     onError: () => {
-      toast.error('Failed to submit. Please try again.');
+      toast.error(t.submitFailed);
     },
   });
 
@@ -227,22 +224,22 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
       <div className="space-y-4">
         <div>
           <label htmlFor="pub-name" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Your Name <span style={{ color: 'var(--accent-rose)' }}>*</span>
+            {t.nameLabel} <span style={{ color: 'var(--accent-rose)' }}>*</span>
           </label>
-          <input id="pub-name" type="text" autoFocus {...register('name')} className={INPUT_CLASS} style={glassInput} placeholder="Your full name" />
+          <input id="pub-name" type="text" autoFocus {...register('name')} className={INPUT_CLASS} style={glassInput} placeholder={t.namePlaceholder} />
           {errors.name && <p className="mt-1 text-xs" style={{ color: 'var(--accent-rose)' }}>{errors.name.message}</p>}
         </div>
         {(guestCount ?? 1) > 1 && (
           <div>
             <label htmlFor="pub-partner" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Partner's Name <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+              {t.partnerNameLabel} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>{t.dietaryOptional}</span>
             </label>
-            <input id="pub-partner" type="text" {...register('partnerName')} className={INPUT_CLASS} style={glassInput} placeholder="Partner's full name" />
+            <input id="pub-partner" type="text" {...register('partnerName')} className={INPUT_CLASS} style={glassInput} placeholder={t.partnerNamePlaceholder} />
           </div>
         )}
         <div>
           <label htmlFor="pub-phone" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Phone <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+            {t.phoneLabel} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>{t.dietaryOptional}</span>
           </label>
           <input id="pub-phone" type="tel" {...register('phone')} className={INPUT_CLASS} style={glassInput} placeholder="+1 555 000 0000" />
         </div>
@@ -252,7 +249,7 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="pub-status" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Attendance <span style={{ color: 'var(--accent-rose)' }}>*</span>
+              {t.attendanceShortLabel} <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
             <select id="pub-status" {...register('status')} className={`${INPUT_CLASS} appearance-none`} style={glassInput}>
               {STATUS_OPTIONS.map((o) => (
@@ -264,7 +261,7 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
           {status === 'attending' && (
             <div>
               <label htmlFor="pub-count" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-                Guests
+                {t.guestsShortLabel}
               </label>
               <select id="pub-count" {...register('guestCount', { valueAsNumber: true })} className={`${INPUT_CLASS} appearance-none`} style={glassInput}>
                 {[1, 2, 3, 4, 5].map((n) => (<option key={n} value={n}>{n}</option>))}
@@ -274,14 +271,14 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
         </div>
         <div className="mt-3">
           <label htmlFor="pub-message" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Message
+            {t.messageLabel}
           </label>
-          <textarea id="pub-message" rows={2} {...register('message')} className={`${INPUT_CLASS} resize-none`} style={glassInput} placeholder="Optional note to the couple" />
+          <textarea id="pub-message" rows={2} {...register('message')} className={`${INPUT_CLASS} resize-none`} style={glassInput} placeholder={t.messagePlaceholder} />
         </div>
       </div>
 
       <button type="submit" disabled={submitMutation.isPending} className="btn-primary w-full" style={{ marginTop: '1rem' }}>
-        {submitMutation.isPending ? 'Sending…' : 'Send RSVP'}
+        {submitMutation.isPending ? t.sending : t.sendRsvp}
       </button>
     </motion.form>
   );
@@ -296,6 +293,7 @@ interface OpenInviteFormProps {
 }
 
 function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormProps) {
+  const t = useTranslation();
   if (isPublic) {
     return (
       <PublicInviteForm
@@ -306,9 +304,9 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
     );
   }
   const STATUS_OPTIONS = [
-    { value: 'attending', label: 'Attending' },
-    { value: 'declined',  label: 'Declined' },
-    { value: 'maybe',     label: 'Maybe' },
+    { value: 'attending', label: t.attendingOption },
+    { value: 'declined',  label: t.decliningOption },
+    { value: 'maybe',     label: t.maybeOption },
   ] as const;
 
   const {
@@ -333,11 +331,11 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
   const claimMutation = useMutation({
     mutationFn: rsvpApi.claim,
     onSuccess: () => {
-      toast.success('Registration complete!');
+      toast.success(t.registrationComplete);
       onSuccess();
     },
     onError: () => {
-      toast.error('Failed to register. Please try again.');
+      toast.error(t.registerFailed);
     },
   });
 
@@ -363,21 +361,21 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
       <div className="space-y-4">
         <div>
           <label htmlFor="claim-name" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Full Name <span style={{ color: 'var(--accent-rose)' }}>*</span>
+            {t.nameLabel} <span style={{ color: 'var(--accent-rose)' }}>*</span>
           </label>
-          <input id="claim-name" type="text" autoFocus {...register('name')} className={INPUT_CLASS} style={glassInput} placeholder="Your full name" />
+          <input id="claim-name" type="text" autoFocus {...register('name')} className={INPUT_CLASS} style={glassInput} placeholder={t.namePlaceholder} />
           {errors.name && <p className="mt-1 text-xs" style={{ color: 'var(--accent-rose)' }}>{errors.name.message}</p>}
         </div>
         <div>
           <label htmlFor="claim-email" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Email <span style={{ color: 'var(--accent-rose)' }}>*</span>
+            {t.emailLabel} <span style={{ color: 'var(--accent-rose)' }}>*</span>
           </label>
-          <input id="claim-email" type="email" {...register('email')} className={INPUT_CLASS} style={glassInput} placeholder="your@email.com" />
+          <input id="claim-email" type="email" {...register('email')} className={INPUT_CLASS} style={glassInput} placeholder={t.emailPlaceholder} />
           {errors.email && <p className="mt-1 text-xs" style={{ color: 'var(--accent-rose)' }}>{errors.email.message}</p>}
         </div>
         <div>
           <label htmlFor="claim-phone" style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Phone <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+            {t.phoneLabel} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>{t.dietaryOptional}</span>
           </label>
           <input id="claim-phone" type="tel" {...register('phone')} className={INPUT_CLASS} style={glassInput} placeholder="+1 555 000 0000" />
         </div>
@@ -385,13 +383,13 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
 
       {events.map((ev, idx) => (
         <div key={ev.id} style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
-          <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+          <p style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
             {ev.name}
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor={`entry-status-${ev.id}`} style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-                Attendance <span style={{ color: 'var(--accent-rose)' }}>*</span>
+                {t.attendanceShortLabel} <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
               <Controller
                 name={`rsvpEntries.${idx}.status`}
@@ -407,7 +405,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
             </div>
             <div>
               <label htmlFor={`entry-count-${ev.id}`} style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-                Guests
+                {t.guestsShortLabel}
               </label>
               <Controller
                 name={`rsvpEntries.${idx}.guestCount`}
@@ -422,15 +420,15 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
           </div>
           <div className="mt-3">
             <label htmlFor={`entry-dietary-${ev.id}`} style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Dietary Restrictions
+              {t.dietaryLabel}
             </label>
-            <input id={`entry-dietary-${ev.id}`} type="text" {...register(`rsvpEntries.${idx}.dietary`)} className={INPUT_CLASS} style={glassInput} placeholder="Optional" />
+            <input id={`entry-dietary-${ev.id}`} type="text" {...register(`rsvpEntries.${idx}.dietary`)} className={INPUT_CLASS} style={glassInput} placeholder={t.dietaryOptional} />
           </div>
           <div className="mt-3">
             <label htmlFor={`entry-message-${ev.id}`} style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Message
+              {t.messageLabel}
             </label>
-            <textarea id={`entry-message-${ev.id}`} rows={2} {...register(`rsvpEntries.${idx}.message`)} className={`${INPUT_CLASS} resize-none`} style={glassInput} placeholder="Optional note to the couple" />
+            <textarea id={`entry-message-${ev.id}`} rows={2} {...register(`rsvpEntries.${idx}.message`)} className={`${INPUT_CLASS} resize-none`} style={glassInput} placeholder={t.messagePlaceholder} />
           </div>
         </div>
       ))}
@@ -443,7 +441,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
         className="btn-primary w-full"
         style={{ marginTop: '1rem', opacity: claimMutation.isPending ? 0.7 : 1 }}
       >
-        {claimMutation.isPending ? 'Registering…' : 'Confirm Registration'}
+        {claimMutation.isPending ? t.registering : t.confirmRegistration}
       </motion.button>
     </motion.form>
   );
@@ -451,6 +449,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
 
 // ─── Success screen ───────────────────────────────────────────────────────────
 function ClaimSuccessScreen() {
+  const t = useTranslation();
   return (
     <div style={{ textAlign: 'center', padding: '2rem 0' }}>
       <motion.div
@@ -466,26 +465,112 @@ function ClaimSuccessScreen() {
           <circle cx="24" cy="24" r="5" fill={GOLD} opacity="0.9" />
         </svg>
       </motion.div>
-      <h2 style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1.8rem, 5vw, 2.5rem)', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-        You&rsquo;re registered!
+      <h2 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(1.8rem, 5vw, 2.5rem)', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+        {t.youreRegistered}
       </h2>
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '24rem', margin: '0 auto' }}>
-        Thank you for registering. We look forward to celebrating with you.
+        {t.thankYouRegistering}
       </p>
     </div>
+  );
+}
+
+// ─── Dot navigation (3 slides) ───────────────────────────────────────────────
+const INVITE_DOT_ACCENTS = [ROSE, ROSE, GOLD];
+
+function InviteDotNav({
+  current, total, onDotClick,
+}: {
+  current: number; total: number; onDotClick: (i: number) => void;
+}) {
+  return (
+    <nav
+      aria-label="Slide navigation"
+      style={{
+        position: 'fixed',
+        right: '1rem',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 500,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      {Array.from({ length: total }, (_, i) => {
+        const accent = INVITE_DOT_ACCENTS[i] ?? ROSE;
+        const isActive = current === i;
+        return (
+          <motion.button
+            key={i}
+            onClick={() => onDotClick(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            aria-current={isActive ? 'true' : undefined}
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              width: 44, height: 44,
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              outline: 'none',
+              background: 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <motion.svg
+              viewBox="0 0 12 16"
+              width={isActive ? 14 : 10}
+              height={isActive ? 18 : 14}
+              style={{ flexShrink: 0 }}
+              animate={{ opacity: isActive ? 0.9 : 0.4 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ellipse
+                cx="6" cy="8" rx="5" ry="7"
+                fill={accent}
+                transform="rotate(-20 6 8)"
+              />
+            </motion.svg>
+          </motion.button>
+        );
+      })}
+    </nav>
   );
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function InvitePage() {
   const { token } = useParams<{ token: string }>();
-  const wrapRef   = useRef<HTMLDivElement>(null);
-  const rsvpRef   = useRef<HTMLElement>(null);
-  const heroRef   = useRef<HTMLElement>(null);
-  const countdownRef = useRef<HTMLElement>(null);
+  const wrapRef      = useRef<HTMLDivElement>(null);
+  const rsvpRef      = useRef<HTMLElement>(null);
+  const heroRef      = useRef<HTMLElement>(null);
+  const detailsRef   = useRef<HTMLElement>(null);
 
-  const countdownInView = useInView(countdownRef, { root: wrapRef, once: true, amount: 0.3 });
-  const rsvpInView     = useInView(rsvpRef,       { root: wrapRef, once: true, amount: 0.3 });
+  const detailsInView = useInView(detailsRef, { root: wrapRef, once: true, amount: 0.3 });
+  const rsvpInView    = useInView(rsvpRef,    { root: wrapRef, once: true, amount: 0.3 });
+
+  const [current, setCurrent] = useState(0);
+
+  const slideRefArray = [heroRef, detailsRef, rsvpRef];
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    slideRefArray.forEach((ref, i) => {
+      const el = ref.current;
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setCurrent(i); },
+        { root: wrapRef.current, threshold: 0.5 },
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach(o => o.disconnect());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const t    = useTranslation();
   const { language } = useContext(LanguageContext);
@@ -514,8 +599,11 @@ export default function InvitePage() {
     retry: false,
   });
 
-  const scrollToRSVP = () =>
-    rsvpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollToRSVP = useCallback(() =>
+    rsvpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), []);
+
+  const scrollToSlide = useCallback((i: number) =>
+    slideRefArray[i]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), []);
 
   // ── Loading ──
   if (isLoading) {
@@ -542,7 +630,7 @@ export default function InvitePage() {
             ))}
             <circle cx="24" cy="24" r="5" fill={GOLD} opacity="0.7" />
           </svg>
-          <h1 style={{ fontFamily: serif, fontStyle: 'italic', fontSize: '2rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
+          <h1 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: '2rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
             {t.invitationNotFound}
           </h1>
           <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, maxWidth: '22rem', margin: '0 auto 1.5rem' }}>
@@ -560,7 +648,7 @@ export default function InvitePage() {
               background: 'rgba(253,250,245,0.6)',
             }}
           >
-            ← Return to homepage
+            ← {t.returnToHomepage}
           </Link>
         </div>
       </div>
@@ -579,7 +667,7 @@ export default function InvitePage() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
-          <h1 style={{ fontFamily: serif, fontStyle: 'italic', fontSize: '2rem', color: ESPRESSO, marginBottom: '0.75rem' }}>
+          <h1 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: '2rem', color: ESPRESSO, marginBottom: '0.75rem' }}>
             {t.invitationAlreadyClaimed}
           </h1>
           <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM }}>
@@ -626,13 +714,13 @@ export default function InvitePage() {
           <Link
             to="/"
             style={{ textDecoration: 'none' }}
-            aria-label="Return to homepage"
+          aria-label={t.returnToHomepage}
+        >
+          <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
+            onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
           >
-            <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
-              onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
-            >
-              {openMonogram}
+            {openMonogram}
             </p>
           </Link>
           <LanguageSwitcher />
@@ -658,7 +746,7 @@ export default function InvitePage() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
             >
               <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
-              <span style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+              <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
                 {t.youveBeenInvited}
               </span>
               <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
@@ -666,12 +754,12 @@ export default function InvitePage() {
 
             {/* Couple name — same large gradient reveal as personal invite */}
             {openSecond ? (
-              <>
+              <div style={{ padding: '0.2em 0' }}>
                 <motion.h1
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                  style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {openFirst}
                 </motion.h1>
@@ -683,27 +771,29 @@ export default function InvitePage() {
                   aria-hidden="true"
                 >
                   <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
-                  <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
+                  <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2rem, 6vw, 3.5rem)', color: GOLD }}>&</span>
                   <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
                 </motion.div>
                 <motion.h1
                   initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.3, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                  style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
                 >
                   {openSecond}
                 </motion.h1>
-              </>
+              </div>
             ) : (
-              <motion.h1
-                initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 1.3, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', ...NAME_GRADIENT }}
-              >
-                {openCouplePart}
-              </motion.h1>
+              <div style={{ padding: '0.2em 0' }}>
+                <motion.h1
+                  initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.3, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', ...NAME_GRADIENT }}
+                >
+                  {openCouplePart}
+                </motion.h1>
+              </div>
             )}
 
             {openCityPart && (
@@ -768,7 +858,7 @@ export default function InvitePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.7, delay: 0.1 }}
-                style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
+                style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, marginBottom: '0.75rem' }}
               >
                 {t.youveBeenInvited}
               </motion.p>
@@ -778,7 +868,7 @@ export default function InvitePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, margin: '0 0 1rem' }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 300, fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, margin: '0 0 1rem' }}
               >
                 {t.pleaseRegister}
               </motion.h2>
@@ -895,7 +985,7 @@ export default function InvitePage() {
         <Link
           to="/"
           style={{ textDecoration: 'none' }}
-          aria-label="Return to homepage"
+          aria-label={t.returnToHomepage}
         >
           <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
             onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
@@ -906,6 +996,9 @@ export default function InvitePage() {
         </Link>
         <LanguageSwitcher />
       </motion.header>
+
+      {/* ── Dot navigation ── */}
+      <InviteDotNav current={current} total={3} onDotClick={scrollToSlide} />
 
       {/* ════════════════════ HERO ════════════════════ */}
       <section
@@ -930,32 +1023,32 @@ export default function InvitePage() {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
           >
             <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
-            <span style={{ fontFamily: sans, fontSize: '0.5rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+            <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
               {t.personalInvitationFor}
             </span>
             <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
           </motion.div>
 
-          {/* Guest name (and optional partner) */}
+          {/* Guest name (and optional partner) — DM Sans, not display font */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
             style={{ marginBottom: '0.5rem' }}
           >
-            <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(1.4rem, 4vw, 2.2rem)', color: ESPRESSO_DIM, display: 'block' }}>
+            <span style={{ fontFamily: sans, fontWeight: 300, fontSize: 'clamp(1rem, 3vw, 1.5rem)', letterSpacing: '0.08em', color: ESPRESSO_DIM, display: 'block' }}>
               {guest.name}{partnerName ? ` & ${partnerName}` : ''}
             </span>
           </motion.div>
 
           {/* Couple name with "&" divider */}
           {secondName ? (
-            <>
+            <div style={{ padding: '0.2em 0' }}>
               <motion.h1
                 initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {firstName}
               </motion.h1>
@@ -967,27 +1060,29 @@ export default function InvitePage() {
                 aria-hidden="true"
               >
                 <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
-                <span style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1.5rem, 4.5vw, 3.5rem)', color: GOLD }}>&</span>
+                <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2rem, 6vw, 3.5rem)', color: GOLD }}>&</span>
                 <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
               </motion.div>
               <motion.h1
                 initial={{ opacity: 0, y: 36, filter: 'blur(0px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 1.3, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
               >
                 {secondName}
               </motion.h1>
-            </>
+            </div>
           ) : (
-            <motion.h1
-              initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              transition={{ duration: 1.3, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, fontSize: 'clamp(3rem, 9vw, 8rem)', lineHeight: 0.88, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
-            >
-              {coupleName}
-            </motion.h1>
+            <div style={{ padding: '0.2em 0' }}>
+              <motion.h1
+                initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 1.3, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+              >
+                {coupleName}
+              </motion.h1>
+            </div>
           )}
 
           {eventCity && (
@@ -1014,40 +1109,6 @@ export default function InvitePage() {
             <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
           </motion.div>
 
-          {/* Polaroid photo card */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, rotate: 2 }}
-            animate={{ opacity: 1, y: 0, rotate: 2 }}
-            whileHover={{ rotate: 0, scale: 1.02, y: -4 }}
-            transition={{
-              opacity: { duration: 0.8, delay: 0.9 },
-              y: { duration: 0.8, delay: 0.9 },
-              rotate: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-              scale:  { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-            }}
-            style={{ display: 'inline-block', marginBottom: 'clamp(1.5rem, 3vh, 2.5rem)', position: 'relative' }}
-          >
-            <div style={{
-              padding: '0.625rem', paddingBottom: '2.5rem',
-              background: 'var(--glass-bg)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: '0.5rem',
-              boxShadow: '0 24px 60px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.1)',
-            }}>
-              <img
-                src={COUPLE_PHOTO}
-                alt="The happy couple"
-                style={{ width: 'clamp(130px, 20vw, 220px)', height: 'clamp(160px, 25vw, 280px)', objectFit: 'cover', objectPosition: 'center 40%', borderRadius: '0.25rem', display: 'block' }}
-              />
-              <div style={{ position: 'absolute', bottom: '0.6rem', left: 0, right: 0, textAlign: 'center', fontFamily: serif, fontStyle: 'italic', fontSize: '0.7rem', color: ESPRESSO_DIM }} aria-hidden="true">
-                {coupleName}
-              </div>
-            </div>
-            <div style={{ position: 'absolute', inset: -16, borderRadius: '0.75rem', background: `radial-gradient(circle, rgba(240,200,204,0.15) 0%, transparent 70%)`, filter: 'blur(16px)', zIndex: -1, pointerEvents: 'none' }} aria-hidden="true" />
-          </motion.div>
-
           {/* CTA */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -1066,139 +1127,129 @@ export default function InvitePage() {
         </div>
       </section>
 
-      {/* ════════════════════ COUNTDOWN ════════════════════ */}
+      {/* ════════════════════ DETAILS ════════════════════ */}
       <section
-        ref={countdownRef}
+        ref={detailsRef}
         className="garden-slide"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: CREAM }}
-        aria-label="Countdown timer"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: event.slug === 'ankara' ? '#FDF5F6' : '#F5FAF6',
+        }}
+        aria-label="Event details"
       >
-        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 60% 55% at 50% 50%, rgba(240,200,204,0.2) 0%, transparent 70%)' }} />
-        <VineCornerTL inView={countdownInView} />
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          background: event.slug === 'ankara'
+            ? 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(240,200,204,0.45) 0%, transparent 70%)'
+            : 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(168,196,171,0.4) 0%, transparent 70%)',
+        }} />
+        <VineCornerTL inView={detailsInView} />
 
-        <div style={{ maxWidth: '50rem', margin: '0 auto', width: '100%', padding: '0 1.5rem', position: 'relative', zIndex: 5 }}>
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.8 }}
-            style={{ textAlign: 'center', fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
-          >
-            {t.countingDown}
-          </motion.p>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            style={{ textAlign: 'center', fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2rem, 5vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, marginBottom: '3.5rem' }}
-          >
-            {t.untilTheDay}
-          </motion.h2>
+        <div style={{ maxWidth: '48rem', margin: '0 auto', width: '100%', padding: '0 clamp(1.5rem, 5vw, 3rem)', position: 'relative', zIndex: 5, textAlign: 'center' }}>
+          {/* Arch ornament */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={detailsInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.8 }}
+            style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}
+          >
+            {event.slug === 'ankara'
+              ? <OttomanArch inView={detailsInView} />
+              : <BotanicalArch inView={detailsInView} />
+            }
+          </motion.div>
+
+          {/* Chapter label */}
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={detailsInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            style={{
+              fontFamily: sans, fontSize: '0.72rem', fontWeight: 500,
+              letterSpacing: '0.28em', textTransform: 'uppercase',
+              color: event.slug === 'ankara' ? ROSE : '#6B8F71',
+              marginBottom: '0.5rem',
+            }}
+          >
+            {event.slug === 'ankara' ? 'Türkiye · Ankara' : 'Uzbekistan · Tashkent'}
+          </motion.p>
+
+          {/* City / venue heading */}
+          <motion.h2
+            initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
+            animate={detailsInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 24, filter: 'blur(6px)' }}
+            transition={{ duration: 1.1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 300, fontSize: 'clamp(3rem, 10vw, 8rem)', letterSpacing: '-0.02em', color: ESPRESSO, margin: '0 0 0.5rem', lineHeight: 1.1 }}
+          >
+            {eventCity ?? event.venueName}
+          </motion.h2>
+
+          {/* Gradient divider */}
+          <GardenDivider
+            color={event.slug === 'ankara' ? ROSE : '#6B8F71'}
+            maxWidth="14rem"
+            delay={0.5}
+          />
+
+          {/* Date + time row */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={detailsInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ duration: 0.7, delay: 0.6 }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap' }}
+          >
+            <span style={{ fontFamily: sans, fontSize: '0.8rem', letterSpacing: '0.08em', color: ESPRESSO_DIM }}>
+              {displayDate}
+            </span>
+            <span style={{ color: GOLD_DIM, fontSize: '0.6rem' }}>◆</span>
+            <span style={{ fontFamily: sans, fontSize: '0.8rem', letterSpacing: '0.08em', color: ESPRESSO_DIM }}>
+              {event.time}
+            </span>
+          </motion.div>
+
+          {/* Venue address */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={detailsInView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.7, delay: 0.75 }}
+            style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(0.8rem, 2vw, 1rem)', color: ESPRESSO_DIM, margin: '0.4rem 0 0' }}
+          >
+            {event.venueName}{event.venueAddress ? ` · ${event.venueAddress}` : ''}
+          </motion.p>
+
+          {/* Dress code */}
+          {event.dressCode && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={detailsInView ? { opacity: 1 } : { opacity: 0 }}
+              transition={{ duration: 0.7, delay: 0.85 }}
+              style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginTop: '0.6rem' }}
+            >
+              {t.dressCode}: {event.dressCode}
+            </motion.p>
+          )}
+
+          {/* Compact countdown */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={detailsInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.8, delay: 1.0 }}
+            style={{ marginTop: '1.5rem' }}
           >
             <CountdownTimer targetDate={targetDateTime} />
           </motion.div>
-        </div>
-      </section>
 
-      {/* ════════════════════ VENUE ════════════════════ */}
-      <section
-        className="garden-slide"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: PARCHMENT, overflowY: 'auto' }}
-        aria-label="Event venue"
-      >
-        <div style={{ maxWidth: '56rem', margin: '0 auto', width: '100%', padding: '0 1.5rem' }}>
-          {/* Section header */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ duration: 0.8 }}
-              style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD, marginBottom: '0.75rem' }}
-            >
-              {t.venue}
-            </motion.p>
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ duration: 1.0, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.02em', color: ESPRESSO, marginBottom: '1rem' }}
-            >
-              {event.venueName}
-            </motion.h2>
-            <GardenDivider maxWidth="16rem" />
-          </div>
-
-          {/* 3 detail cards */}
+          {/* RSVP CTA */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.8 }}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))', gap: '1rem', marginBottom: event.mapsUrl ? '1.5rem' : 0 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={detailsInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
+            style={{ marginTop: '1.5rem' }}
           >
-            {[
-              { label: t.venue, value: event.venueName, sub: event.venueAddress },
-              { label: t.date,  value: displayDate,     sub: event.time },
-              { label: t.dressCode, value: event.dressCode ?? '—', sub: null },
-            ].map((card, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.7, delay: 0.05 * i }}
-                style={{
-                  background: 'rgba(255,252,248,0.85)',
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  border: `1px solid ${GOLD_DIM}`,
-                  borderRadius: '18px',
-                  padding: 'clamp(1.25rem, 3vw, 2rem)',
-                  boxShadow: '0 4px 20px rgba(42,31,26,0.06)',
-                }}
-              >
-                <p style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.15em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.75rem' }}>
-                  {card.label}
-                </p>
-                <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: ESPRESSO, marginBottom: card.sub ? '0.25rem' : 0, lineHeight: 1.3 }}>
-                  {card.value}
-                </p>
-                {card.sub && (
-                  <p style={{ fontFamily: sans, fontSize: '0.78rem', color: ESPRESSO_DIM, lineHeight: 1.5 }}>
-                    {card.sub}
-                  </p>
-                )}
-              </motion.div>
-            ))}
+            <MagneticButton onClick={scrollToRSVP} className="btn-primary" aria-label={t.rsvpButton}>
+              {t.rsvpButton} ↓
+            </MagneticButton>
           </motion.div>
-
-          {event.mapsUrl && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.8, delay: 0.15 }}
-              className="glass map-container rounded-3xl overflow-hidden"
-              style={{ height: 'clamp(200px, 30vw, 300px)', boxShadow: 'var(--shadow-lg)' }}
-            >
-              <iframe
-                src={event.mapsUrl}
-                className="w-full h-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={`Map showing ${event.venueName}`}
-                aria-label={`Map of ${event.venueAddress}`}
-              />
-            </motion.div>
-          )}
         </div>
       </section>
 
@@ -1232,7 +1283,7 @@ export default function InvitePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{ duration: 1.0, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, margin: '0 0 1rem' }}
+              style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 300, fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', letterSpacing: '-0.02em', color: ESPRESSO, margin: '0 0 1rem' }}
             >
               {t.rsvpHeading}
             </motion.h2>

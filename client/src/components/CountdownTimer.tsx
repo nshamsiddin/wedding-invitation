@@ -40,8 +40,8 @@ function FlipUnit({ value, label }: FlipDigitProps) {
           background: 'var(--glass-bg)',
           backdropFilter: 'blur(20px) saturate(1.4)',
           WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
-          border: '1px solid var(--glass-border)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+          border: '1px solid rgba(184,146,74,0.2)',
+          boxShadow: '0 2px 8px rgba(42,31,26,0.04), inset 0 1px 0 rgba(255,255,255,0.08)',
         }}
       >
         {/* Horizontal divider for split-flap look */}
@@ -70,12 +70,12 @@ function FlipUnit({ value, label }: FlipDigitProps) {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center"
             style={{
-              fontFamily: '"Bodoni Moda", Georgia, serif',
+              fontFamily: 'var(--font-digits)',
               fontSize: 'clamp(1.75rem, 5vw, 2.75rem)',
-              fontWeight: 400,
+              fontWeight: 500,
               color: 'var(--text-primary)',
               letterSpacing: '-0.02em',
-              tabularNums: 'tabular-nums' as never,
+              fontVariantNumeric: 'tabular-nums',
             } as React.CSSProperties}
             aria-live="off"
           >
@@ -122,8 +122,8 @@ export default function CountdownTimer({ targetDate }: Props) {
       >
         <span style={{ color: 'var(--accent-rose)' }} aria-hidden="true">♡</span>
         <p style={{
-          fontFamily: '"Bodoni Moda", Georgia, serif',
-          fontStyle: 'italic',
+          fontFamily: 'var(--font-display)',
+          fontStyle: 'var(--font-display-style)',
           color: 'var(--accent-rose)',
         }}>
           {t.celebrationBegun}

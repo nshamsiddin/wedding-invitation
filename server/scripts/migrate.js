@@ -97,7 +97,7 @@ insertEvent.run(
 
 insertEvent.run(
   'ankara',
-  "Berfin & Şamsiddin — Ankara",
+  "Berfin & Shamsiddin — Ankara",
   '2026-05-19',
   '18:00',
   "Park L'Amore",
