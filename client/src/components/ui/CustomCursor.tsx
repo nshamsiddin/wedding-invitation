@@ -17,6 +17,8 @@ export default function CustomCursor() {
   const dotY = useSpring(cursorY, dotSpring);
 
   useEffect(() => {
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+
     const onMove = (e: MouseEvent) => {
       cursorX.set(e.clientX);
       cursorY.set(e.clientY);
@@ -47,6 +49,8 @@ export default function CustomCursor() {
   }, [cursorX, cursorY, visible]);
 
   if (typeof window === 'undefined') return null;
+  // Touch/mobile devices have no mouse — skip rendering the cursor entirely
+  if (!window.matchMedia('(pointer: fine)').matches) return null;
 
   return (
     <>

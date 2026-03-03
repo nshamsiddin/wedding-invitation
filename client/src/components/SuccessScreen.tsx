@@ -144,16 +144,17 @@ export default function SuccessScreen({
         {isUpdate ? t.rsvpUpdated : t.rsvpConfirmed}
       </motion.p>
 
-      {/* Guest name */}
+      {/* Guest name — the emotional centrepiece; large script creates warmth */}
       <motion.h3
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.6 }}
         style={{
-          fontFamily: '"Bodoni Moda", Georgia, serif',
-          fontStyle: 'italic',
-          fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-          fontWeight: 300,
+          fontFamily: 'var(--font-display)',
+          fontStyle: 'var(--font-display-style)' as 'normal' | 'italic',
+          fontSize: 'clamp(4rem, 16vw, 6rem)',
+          fontWeight: 400,
+          lineHeight: 1.1,
           color: 'var(--text-primary)',
         }}
       >
@@ -165,7 +166,7 @@ export default function SuccessScreen({
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ delay: 0.55, duration: 0.5, ease: 'easeOut' }}
-        className="section-line my-5"
+        className="section-line my-3"
         aria-hidden="true"
       />
 
@@ -175,9 +176,9 @@ export default function SuccessScreen({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.6 }}
         style={{
-          fontFamily: '"Bodoni Moda", Georgia, serif',
-          fontSize: 'clamp(1.1rem, 3vw, 1.4rem)',
-          fontWeight: 400,
+          fontFamily: '"DM Sans", system-ui, sans-serif',
+          fontSize: 'clamp(1rem, 3vw, 1.2rem)',
+          fontWeight: 500,
           color: 'var(--text-primary)',
           marginBottom: '0.5rem',
         }}

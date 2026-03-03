@@ -8,6 +8,7 @@ export const tr: Translations = {
   rsvpButton: 'Onayla',
   scrollDown: 'Aşağı kaydırın',
   scrollCta: 'Hikayemizi keşfedin',
+  scrollToRsvp: 'Aşağıda yanıtlayın',
 
   // Event details section
   aboutEvent: 'Kutlama',

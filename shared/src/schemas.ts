@@ -304,7 +304,7 @@ export interface OpenTokenLookupResponse {
   type: 'open';
   token: string;
   isPublic: boolean;
-  events: Array<{ id: number; slug: string; name: string; date: string }>;
+  events: Array<{ id: number; slug: string; name: string; date: string; time: string | null; venueName: string | null }>;
 }
 
 export interface ClaimedTokenLookupResponse {

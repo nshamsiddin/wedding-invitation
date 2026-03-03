@@ -8,6 +8,11 @@ import type { AttendanceStatus } from '@invitation/shared';
 import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
 import SuccessScreen from './SuccessScreen';
+import {
+  FormCard, FormField, FormInput, FormTextarea,
+  AttendancePicker, GuestCountSelect, FormSubmitButton,
+  formInputStyle,
+} from './ui/FormPrimitives';
 
 interface PrefillData {
   name: string;
@@ -26,31 +31,6 @@ interface Props {
   partnerName?: string | null;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'transparent',
-  border: 'none',
-  borderBottom: '1px solid var(--border-warm)',
-  padding: '0.75rem 0',
-  color: 'var(--text-primary)',
-  fontFamily: '"DM Sans", system-ui, sans-serif',
-  fontSize: '0.9rem',
-  outline: 'none',
-  appearance: 'none' as const,
-  WebkitAppearance: 'none',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontFamily: '"DM Sans", system-ui, sans-serif',
-  fontSize: '0.8rem',
-  fontWeight: 500,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  color: 'var(--text-tertiary)',
-  marginBottom: '0.4rem',
-};
-
 export default function RSVPForm({ token, eventName = '', prefillData, partnerName }: Props) {
   const [successResult, setSuccessResult] = useState<{
     name: string;
@@ -59,7 +39,6 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
     updated: boolean;
   } | null>(null);
 
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [editingNames, setEditingNames] = useState(false);
   const showUpdateBanner = !!prefillData;
   const t = useTranslation();
@@ -68,6 +47,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<RSVPFormValues>({
     resolver: zodResolver(rsvpFormSchema),
@@ -85,7 +65,8 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
       : { guestCount: 1, dietary: '', partnerDietary: '', partnerName: '', message: '' },
   });
 
-  const watchedStatus = watch('status');
+  const watchedStatus  = watch('status');
+  const watchedCount   = watch('guestCount') ?? 1;
 
   const submitMutation = useMutation({
     mutationFn: (values: RSVPFormValues) =>
@@ -127,36 +108,10 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
     );
   }
 
-  const statusOptions = [
-    { value: 'attending' as const, label: t.attendingOption,  symbol: '✓' },
-    { value: 'declined'  as const, label: t.decliningOption,  symbol: '✕' },
-    { value: 'maybe'     as const, label: t.maybeOption,      symbol: '◎' },
-  ];
-
-  const getFocusedInputStyle = (field: string): React.CSSProperties => ({
-    ...inputStyle,
-    borderBottomColor: focusedField === field ? 'var(--accent-gold)' : 'var(--border-warm)',
-    transition: 'border-color 0.3s ease',
-  });
-
-  const sectionCardStyle: React.CSSProperties = {
-    background: 'rgba(255,252,248,0.6)',
-    border: '1px solid var(--border-warm)',
-    borderRadius: '18px',
-    padding: '1.25rem 1.25rem 1.5rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.25rem',
-  };
-
-  const sectionLabelStyle: React.CSSProperties = {
-    fontFamily: '"DM Sans", system-ui, sans-serif',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    color: 'var(--text-tertiary)',
-    marginBottom: '0.1rem',
+  const attendanceLabels = {
+    attending: t.attendingOption,
+    declined:  t.decliningOption,
+    maybe:     t.maybeOption,
   };
 
   return (
@@ -166,7 +121,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="space-y-4"
+      className="space-y-3"
       aria-label={t.rsvpHeading}
     >
       {/* Update banner */}
@@ -177,16 +132,12 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="rounded-xl px-4 py-3"
-            style={{
-              background: 'rgba(196,151,90,0.08)',
-              border: '1px solid var(--border-warm)',
-            }}
+            style={{ background: 'rgba(196,151,90,0.08)', border: '1px solid var(--border-warm)' }}
             role="status"
             aria-live="polite"
           >
             <p style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontFamily: '"DM Sans", system-ui, sans-serif' }}>
-              <span style={{ fontWeight: 600 }}>{t.rsvpFoundTitle}</span>{' '}
-              {t.rsvpFoundSub}
+              <span style={{ fontWeight: 600 }}>{t.rsvpFoundTitle}</span>{' '}{t.rsvpFoundSub}
             </p>
           </motion.div>
         )}
@@ -198,7 +149,6 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
           className="rounded-xl px-4 py-3"
           style={{ background: 'rgba(201,128,138,0.08)', border: '1px solid rgba(201,128,138,0.2)' }}
           role="alert"
-          aria-live="assertive"
         >
           <p style={{ fontSize: '0.8rem', color: 'var(--accent-rose)', fontFamily: '"DM Sans", system-ui, sans-serif' }}>
             {(submitMutation.error as Error)?.message ?? t.errorGeneric}
@@ -206,29 +156,19 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         </div>
       )}
 
-      {/* ── Section 1: Who's coming ── */}
-      <div style={sectionCardStyle}>
-        <p style={sectionLabelStyle}>{t.whosComing}</p>
-
-        {/* Name */}
+      {/* ── WHO'S COMING ── */}
+      <FormCard title={t.whosComing}>
+        {/* Name row */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-            <label style={{ ...labelStyle, marginBottom: 0 }}>{partnerName ? t.guestsShortLabel : t.nameLabel}</label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+            <label style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+              {partnerName ? t.guestsShortLabel : t.nameLabel}
+            </label>
             <button
               type="button"
               onClick={() => setEditingNames((v) => !v)}
               aria-label={editingNames ? 'Lock name fields' : 'Edit name'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '0.2rem 0.4rem',
-                color: editingNames ? 'var(--accent-gold)' : 'var(--text-tertiary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.3rem',
-                transition: 'color 0.2s',
-              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem', color: editingNames ? 'var(--accent-gold)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'color 0.2s' }}
             >
               {editingNames ? (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -241,12 +181,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               )}
-              <span style={{
-                fontSize: '0.72rem',
-                fontFamily: '"DM Sans", system-ui, sans-serif',
-                fontWeight: 500,
-                letterSpacing: '0.05em',
-              }}>
+              <span style={{ fontSize: '0.72rem', fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500, letterSpacing: '0.05em' }}>
                 {editingNames ? t.lockName : t.editName}
               </span>
             </button>
@@ -254,47 +189,14 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
           {editingNames ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <input
-                id="rsvp-name"
-                type="text"
-                autoComplete="name"
-                {...register('name')}
-                style={getFocusedInputStyle('name')}
-                onFocus={() => setFocusedField('name')}
-                onBlur={() => setFocusedField(null)}
-                placeholder={t.namePlaceholder}
-              />
-              {errors.name && (
-                <p style={{ marginTop: '0.25rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">
-                  {errors.name.message}
-                </p>
-              )}
+              <FormInput id="rsvp-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
+              {errors.name && <p style={{ fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">{errors.name.message}</p>}
               {partnerName !== undefined && partnerName !== null && (
-                <input
-                  id="rsvp-partner-name"
-                  type="text"
-                  autoComplete="off"
-                  {...register('partnerName')}
-                  style={getFocusedInputStyle('partnerName')}
-                  onFocus={() => setFocusedField('partnerName')}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder={t.partnerNamePlaceholder}
-                />
+                <FormInput id="rsvp-partner-name" type="text" autoComplete="off" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
               )}
             </div>
           ) : partnerName ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.65rem 0',
-                borderBottom: '1px solid var(--border-warm)',
-                fontFamily: '"DM Sans", system-ui, sans-serif',
-                fontSize: '0.9rem',
-                color: 'var(--text-primary)',
-                opacity: 0.85,
-              }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-warm)', fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.9rem', color: 'var(--text-primary)', opacity: 0.85 }}
               aria-label={`Guests: ${prefillData?.name} and ${partnerName}`}
             >
               <span>{prefillData?.name}</span>
@@ -302,13 +204,8 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
               <span>{partnerName}</span>
             </div>
           ) : (
-            <input
-              id="rsvp-name"
-              type="text"
-              autoComplete="name"
-              {...register('name')}
-              disabled
-              style={{ ...getFocusedInputStyle('name'), opacity: 0.5 }}
+            <input id="rsvp-name" type="text" autoComplete="name" {...register('name')} disabled
+              style={{ ...formInputStyle, opacity: 0.5 }}
               placeholder={t.namePlaceholder}
             />
           )}
@@ -316,65 +213,19 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
         {/* Attendance */}
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend style={{ ...labelStyle, marginBottom: '0.75rem' }}>
+          <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
             {t.attendanceLabel} <span aria-hidden="true" style={{ color: 'var(--accent-rose)' }}>*</span>
           </legend>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            {statusOptions.map(({ value, label, symbol }) => {
-              const isSelected = watchedStatus === value;
-              return (
-                <label
-                  key={value}
-                  className="relative flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl transition-all"
-                  style={{
-                    background: isSelected
-                      ? 'rgba(196,151,90,0.1)'
-                      : 'rgba(0,0,0,0.02)',
-                    border: `1px solid ${isSelected ? 'var(--accent-gold)' : 'var(--border-warm)'}`,
-                    color: isSelected ? 'var(--accent-gold)' : 'var(--text-secondary)',
-                    transition: 'all 0.25s ease',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    value={value}
-                    {...register('status')}
-                    className="sr-only"
-                    aria-label={label}
-                  />
-                  <span
-                    style={{
-                      fontSize: '1rem',
-                      marginBottom: '0.25rem',
-                      display: 'block',
-                      fontFamily: 'inherit',
-                    }}
-                    aria-hidden="true"
-                  >
-                    {symbol}
-                  </span>
-                  <span style={{
-                    fontSize: '0.85rem',
-                    fontFamily: '"DM Sans", system-ui, sans-serif',
-                    fontWeight: 500,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase' as const,
-                  }}>
-                    {label}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-          {errors.status && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">
-              {errors.status.message}
-            </p>
-          )}
+          <AttendancePicker
+            value={watchedStatus ?? ''}
+            onChange={(v) => setValue('status', v, { shouldValidate: true })}
+            labels={attendanceLabels}
+            name="rsvp-status"
+          />
+          {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
         </fieldset>
 
-        {/* Guest count — conditional on attending */}
+        {/* Guest count */}
         <AnimatePresence>
           {watchedStatus === 'attending' && (
             <motion.div
@@ -383,89 +234,33 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <label htmlFor="rsvp-guest-count" style={labelStyle}>{t.guestCountLabel}</label>
-              <select
+              <GuestCountSelect
                 id="rsvp-guest-count"
-                {...register('guestCount', { valueAsNumber: true })}
-                style={getFocusedInputStyle('guestCount')}
-                onFocus={() => setFocusedField('guestCount')}
-                onBlur={() => setFocusedField(null)}
-              >
-                {[1, 2, 3, 4, 5].map(n => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? t.guestCountSingle : t.guestCountPlural}
-                  </option>
-                ))}
-              </select>
+                label={t.guestCountLabel}
+                singleLabel={t.guestCountSingle}
+                pluralLabel={t.guestCountPlural}
+                value={watchedCount}
+                onChange={(n) => setValue('guestCount', n)}
+              />
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </FormCard>
 
-      {/* ── Section 2: A note to us ── */}
-      <div style={sectionCardStyle}>
-        <p style={sectionLabelStyle}>{t.aNoteToUs}</p>
-        <div>
-          <label htmlFor="rsvp-message" style={labelStyle}>
-            {t.messageLabel}{' '}
-            <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-tertiary)' }}>
-              {t.messageOptional}
-            </span>
-          </label>
-          <textarea
-            id="rsvp-message"
-            rows={3}
-            {...register('message')}
-            style={{
-              ...getFocusedInputStyle('message'),
-              resize: 'none',
-              paddingTop: '0.75rem',
-            }}
-            onFocus={() => setFocusedField('message')}
-            onBlur={() => setFocusedField(null)}
-            placeholder={t.messagePlaceholder}
-          />
-        </div>
-      </div>
+      {/* ── A NOTE TO US ── */}
+      <FormCard title={t.aNoteToUs}>
+        <FormField label={t.messageLabel} optional={t.messageOptional}>
+          <FormTextarea id="rsvp-message" rows={2} {...register('message')} placeholder={t.messagePlaceholder} />
+        </FormField>
+      </FormCard>
 
-      {/* Submit */}
-      <motion.button
-        type="submit"
-        disabled={submitMutation.isPending}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.97 }}
-        className="btn-primary w-full"
-        style={{
-          opacity: submitMutation.isPending ? 0.7 : 1,
-        }}
-        aria-label={showUpdateBanner ? t.updateRsvp : t.sendRsvp}
-      >
-        {submitMutation.isPending ? (
-          <span className="flex items-center justify-center gap-2">
-            <motion.span
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              style={{
-                display: 'inline-block',
-                width: 14,
-                height: 14,
-                border: '2px solid rgba(12,10,9,0.2)',
-                borderTopColor: 'rgba(12,10,9,0.8)',
-                borderRadius: '50%',
-              }}
-              aria-hidden="true"
-            />
-            {t.sending}
-          </span>
-        ) : showUpdateBanner ? t.updateRsvp : t.sendRsvp}
-      </motion.button>
+      <FormSubmitButton
+        pending={submitMutation.isPending}
+        label={showUpdateBanner ? t.updateRsvp : t.sendRsvp}
+        pendingLabel={t.sending}
+      />
 
-      <p style={{
-        textAlign: 'center',
-        fontSize: '0.72rem',
-        color: 'var(--text-tertiary)',
-        fontFamily: '"DM Sans", system-ui, sans-serif',
-      }}>
+      <p style={{ textAlign: 'center', fontSize: '0.68rem', color: 'var(--text-tertiary)', fontFamily: '"DM Sans", system-ui, sans-serif', marginTop: '0.25rem' }}>
         {t.rsvpDeadlineHint}
       </p>
     </motion.form>

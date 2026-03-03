@@ -7,7 +7,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import CustomCursor from './components/ui/CustomCursor';
 import ScrollProgress from './components/ui/ScrollProgress';
 import HomePage from './garden/pages/HomePage';
-import EventPage from './pages/EventPage';
 import InvitePage from './pages/InvitePage';
 import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
@@ -54,8 +53,6 @@ function AppInner() {
         <Routes>
           {/* ── Garden design ── */}
           <Route path="/"              element={<HomePage />} />
-          <Route path="/tashkent"      element={<EventPage slug="tashkent" />} />
-          <Route path="/ankara"        element={<EventPage slug="ankara" />} />
           <Route path="/invite/:token" element={<InvitePage />} />
 
           {/* ── Admin ── */}

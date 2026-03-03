@@ -4,6 +4,7 @@ export type Translations = {
   rsvpButton: string;
   scrollDown: string;
   scrollCta: string;
+  scrollToRsvp: string;
   aboutEvent: string;
   eventSubheading: string;
   venue: string;
@@ -128,6 +129,7 @@ export const en: Translations = {
   rsvpButton: 'RSVP',
   scrollDown: 'Scroll to RSVP',
   scrollCta: 'Discover our story',
+  scrollToRsvp: 'RSVP below',
 
   // Event details section
   aboutEvent: 'The Celebration',

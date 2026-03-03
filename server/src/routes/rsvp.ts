@@ -86,6 +86,8 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
             slug: r.eventSlug,
             name: r.eventName,
             date: r.eventDate,
+            time: r.eventTime,
+            venueName: r.eventVenueName,
           },
         ],
       });

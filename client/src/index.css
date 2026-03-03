@@ -72,14 +72,16 @@ body {
   color: var(--text-primary);
   font-family: 'DM Sans', system-ui, sans-serif;
   transition: background-color 0.4s ease, color 0.4s ease;
-  cursor: none;
   overflow-x: hidden;
 }
 
-/* Hide default cursor — custom cursor replaces it */
-* { cursor: none !important; }
-a, button, [role="button"], input, select, textarea, label[for] {
-  cursor: none !important;
+/* Hide default cursor and show custom cursor only on pointer (mouse) devices */
+@media (pointer: fine) {
+  body { cursor: none; }
+  * { cursor: none !important; }
+  a, button, [role="button"], input, select, textarea, label[for] {
+    cursor: none !important;
+  }
 }
 
 /* Restore default cursor + light background for admin panel */
@@ -526,11 +528,31 @@ a, button, [role="button"], input, select, textarea, label[for] {
 }
 .garden-slide-tall {
   scroll-snap-align: start;
-  height: 100dvh;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  overscroll-behavior-y: none;
+  min-height: 100dvh;
+  height: auto;
+  overflow: clip;
   position: relative;
-  scrollbar-width: none;
 }
-.garden-slide-tall::-webkit-scrollbar { display: none; }
+
+/* ─── Invite page — always light, no dark mode ───────────────────── */
+/* Overrides .dark CSS variables so the invite page stays light       */
+/* regardless of the user's system preference or theme toggle.        */
+.invite-page,
+.dark .invite-page {
+  --bg:             #FAF7F2;
+  --bg-surface:     #FFFFFF;
+  --bg-subtle:      #F5EDD7;
+  --border:         rgba(0, 0, 0, 0.08);
+  --border-warm:    rgba(196, 151, 90, 0.2);
+  --text-primary:   #1A1210;
+  --text-secondary: rgba(26, 18, 16, 0.55);
+  --text-tertiary:  rgba(26, 18, 16, 0.35);
+  --accent-gold:    #B8924A;
+  --accent-rose:    #C4848C;
+  --glass-bg:       rgba(255, 255, 255, 0.65);
+  --glass-border:   rgba(255, 255, 255, 0.8);
+  --shadow-sm:      0 2px 12px rgba(0,0,0,0.06);
+  --shadow-md:      0 8px 32px rgba(0,0,0,0.08);
+  --shadow-lg:      0 24px 80px rgba(0,0,0,0.10);
+  color-scheme: light;
+}

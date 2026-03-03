@@ -8,6 +8,7 @@ export const uz: Translations = {
   rsvpButton: 'Tasdiqlash',
   scrollDown: 'Pastga aylantiring',
   scrollCta: 'Hikoyamizni kashf eting',
+  scrollToRsvp: 'Quyida javob bering',
 
   // Event details section
   aboutEvent: 'Bayram',
