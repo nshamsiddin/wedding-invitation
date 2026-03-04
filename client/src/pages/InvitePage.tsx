@@ -8,6 +8,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import CountdownTimer from '../components/CountdownTimer';
 import RSVPForm from '../components/RSVPForm';
+import SuccessScreen from '../components/SuccessScreen';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import MagneticButton from '../components/ui/MagneticButton';
 import { rsvpApi } from '../lib/api';
@@ -103,11 +104,17 @@ function ScrollCue({ inView }: { inView: boolean }) {
 interface PublicInviteFormProps {
   token: string;
   eventId: number;
-  onSuccess: () => void;
 }
 
-function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) {
+function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
   const t = useTranslation();
+
+  const [successResult, setSuccessResult] = useState<{
+    name: string;
+    partnerName?: string;
+    status: 'attending' | 'declined' | 'maybe';
+    guestCount: number;
+  } | null>(null);
 
   const {
     register,
@@ -117,7 +124,8 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
     formState: { errors },
   } = useForm<PublicRsvpValues>({
     resolver: zodResolver(publicRsvpSchema),
-    defaultValues: { token, eventId, status: 'attending', guestCount: 1, message: '' },
+    mode: 'onBlur',
+    defaultValues: { token, eventId, name: '', partnerName: '', phone: '', status: 'attending', guestCount: 1, message: '' },
   });
 
   const status    = watch('status') ?? 'attending';
@@ -129,11 +137,31 @@ function PublicInviteForm({ token, eventId, onSuccess }: PublicInviteFormProps) 
 
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublic,
-    onSuccess: () => { toast.success(t.rsvpReceived); onSuccess(); },
-    onError:   () => { toast.error(t.submitFailed); },
+    onSuccess: (_data, variables) => {
+      setSuccessResult({
+        name: variables.name,
+        partnerName: variables.partnerName || undefined,
+        status: variables.status,
+        guestCount: variables.guestCount ?? 1,
+      });
+    },
+    onError: () => { toast.error(t.submitFailed); },
   });
 
   const attendanceLabels = { attending: t.attendingOption, declined: t.decliningOption, maybe: t.maybeOption };
+
+  if (successResult) {
+    return (
+      <SuccessScreen
+        guestName={successResult.name}
+        partnerName={successResult.partnerName}
+        status={successResult.status}
+        guestCount={successResult.guestCount}
+        isUpdate={false}
+        onUpdateRsvp={() => setSuccessResult(null)}
+      />
+    );
+  }
 
   return (
     <motion.form
@@ -212,7 +240,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
   const t = useTranslation();
 
   if (isPublic) {
-    return <PublicInviteForm token={token} eventId={events[0]?.id ?? 0} onSuccess={onSuccess} />;
+    return <PublicInviteForm token={token} eventId={events[0]?.id ?? 0} />;
   }
 
   const {
@@ -223,8 +251,12 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
     formState: { errors },
   } = useForm<ClaimInvitationValues>({
     resolver: zodResolver(claimInvitationSchema),
+    mode: 'onBlur',
     defaultValues: {
       token,
+      name: '',
+      email: '',
+      phone: '',
       rsvpEntries: events.map((ev) => ({
         eventId: ev.id,
         status: 'attending' as const,

@@ -51,6 +51,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
     formState: { errors },
   } = useForm<RSVPFormValues>({
     resolver: zodResolver(rsvpFormSchema),
+    mode: 'onBlur',
     defaultValues: prefillData
       ? {
           name:           prefillData.name,

@@ -3,7 +3,7 @@
  * Every form (personal, public, claim) must use these components
  * so the design is pixel-identical across flows.
  */
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import type { CSSProperties, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { motion } from 'framer-motion';
 
@@ -104,67 +104,75 @@ export function FormField({
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   focusColor?: boolean;
 }
-export function FormInput({ focusColor, style, ...props }: FormInputProps) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <input
-      style={{
-        ...formInputStyle,
-        borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
-        ...style,
-      }}
-      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
-      onBlur={(e)  => { setFocused(false); props.onBlur?.(e); }}
-      {...props}
-    />
-  );
-}
+export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
+  function FormInput({ focusColor, style, onFocus, onBlur, ...props }, ref) {
+    const [focused, setFocused] = useState(false);
+    return (
+      <input
+        ref={ref}
+        style={{
+          ...formInputStyle,
+          borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
+          ...style,
+        }}
+        onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+        onBlur={(e)  => { setFocused(false); onBlur?.(e); }}
+        {...props}
+      />
+    );
+  }
+);
 
 // ─── FormTextarea ─────────────────────────────────────────────────────────────
 
 interface FormTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {}
-export function FormTextarea({ style, ...props }: FormTextareaProps) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <textarea
-      style={{
-        ...formInputStyle,
-        resize: 'none',
-        paddingTop: '0.5rem',
-        borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
-        ...style,
-      }}
-      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
-      onBlur={(e)  => { setFocused(false); props.onBlur?.(e); }}
-      {...props}
-    />
-  );
-}
+export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
+  function FormTextarea({ style, onFocus, onBlur, ...props }, ref) {
+    const [focused, setFocused] = useState(false);
+    return (
+      <textarea
+        ref={ref}
+        style={{
+          ...formInputStyle,
+          resize: 'none',
+          borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
+          ...style,
+        }}
+        onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+        onBlur={(e)  => { setFocused(false); onBlur?.(e); }}
+        {...props}
+      />
+    );
+  }
+);
 
 // ─── FormSelect ───────────────────────────────────────────────────────────────
 
 interface FormSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {}
-export function FormSelect({ style, children, ...props }: FormSelectProps) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <select
-      style={{
-        ...formInputStyle,
-        borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
-        paddingRight: '1.5rem',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23B8924A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'right 0.25rem center',
-        ...style,
-      }}
-      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
-      onBlur={(e)  => { setFocused(false); props.onBlur?.(e); }}
-      {...props}
-    >
-      {children}
-    </select>
-  );
-}
+export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
+  function FormSelect({ style, onFocus, onBlur, children, ...props }, ref) {
+    const [focused, setFocused] = useState(false);
+    return (
+      <select
+        ref={ref}
+        style={{
+          ...formInputStyle,
+          borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
+          paddingRight: '1.5rem',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23B8924A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 0.25rem center',
+          ...style,
+        }}
+        onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+        onBlur={(e)  => { setFocused(false); onBlur?.(e); }}
+        {...props}
+      >
+        {children}
+      </select>
+    );
+  }
+);
 
 // ─── AttendancePicker — 3-button radio ────────────────────────────────────────
 

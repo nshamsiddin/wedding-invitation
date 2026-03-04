@@ -248,7 +248,7 @@ export type UpdateInvitationValues = z.infer<typeof updateInvitationSchema>;
 export const publicRsvpSchema = z.object({
   token: z.string().uuid('Invalid invitation token'),
   name: z
-    .string()
+    .string({ required_error: 'Please enter your name' })
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be under 100 characters')
     .trim(),
