@@ -109,12 +109,23 @@ interface PublicInviteFormProps {
 function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
   const t = useTranslation();
 
-  const [successResult, setSuccessResult] = useState<{
+  const LS_KEY = `rsvp_pub_${eventId}`;
+
+  type SuccessResult = {
     name: string;
     partnerName?: string;
     status: 'attending' | 'declined' | 'maybe';
     guestCount: number;
-  } | null>(null);
+  };
+
+  const [successResult, setSuccessResult] = useState<SuccessResult | null>(() => {
+    try {
+      const stored = localStorage.getItem(LS_KEY);
+      return stored ? (JSON.parse(stored) as SuccessResult) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const {
     register,
@@ -138,12 +149,14 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublic,
     onSuccess: (_data, variables) => {
-      setSuccessResult({
+      const result: SuccessResult = {
         name: variables.name,
         partnerName: variables.partnerName || undefined,
         status: variables.status,
         guestCount: variables.guestCount ?? 1,
-      });
+      };
+      try { localStorage.setItem(LS_KEY, JSON.stringify(result)); } catch { /* quota exceeded */ }
+      setSuccessResult(result);
     },
     onError: () => { toast.error(t.submitFailed); },
   });
@@ -158,7 +171,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
         status={successResult.status}
         guestCount={successResult.guestCount}
         isUpdate={false}
-        onUpdateRsvp={() => setSuccessResult(null)}
+        onUpdateRsvp={() => { try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ } setSuccessResult(null); }}
       />
     );
   }
@@ -187,8 +200,8 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
           </FormField>
         )}
 
-        <FormField label={t.phoneLabel} optional={t.dietaryOptional}>
-          <FormInput id="pub-phone" type="tel" {...register('phone')} placeholder="+1 555 000 0000" />
+        <FormField label={t.phoneLabel} required error={errors.phone?.message} hint={t.phoneHint}>
+          <FormInput id="pub-phone" type="tel" autoComplete="tel" {...register('phone')} placeholder="+1 555 000 0000" />
         </FormField>
 
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>

@@ -253,7 +253,11 @@ export const publicRsvpSchema = z.object({
     .max(100, 'Name must be under 100 characters')
     .trim(),
   partnerName: z.string().max(100).trim().optional(),
-  phone: z.string().max(30).trim().optional(),
+  phone: z
+    .string({ required_error: 'Please enter your phone number' })
+    .min(6, 'Phone number is too short')
+    .max(30)
+    .trim(),
   status: z.enum(['attending', 'declined', 'maybe'], {
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),

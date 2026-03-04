@@ -74,11 +74,12 @@ export function FormCard({ title, children }: { title: string; children: React.R
 // ─── FormField ────────────────────────────────────────────────────────────────
 
 export function FormField({
-  label, required, optional, error, children,
+  label, required, optional, hint, error, children,
 }: {
   label: string;
   required?: boolean;
   optional?: string;
+  hint?: string;
   error?: string;
   children: React.ReactNode;
 }) {
@@ -94,6 +95,11 @@ export function FormField({
         )}
       </label>
       {children}
+      {hint && !error && (
+        <p style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
+          {hint}
+        </p>
+      )}
       {error && <p style={formErrorStyle} role="alert">{error}</p>}
     </div>
   );

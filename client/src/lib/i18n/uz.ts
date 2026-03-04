@@ -132,6 +132,7 @@ export const uz: Translations = {
   guestsShortLabel: 'Mehmonlar',
   attendanceShortLabel: 'Ishtirok',
   phoneLabel: 'Telefon',
+  phoneHint: "Yangiliklar uchun siz bilan bog'lanishimiz uchun",
   chapter: 'Bob',
   returnToHomepage: 'Bosh sahifaga qaytish',
   needHelp: 'Yordam kerakmi? Biz bilan bog\'laning',

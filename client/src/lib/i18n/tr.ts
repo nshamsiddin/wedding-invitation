@@ -132,6 +132,7 @@ export const tr: Translations = {
   guestsShortLabel: 'Misafirler',
   attendanceShortLabel: 'Katılım',
   phoneLabel: 'Telefon',
+  phoneHint: 'Güncellemeler için sizi arayabilelim',
   chapter: 'Bölüm',
   returnToHomepage: 'Ana sayfaya dön',
   needHelp: 'Yardım mı lazım? Bize ulaşın',

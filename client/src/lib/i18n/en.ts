@@ -103,6 +103,7 @@ export type Translations = {
   guestsShortLabel: string;
   attendanceShortLabel: string;
   phoneLabel: string;
+  phoneHint: string;
   // Navigation
   chapter: string;
   returnToHomepage: string;
@@ -253,6 +254,7 @@ export const en: Translations = {
   guestsShortLabel: 'Guests',
   attendanceShortLabel: 'Attendance',
   phoneLabel: 'Phone',
+  phoneHint: 'So we can reach you with updates',
   chapter: 'Chapter',
   returnToHomepage: 'Return to homepage',
   needHelp: 'Need help? Contact us',
