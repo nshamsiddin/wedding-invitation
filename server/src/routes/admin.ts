@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { and, desc, eq, inArray, isNull, isNotNull, like, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
 import { randomUUID, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
 // bcryptjs is used for password hashing support ($2b$ prefix detection).
 // It is the pure-JS alternative to bcrypt — no native compilation required.
 import bcrypt from 'bcryptjs';
-import { db, schema } from '../db/index.js';
-import { requireAuth } from '../middleware/auth.js';
+import { db, schema, sqlite } from '../db/index.js';
+import { requireAuth, recordLogout } from '../middleware/auth.js';
 import { loginRateLimit } from '../middleware/rateLimit.js';
 import {
   adminLoginSchema,
@@ -21,6 +21,18 @@ import { toCSV } from '../lib/csv.js';
 import type { AttendanceStatus } from '@invitation/shared';
 
 const router = Router();
+
+// Returns true when a SQLite UNIQUE constraint violation caused the error.
+// Used to convert DB-level uniqueness failures into 409 responses without a
+// pre-insert SELECT, which would introduce a TOCTOU race condition.
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: unknown }).code === 'SQLITE_CONSTRAINT_UNIQUE'
+  );
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +91,7 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response): Promi
 });
 
 router.post('/logout', (_req: Request, res: Response): void => {
+  recordLogout();
   res.clearCookie('token');
   res.json({ ok: true });
 });
@@ -178,8 +191,15 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
     // Build guest WHERE conditions
     const guestConditions = [];
     if (search && search.trim().length > 0) {
-      const term = `%${search.trim()}%`;
-      guestConditions.push(or(like(schema.guests.name, term), like(schema.guests.email, term)));
+      // Escape SQLite LIKE wildcards (% and _) in the search term so that
+      // a search for e.g. "%" does not accidentally match all guests.
+      const rawTerm = search.trim();
+      const escapedTerm = rawTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      const term = `%${escapedTerm}%`;
+      guestConditions.push(or(
+        sql`${schema.guests.name} LIKE ${term} ESCAPE '\\'`,
+        sql`${schema.guests.email} LIKE ${term} ESCAPE '\\'`,
+      ));
     }
     if (matchingGuestIds !== null) {
       guestConditions.push(inArray(schema.guests.id, matchingGuestIds));
@@ -276,43 +296,65 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
   const { name, email, phone, partnerName, eventIds, status, guestCount, dietary, message } = parsed.data;
 
   try {
-    const existing = await db
-      .select({ id: schema.guests.id })
-      .from(schema.guests)
-      .where(eq(schema.guests.email, email))
-      .limit(1);
+    // Wrap guest + invitation creation in a single transaction so a partial failure
+    // (e.g. a duplicate event ID mid-loop) never leaves an orphaned guest record.
+    type AddResult =
+      | { ok: true; guest: typeof schema.guests.$inferSelect; invitations: (typeof schema.guestInvitations.$inferSelect)[] }
+      | { ok: false; conflict: true };
 
-    if (existing.length > 0) {
+    const addTransaction = sqlite.transaction((): AddResult => {
+      // Check email uniqueness inside the transaction — this is atomic in SQLite
+      // (serializable writes) so there is no TOCTOU window between check and insert.
+      const existing = sqlite
+        .prepare('SELECT id FROM guests WHERE email = ? LIMIT 1')
+        .get(email);
+      if (existing) return { ok: false, conflict: true };
+
+      const guest = sqlite
+        .prepare(
+          'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, ?, ?, ?) RETURNING *'
+        )
+        .get(name, email, phone ?? null, partnerName ?? null) as typeof schema.guests.$inferSelect;
+
+      const invitations: (typeof schema.guestInvitations.$inferSelect)[] = [];
+      for (const eventId of eventIds) {
+        const inv = sqlite
+          .prepare(
+            `INSERT INTO guest_invitations
+               (guest_id, event_id, token, status, guest_count, dietary, message)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
+             RETURNING *`
+          )
+          .get(
+            guest.id,
+            eventId,
+            randomUUID(),
+            status ?? 'pending',
+            guestCount ?? 1,
+            dietary ?? null,
+            message ?? null,
+          ) as typeof schema.guestInvitations.$inferSelect;
+        invitations.push(inv);
+      }
+
+      return { ok: true, guest, invitations };
+    });
+
+    const result = addTransaction();
+
+    if (!result.ok) {
       res.status(409).json({ error: 'A guest with this email already exists' });
       return;
     }
 
-    const [guest] = await db
-      .insert(schema.guests)
-      .values({ name, email, phone: phone ?? null, partnerName: partnerName ?? null })
-      .returning();
-
-    // Create invitations for each selected event
-    const invitations = [];
-    for (const eventId of eventIds) {
-      const [inv] = await db
-        .insert(schema.guestInvitations)
-        .values({
-          guestId: guest.id,
-          eventId,
-          token: randomUUID(),
-          status: status ?? 'pending',
-          guestCount: guestCount ?? 1,
-          dietary: dietary ?? null,
-          message: message ?? null,
-        })
-        .returning();
-      invitations.push(inv);
-    }
-
-    res.status(201).json({ guest, invitations });
-  } catch (error) {
+    res.status(201).json({ guest: result.guest, invitations: result.invitations });
+  } catch (error: unknown) {
     console.error('Add guest error:', error);
+    // Catch any DB-level UNIQUE constraint violation (e.g. concurrent duplicate request)
+    if (isUniqueConstraintError(error)) {
+      res.status(409).json({ error: 'A guest with this email already exists' });
+      return;
+    }
     res.status(500).json({ error: 'Failed to add guest' });
   }
 });
@@ -333,7 +375,7 @@ async function handleUpdateGuest(req: Request, res: Response): Promise<void> {
 
   try {
     const existing = await db
-      .select({ id: schema.guests.id, email: schema.guests.email })
+      .select({ id: schema.guests.id })
       .from(schema.guests)
       .where(eq(schema.guests.id, id))
       .limit(1);
@@ -343,20 +385,6 @@ async function handleUpdateGuest(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // If email is being changed, check uniqueness against other guests
-    if (parsed.data.email && parsed.data.email !== existing[0].email) {
-      const emailConflict = await db
-        .select({ id: schema.guests.id })
-        .from(schema.guests)
-        .where(eq(schema.guests.email, parsed.data.email))
-        .limit(1);
-
-      if (emailConflict.length > 0) {
-        res.status(409).json({ error: 'A guest with this email address already exists' });
-        return;
-      }
-    }
-
     const [updated] = await db
       .update(schema.guests)
       .set(parsed.data)
@@ -364,8 +392,14 @@ async function handleUpdateGuest(req: Request, res: Response): Promise<void> {
       .returning();
 
     res.json(updated);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Update guest error:', error);
+    // Let the DB UNIQUE constraint handle email conflicts rather than a TOCTOU
+    // pre-check SELECT, so concurrent updates are handled correctly.
+    if (isUniqueConstraintError(error)) {
+      res.status(409).json({ error: 'A guest with this email address already exists' });
+      return;
+    }
     res.status(500).json({ error: 'Failed to update guest' });
   }
 }
@@ -471,7 +505,7 @@ router.post('/invitations/open', requireAuth, async (req: Request, res: Response
   }
 });
 
-// GET /api/admin/invitations/open — list unclaimed open invitations
+// GET /api/admin/invitations/open — list open invitations (public links always; one-time links only while unclaimed)
 router.get('/invitations/open', requireAuth, async (_req: Request, res: Response): Promise<void> => {
   try {
     const rows = await db
@@ -488,23 +522,23 @@ router.get('/invitations/open', requireAuth, async (_req: Request, res: Response
       })
       .from(schema.guestInvitations)
       .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
-      // Show all public links + unclaimed one-time links
+      // Public links are shown always; one-time links only while unclaimed.
+      // Using or() directly in the WHERE clause avoids loading all claimed rows
+      // into memory only to discard them in JavaScript.
       .where(
         and(
           eq(schema.guestInvitations.isOpen, true),
-          // Include public links always; include one-time links only while unclaimed
-          // We can't express OR with Drizzle's typed .where easily, so we use
-          // a raw SQL fragment via isNull / isPublic check below.
-          // Solution: fetch all isOpen=1 rows and filter in JS.
+          or(
+            eq(schema.guestInvitations.isPublic, true),
+            isNull(schema.guestInvitations.claimedAt),
+          ),
         )
       )
       .orderBy(desc(schema.guestInvitations.createdAt));
 
     const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
-    // Public links are shown always; one-time links only while unclaimed
-    const filtered = rows.filter((r) => r.isPublic || r.claimedAt === null);
     res.json(
-      filtered.map((r) => ({
+      rows.map((r) => ({
         id: r.id,
         token: r.token,
         isOpen: r.isOpen,

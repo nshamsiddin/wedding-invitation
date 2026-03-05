@@ -8,6 +8,7 @@ import CustomCursor from './components/ui/CustomCursor';
 import ScrollProgress from './components/ui/ScrollProgress';
 import HomePage from './garden/pages/HomePage';
 import InvitePage from './pages/InvitePage';
+import EventPage from './pages/EventPage';
 import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -54,6 +55,9 @@ function AppInner() {
           {/* ── Garden design ── */}
           <Route path="/"              element={<HomePage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
+
+          {/* ── Event landing pages (linked from homepage event cards) ── */}
+          <Route path="/:slug"         element={<EventPage />} />
 
           {/* ── Admin ── */}
           <Route path="/admin/login"   element={<LoginPage />} />

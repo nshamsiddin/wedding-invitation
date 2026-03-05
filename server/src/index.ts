@@ -31,6 +31,17 @@ if (process.env.NODE_ENV === 'production' && !process.env.BASE_URL) {
   process.exit(1);
 }
 
+// Validate BASE_URL is a well-formed URL so misconfiguration surfaces at startup
+// rather than silently producing malformed invite links sent to guests.
+if (process.env.BASE_URL) {
+  try {
+    new URL(process.env.BASE_URL);
+  } catch {
+    console.error(`[startup] BASE_URL is not a valid URL: "${process.env.BASE_URL}"`);
+    process.exit(1);
+  }
+}
+
 // ─── Weak credential guard (production only) ──────────────────────────────────
 // In production, refuse to start if secrets are still set to the well-known
 // default values shipped in .env.example — a common misconfiguration.
@@ -142,6 +153,7 @@ db.run(sql`
     dietary         TEXT,
     message         TEXT,
     partner_dietary TEXT,
+    source      TEXT NOT NULL DEFAULT 'admin',
     is_open         INTEGER NOT NULL DEFAULT 0,
     is_public       INTEGER NOT NULL DEFAULT 0,
     claimed_at  TEXT,
@@ -261,6 +273,18 @@ db.run(sql`
   if (!cols.some((c) => c.name === 'is_public')) {
     console.log('[migration] Adding is_public column to guest_invitations…');
     sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0').run();
+  }
+})();
+
+// Add source column to track whether an invitation was created by an admin or by
+// the public RSVP flow. This prevents public submissions from overwriting admin-curated rows.
+(function migrateGuestInvitationsSource() {
+  type ColInfo = { name: string };
+  const cols = sqlite.prepare('PRAGMA table_info(guest_invitations)').all() as ColInfo[];
+  if (cols.length === 0) return; // Just created above — already has the column
+  if (!cols.some((c) => c.name === 'source')) {
+    console.log('[migration] Adding source column to guest_invitations…');
+    sqlite.prepare("ALTER TABLE guest_invitations ADD COLUMN source TEXT NOT NULL DEFAULT 'admin'").run();
   }
 })();
 

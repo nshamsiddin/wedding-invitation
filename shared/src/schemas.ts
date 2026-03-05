@@ -262,6 +262,8 @@ export const publicRsvpSchema = z.object({
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
+  dietary: z.string().max(500).trim().optional().default(''),
+  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
   eventId: z.number().int().positive(),
 });
@@ -313,6 +315,8 @@ export interface OpenTokenLookupResponse {
 
 export interface ClaimedTokenLookupResponse {
   type: 'claimed';
+  claimedAt: string;
+  error: string;
 }
 
 export type TokenLookupResponse =

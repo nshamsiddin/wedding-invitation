@@ -64,11 +64,14 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
 
     const r = invRows[0];
 
-    // Open invitation that has already been claimed — reject further use
+    // Open invitation that has already been claimed — reject further use.
     // Public links are never consumed, so skip this check for them.
+    // Return claimedAt so the frontend can display when it was registered,
+    // helping legitimate guests who received a forwarded link understand what happened.
     if (r.invIsOpen && !r.invIsPublic && r.invClaimedAt !== null) {
       res.status(409).json({
         type: 'claimed',
+        claimedAt: r.invClaimedAt,
         error: 'This invitation link has already been used.',
       });
       return;
@@ -268,6 +271,13 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         return { ok: false, status: 404, error: 'This invitation link is invalid or has already been used.' };
       }
 
+      // Validate that every RSVP entry references the event this token belongs to.
+      // Without this check, a guest could inject additional event IDs in rsvpEntries
+      // and self-register for events they were never invited to.
+      if (rsvpEntries.some((e) => e.eventId !== invRow.event_id)) {
+        return { ok: false, status: 400, error: 'RSVP entries must only reference your invited event.' };
+      }
+
       // 2. Upsert guest record — reuse existing record if email matches
       const existingGuest = sqlite
         .prepare('SELECT id, name, email FROM guests WHERE email = ? LIMIT 1')
@@ -391,7 +401,9 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
 
 // POST /api/rsvp/public — submit an RSVP via a permanent public link.
 // Unlike /claim, the template row is never mutated: a new guest + invitation row are
-// created for each submission. Phone number is used for deduplication when provided.
+// created for each submission. Phone number is used for deduplication.
+// Only rows created by this flow (source = 'public_rsvp') are ever updated —
+// admin-curated personal invitations (source = 'admin') are never touched.
 router.post('/public', claimRateLimit, async (req: Request, res: Response): Promise<void> => {
   const parsed = publicRsvpSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -399,7 +411,8 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
     return;
   }
 
-  const { token, name, partnerName, phone, status, guestCount, message, eventId } = parsed.data;
+  // phone is required by publicRsvpSchema (min 6 chars), so it is always present.
+  const { token, name, partnerName, phone, status, guestCount, dietary, partnerDietary, message, eventId } = parsed.data;
   const now = new Date().toISOString();
 
   try {
@@ -422,41 +435,34 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
       }
 
       // 2. Phone-based deduplication — reuse existing guest if phone matches
+      const existingByPhone = sqlite
+        .prepare('SELECT id FROM guests WHERE phone = ? LIMIT 1')
+        .get(phone) as { id: number } | undefined;
+
       let guestId: number;
-
-      if (phone) {
-        const existingByPhone = sqlite
-          .prepare('SELECT id FROM guests WHERE phone = ? LIMIT 1')
-          .get(phone) as { id: number } | undefined;
-
-        if (existingByPhone) {
-          guestId = existingByPhone.id;
-          // Update the guest's name and partnerName in case they changed
-          sqlite
-            .prepare('UPDATE guests SET name = ?, partner_name = ? WHERE id = ?')
-            .run(name, partnerName ?? null, guestId);
-        } else {
-          const inserted = sqlite
-            .prepare(
-              'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, NULL, ?, ?) RETURNING id'
-            )
-            .get(name, phone, partnerName ?? null) as { id: number };
-          guestId = inserted.id;
-        }
+      if (existingByPhone) {
+        guestId = existingByPhone.id;
+        // Update name and partnerName in case they have changed since last submission
+        sqlite
+          .prepare('UPDATE guests SET name = ?, partner_name = ? WHERE id = ?')
+          .run(name, partnerName ?? null, guestId);
       } else {
-        // No phone — always create a new guest row (anonymous submission)
         const inserted = sqlite
           .prepare(
-            'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, NULL, NULL, ?) RETURNING id'
+            'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, NULL, ?, ?) RETURNING id'
           )
-          .get(name, partnerName ?? null) as { id: number };
+          .get(name, phone, partnerName ?? null) as { id: number };
         guestId = inserted.id;
       }
 
-      // 3. Upsert invitation row for this guest+event (update if already exists)
+      // 3. Upsert invitation row for this guest+event.
+      // Only rows with source = 'public_rsvp' are candidates for update, preventing
+      // this flow from overwriting admin-created personal invitations (source = 'admin').
       const existingInv = sqlite
         .prepare(
-          'SELECT id FROM guest_invitations WHERE guest_id = ? AND event_id = ? AND is_open = 0 LIMIT 1'
+          `SELECT id FROM guest_invitations
+           WHERE guest_id = ? AND event_id = ? AND is_open = 0 AND source = 'public_rsvp'
+           LIMIT 1`
         )
         .get(guestId, eventId) as { id: number } | undefined;
 
@@ -465,22 +471,27 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
         sqlite
           .prepare(
             `UPDATE guest_invitations
-             SET status = ?, guest_count = ?, message = ?, updated_at = ?
+             SET status = ?, guest_count = ?, dietary = ?, partner_dietary = ?,
+                 message = ?, updated_at = ?
              WHERE id = ?`
           )
           .run(
             status,
             status === 'attending' ? (guestCount ?? 1) : 1,
-            message ?? null,
+            dietary || null,
+            partnerDietary || null,
+            message || null,
             now,
-            existingInv.id
+            existingInv.id,
           );
         invitationId = existingInv.id;
       } else {
         const newInv = sqlite
           .prepare(
-            `INSERT INTO guest_invitations (guest_id, event_id, token, status, guest_count, message, is_open)
-             VALUES (?, ?, ?, ?, ?, ?, 0)
+            `INSERT INTO guest_invitations
+               (guest_id, event_id, token, status, guest_count, dietary, partner_dietary,
+                message, is_open, source)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'public_rsvp')
              RETURNING id`
           )
           .get(
@@ -489,7 +500,9 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
             randomUUID(),
             status,
             status === 'attending' ? (guestCount ?? 1) : 1,
-            message ?? null
+            dietary || null,
+            partnerDietary || null,
+            message || null,
           ) as { id: number };
         invitationId = newInv.id;
       }

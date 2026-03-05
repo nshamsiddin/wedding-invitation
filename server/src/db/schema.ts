@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const events = sqliteTable('events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -30,8 +30,8 @@ export const guests = sqliteTable('guests', {
 export const guestInvitations = sqliteTable('guest_invitations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   // Nullable: open invitations have no guestId until claimed
-  guestId: integer('guest_id'),
-  eventId: integer('event_id').notNull(),
+  guestId: integer('guest_id').references(() => guests.id, { onDelete: 'cascade' }),
+  eventId: integer('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
   status: text('status', { enum: ['attending', 'declined', 'maybe', 'pending'] })
     .notNull()
@@ -42,6 +42,10 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   // Optional dietary restrictions for the guest's partner — per-event because
   // dietary needs relate to what is being served at a specific event.
   partnerDietary: text('partner_dietary'),
+  // Tracks how the invitation was created: 'admin' for manually created rows,
+  // 'public_rsvp' for rows created via the permanent public link flow.
+  // Used to prevent public RSVP submissions from overwriting admin-curated records.
+  source: text('source', { enum: ['admin', 'public_rsvp'] }).notNull().default('admin'),
   // Open invitation: created without a specific guest; can be claimed once
   isOpen: integer('is_open', { mode: 'boolean' }).notNull().default(false),
   // Permanent public invitation: reusable by any number of guests, never consumed
@@ -54,7 +58,12 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
+}, (t) => ({
+  // Prevents a guest from having duplicate invitations for the same event.
+  // SQLite treats NULL != NULL for UNIQUE constraints, so multiple open
+  // invitations (guest_id = NULL) for the same event are still permitted.
+  guestEventUnique: uniqueIndex('guest_event_unique').on(t.guestId, t.eventId),
+}));
 
 export type EventRow = typeof events.$inferSelect;
 export type GuestRow = typeof guests.$inferSelect;

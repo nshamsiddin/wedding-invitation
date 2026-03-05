@@ -15,7 +15,8 @@ export interface CSVRow {
   guestId: number;
   name: string;
   partnerName: string | null;
-  email: string;
+  // Nullable: guests who registered via a public link have no email
+  email: string | null;
   phone: string | null;
   eventName: string;
   eventSlug: string;
