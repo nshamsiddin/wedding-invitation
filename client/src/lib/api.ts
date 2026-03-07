@@ -17,6 +17,7 @@ import type {
   ClaimInvitationResponse,
   CreateOpenInvitationValues,
   PublicRsvpValues,
+  PublicPageRsvpValues,
 } from '@invitation/shared';
 
 export type {
@@ -54,8 +55,25 @@ export const rsvpApi = {
     return data;
   },
   getByToken: async (token: string): Promise<TokenLookupResponse> => {
-    const { data } = await api.get<TokenLookupResponse>(`/rsvp/token/${token}`);
-    return data;
+    try {
+      const { data } = await api.get<TokenLookupResponse>(`/rsvp/token/${token}`);
+      return data;
+    } catch (err: unknown) {
+      // HTTP 410 means the one-time link was already claimed. Surface this as
+      // a successful response with type='claimed' so the UI can show a helpful
+      // message rather than a generic error screen.
+      if (
+        typeof err === 'object' && err !== null &&
+        'response' in err &&
+        typeof (err as { response?: { status?: number; data?: unknown } }).response === 'object'
+      ) {
+        const response = (err as { response: { status: number; data: unknown } }).response;
+        if (response.status === 410 && typeof response.data === 'object' && response.data !== null) {
+          return response.data as TokenLookupResponse;
+        }
+      }
+      throw err;
+    }
   },
   submit: async (body: RSVPSubmitBody): Promise<RSVPSubmitResponse> => {
     const { data } = await api.post<RSVPSubmitResponse>('/rsvp', body);
@@ -67,6 +85,10 @@ export const rsvpApi = {
   },
   submitPublic: async (values: PublicRsvpValues): Promise<{ ok: boolean }> => {
     const { data } = await api.post<{ ok: boolean }>('/rsvp/public', values);
+    return data;
+  },
+  submitPublicPage: async (values: PublicPageRsvpValues): Promise<{ ok: boolean }> => {
+    const { data } = await api.post<{ ok: boolean }>('/rsvp/public-page', values);
     return data;
   },
 };
@@ -137,5 +159,12 @@ export const adminApi = {
   exportCSV: (eventId?: number): void => {
     const params = eventId ? `?eventId=${eventId}` : '';
     window.location.href = `/api/admin/export${params}`;
+  },
+};
+
+export const configApi = {
+  getConfig: async (): Promise<{ baseUrl: string }> => {
+    const { data } = await api.get<{ baseUrl: string }>('/config');
+    return data;
   },
 };

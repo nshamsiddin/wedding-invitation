@@ -8,6 +8,7 @@ import CustomCursor from './components/ui/CustomCursor';
 import ScrollProgress from './components/ui/ScrollProgress';
 import HomePage from './garden/pages/HomePage';
 import InvitePage from './pages/InvitePage';
+import PublicInvitePage from './pages/PublicInvitePage';
 import EventPage from './pages/EventPage';
 import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
@@ -49,12 +50,13 @@ function AppInner() {
           },
         }}
       />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <InvitationChrome />
         <Routes>
           {/* ── Garden design ── */}
           <Route path="/"              element={<HomePage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
+          <Route path="/invite/:venue/:lang" element={<PublicInvitePage />} />
 
           {/* ── Event landing pages (linked from homepage event cards) ── */}
           <Route path="/:slug"         element={<EventPage />} />

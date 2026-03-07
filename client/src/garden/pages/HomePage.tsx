@@ -39,6 +39,7 @@ const G = {
 };
 
 // ─── Events ──────────────────────────────────────────────────────────────────
+// Must stay in sync with the DB seed in server/src/index.ts and client/src/config/event.ts
 const EVENTS = [
   {
     slug:    'ankara',
@@ -46,7 +47,7 @@ const EVENTS = [
     chapter: 'I',
     country: { en: 'Türkiye', tr: 'Türkiye', uz: 'Turkiya' },
     date:    { en: '19 May 2026', tr: '19 Mayıs 2026', uz: '19 May 2026' },
-    venue:   'Sheraton Grand Ankara',
+    venue:   "Park L'Amore",
     accent:  G.rose,
     bg:      `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(240,200,204,0.45) 0%, transparent 70%)`,
     flowerColor: G.rose,
@@ -56,8 +57,8 @@ const EVENTS = [
     city:    'Tashkent',
     chapter: 'II',
     country: { en: 'Uzbekistan', tr: 'Özbekistan', uz: "O'zbekiston" },
-    date:    { en: '12 September 2026', tr: '12 Eylül 2026', uz: '12 Sentyabr 2026' },
-    venue:   'Yulduzli Saroy',
+    date:    { en: '24 April 2026', tr: '24 Nisan 2026', uz: '24 Aprel 2026' },
+    venue:   'Ofarin Restaurant',
     accent:  G.sage,
     bg:      `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(168,196,171,0.4) 0%, transparent 70%)`,
     flowerColor: G.sage,
@@ -313,7 +314,7 @@ export default function GardenHomePage() {
   const lang = language as Language;
   const coupleName = EVENT_CONFIG.names[lang] ?? EVENT_CONFIG.names.en;
   const [firstName, secondName] = coupleName.split(' & ');
-  const countdownAnkara   = useCountdown('2026-05-19T14:00:00');
+  const countdownAnkara   = useCountdown('2026-05-19T18:00:00');
   const countdownTashkent = useCountdown(EVENT_CONFIG.date);
 
   // Container ref for scroll-snap

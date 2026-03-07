@@ -74,8 +74,11 @@ export function FormCard({ title, children }: { title: string; children: React.R
 // ─── FormField ────────────────────────────────────────────────────────────────
 
 export function FormField({
-  label, required, optional, hint, error, children,
+  htmlFor, label, required, optional, hint, error, children,
 }: {
+  /** Must match the `id` prop on the child input/textarea so the label is correctly
+   *  associated with the control for assistive technologies. */
+  htmlFor?: string;
   label: string;
   required?: boolean;
   optional?: string;
@@ -85,7 +88,7 @@ export function FormField({
 }) {
   return (
     <div>
-      <label style={formLabelStyle}>
+      <label htmlFor={htmlFor} style={formLabelStyle}>
         {label}
         {required && <span style={{ color: 'var(--accent-rose)', marginLeft: '0.2rem' }} aria-hidden="true">*</span>}
         {optional && (

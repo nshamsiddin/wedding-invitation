@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db, schema, sqlite } from '../db/index.js';
-import { rsvpSubmitSchema, claimInvitationSchema, publicRsvpSchema } from '@invitation/shared';
+import { rsvpSubmitSchema, claimInvitationSchema, publicRsvpSchema, publicPageRsvpSchema } from '@invitation/shared';
 import { rsvpRateLimit, claimRateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
@@ -66,10 +66,13 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
 
     // Open invitation that has already been claimed — reject further use.
     // Public links are never consumed, so skip this check for them.
-    // Return claimedAt so the frontend can display when it was registered,
-    // helping legitimate guests who received a forwarded link understand what happened.
+    // HTTP 410 Gone is the most semantically correct status for a one-time resource
+    // that has been permanently consumed. 409 Conflict implies a recoverable state;
+    // a claimed invitation link is not recoverable by the same token.
+    // claimedAt is included so the frontend can show when the link was registered,
+    // helping guests who received a forwarded link understand what happened.
     if (r.invIsOpen && !r.invIsPublic && r.invClaimedAt !== null) {
-      res.status(409).json({
+      res.status(410).json({
         type: 'claimed',
         claimedAt: r.invClaimedAt,
         error: 'This invitation link has already been used.',
@@ -520,6 +523,119 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
     res.status(201).json({ ok: true });
   } catch (error) {
     console.error('Public RSVP submit error:', error);
+    res.status(500).json({ error: 'Failed to save RSVP. Please try again.' });
+  }
+});
+
+// POST /api/rsvp/public-page — submit an RSVP from a static public language page.
+// Does not require a token — event is identified by slug.
+// Phone number is used for deduplication across submissions.
+router.post('/public-page', claimRateLimit, async (req: Request, res: Response): Promise<void> => {
+  const parsed = publicPageRsvpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+
+  const { eventSlug, name, phone, status, guestCount, dietary, partnerDietary, message } = parsed.data;
+  const now = new Date().toISOString();
+
+  try {
+    type PageResult =
+      | { ok: true; guestId: number; invitationId: number }
+      | { ok: false; status: number; error: string };
+
+    const pageTransaction = sqlite.transaction((): PageResult => {
+      // 1. Find event by slug
+      const event = sqlite
+        .prepare('SELECT id FROM events WHERE slug = ? LIMIT 1')
+        .get(eventSlug) as { id: number } | undefined;
+
+      if (!event) {
+        return { ok: false, status: 404, error: 'Event not found.' };
+      }
+
+      // 2. Phone-based deduplication
+      const existingByPhone = sqlite
+        .prepare('SELECT id FROM guests WHERE phone = ? LIMIT 1')
+        .get(phone) as { id: number } | undefined;
+
+      let guestId: number;
+      if (existingByPhone) {
+        guestId = existingByPhone.id;
+        sqlite.prepare('UPDATE guests SET name = ? WHERE id = ?').run(name, guestId);
+      } else {
+        const inserted = sqlite
+          .prepare(
+            'INSERT INTO guests (name, email, phone) VALUES (?, NULL, ?) RETURNING id'
+          )
+          .get(name, phone) as { id: number };
+        guestId = inserted.id;
+      }
+
+      // 3. Upsert invitation — only update rows this flow created (source = 'public_rsvp')
+      const existingInv = sqlite
+        .prepare(
+          `SELECT id FROM guest_invitations
+           WHERE guest_id = ? AND event_id = ? AND is_open = 0 AND source = 'public_rsvp'
+           LIMIT 1`
+        )
+        .get(guestId, event.id) as { id: number } | undefined;
+
+      let invitationId: number;
+      if (existingInv) {
+        sqlite
+          .prepare(
+            `UPDATE guest_invitations
+             SET status = ?, guest_count = ?, dietary = ?, partner_dietary = ?,
+                 message = ?, updated_at = ?
+             WHERE id = ?`
+          )
+          .run(
+            status,
+            status === 'attending' ? (guestCount ?? 1) : 1,
+            dietary || null,
+            partnerDietary || null,
+            message || null,
+            now,
+            existingInv.id,
+          );
+        invitationId = existingInv.id;
+      } else {
+        const newInv = sqlite
+          .prepare(
+            `INSERT INTO guest_invitations
+               (guest_id, event_id, token, status, guest_count, dietary, partner_dietary,
+                message, is_open, source)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'public_rsvp')
+             RETURNING id`
+          )
+          .get(
+            guestId,
+            event.id,
+            randomUUID(),
+            status,
+            status === 'attending' ? (guestCount ?? 1) : 1,
+            dietary || null,
+            partnerDietary || null,
+            message || null,
+          ) as { id: number };
+        invitationId = newInv.id;
+      }
+
+      return { ok: true, guestId, invitationId };
+    });
+
+    const result = pageTransaction();
+
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error('Public page RSVP error:', error);
     res.status(500).json({ error: 'Failed to save RSVP. Please try again.' });
   }
 });

@@ -244,6 +244,30 @@ export const updateInvitationSchema = z.object({
 
 export type UpdateInvitationValues = z.infer<typeof updateInvitationSchema>;
 
+// Public RSVP via static language page — no token or email required
+export const publicPageRsvpSchema = z.object({
+  eventSlug: z.string().min(1).max(100).trim(),
+  name: z
+    .string({ required_error: 'Please enter your name' })
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be under 100 characters')
+    .trim(),
+  phone: z
+    .string({ required_error: 'Please enter your phone number' })
+    .min(6, 'Phone number is too short')
+    .max(30)
+    .trim(),
+  status: z.enum(['attending', 'declined', 'maybe'], {
+    errorMap: () => ({ message: 'Please select an attendance option' }),
+  }),
+  guestCount: z.number().int().min(1).max(5).optional().default(1),
+  dietary: z.string().max(500).trim().optional().default(''),
+  partnerDietary: z.string().max(500).trim().optional().default(''),
+  message: z.string().max(1000).trim().optional().default(''),
+});
+
+export type PublicPageRsvpValues = z.infer<typeof publicPageRsvpSchema>;
+
 // Public RSVP — submitted via a permanent public link (no email required)
 export const publicRsvpSchema = z.object({
   token: z.string().uuid('Invalid invitation token'),

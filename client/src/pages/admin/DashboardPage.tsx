@@ -4,14 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import type { AdminGuest, AdminInvitation, OpenInvitation } from '../../lib/api';
+import type { AdminGuest, AdminInvitation } from '../../lib/api';
 import type {
   AddGuestValues,
   UpdateGuestContactValues,
   UpdateInvitationValues,
-  CreateOpenInvitationValues,
 } from '@invitation/shared';
-import { adminApi } from '../../lib/api';
+import { adminApi, configApi } from '../../lib/api';
 import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM, ROSE } from '../../garden/tokens';
 import StatsCards from '../../components/admin/StatsCards';
 import GuestTable from '../../components/admin/GuestTable';
@@ -27,71 +26,118 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'pending',   label: 'No Response' },
 ];
 
-function OpenInvitationRow({
-  inv,
-  onDelete,
-}: {
-  inv: OpenInvitation & { url?: string };
-  onDelete: (id: number) => void;
-}) {
+// ─── Static shareable link cards ─────────────────────────────────────────────
+
+const LANG_META: Record<string, { label: string; flag: string }> = {
+  en: { label: 'English',  flag: '🇬🇧' },
+  tr: { label: 'Türkçe',   flag: '🇹🇷' },
+  uz: { label: "O'zbekcha", flag: '🇺🇿' },
+};
+
+const VENUE_META: Record<string, { displayName: string; city: string }> = {
+  tashkent: { displayName: 'Toshkent',  city: "Ofarin Restaurant" },
+  ankara:   { displayName: 'Ankara',    city: "Park L'Amore" },
+};
+
+interface ShareableLinkCardProps {
+  venue: string;
+  lang: string;
+  baseUrl: string;
+}
+
+function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
+  const path  = `/invite/${venue}/${lang}`;
+  const full  = baseUrl ? `${baseUrl}${path}` : `${window.location.origin}${path}`;
+  const lMeta = LANG_META[lang];
+  const vMeta = VENUE_META[venue];
+
   const handleCopy = async () => {
-    const url = inv.url ?? `${window.location.origin}/invite/${inv.token}`;
     try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Open link copied!');
+      await navigator.clipboard.writeText(full);
+      toast.success(`${lMeta?.flag ?? ''} Copied ${vMeta?.displayName} (${lang.toUpperCase()})!`);
     } catch {
-      toast.error('Failed to copy link');
+      toast.error('Failed to copy');
     }
   };
 
-  const isPermanent = inv.isPublic;
+  return (
+    <div
+      className="flex flex-col gap-2.5 p-3.5 rounded-xl border transition-shadow hover:shadow-md"
+      style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-base leading-none" aria-hidden="true">{lMeta?.flag}</span>
+            <span className="font-sans font-semibold text-xs" style={{ color: ESPRESSO }}>
+              {lMeta?.label}
+            </span>
+          </div>
+          <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
+            {vMeta?.displayName} · {vMeta?.city}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
+          style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: GOLD }}>
+          <span aria-hidden="true">∞</span> Permanent
+        </span>
+      </div>
+
+      <p className="text-xs font-mono truncate" style={{ color: ESPRESSO_DIM }} title={full}>
+        {path}
+      </p>
+
+      <button
+        onClick={handleCopy}
+        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus-visible:outline focus-visible:outline-2"
+        style={{
+          background: 'rgba(184,146,74,0.10)',
+          border: `1px solid ${GOLD_DIM}`,
+          color: ESPRESSO,
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.20)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.10)'; }}
+        aria-label={`Copy shareable link for ${vMeta?.displayName} in ${lMeta?.label}`}
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        Copy link
+      </button>
+    </div>
+  );
+}
+
+function ShareableLinksSection({ baseUrl }: { baseUrl: string }) {
+  const venues = ['tashkent', 'ankara'];
+  const langs  = ['en', 'tr', 'uz'];
 
   return (
-    <div className="flex items-center justify-between py-2.5 px-3 rounded-lg gap-3 border" style={{
-      background: isPermanent ? 'rgba(196,132,140,0.12)' : 'rgba(184,146,74,0.12)',
-      borderColor: isPermanent ? 'rgba(196,132,140,0.35)' : GOLD_DIM,
-    }}>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          {isPermanent ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: ROSE, color: PARCHMENT }} title="Permanent link — reusable by anyone, no limit">
-              <span aria-hidden="true">∞</span> Permanent
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(184,146,74,0.15)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }} title="One-time — locked after first use">
-              1× One-time
-            </span>
-          )}
-          <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>{inv.eventName ?? inv.eventSlug}</span>
+    <section aria-labelledby="shareable-links-heading">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 id="shareable-links-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
+            Shareable Invitation Links
+          </h2>
+          <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
+            6 permanent links — 3 languages × 2 venues. Anyone can RSVP via these.
+          </p>
         </div>
-        <p className="text-xs font-mono mt-0.5 truncate max-w-[200px]" style={{ color: ESPRESSO_DIM }}>{inv.token.slice(0, 8)}…</p>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={handleCopy}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-sans transition-colors focus:outline-none focus:ring-1"
-          style={{
-            background: PARCHMENT,
-            border: `1px solid ${isPermanent ? 'rgba(196,132,140,0.4)' : GOLD_DIM}`,
-            color: isPermanent ? ROSE : ESPRESSO,
-          }}
-        >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          Copy
-        </button>
-        <button
-          onClick={() => onDelete(inv.id)}
-          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
-          aria-label="Delete open invitation"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-      </div>
-    </div>
+
+      {venues.map((venue) => (
+        <div key={venue} className="mb-4">
+          <p className="text-xs font-sans font-semibold uppercase tracking-wider mb-2" style={{ color: ESPRESSO_DIM }}>
+            {VENUE_META[venue]?.displayName}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {langs.map((lang) => (
+              <ShareableLinkCard key={lang} venue={venue} lang={lang} baseUrl={baseUrl} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -107,9 +153,6 @@ export default function DashboardPage() {
   const [editingInvitation, setEditingInvitation] = useState<{ inv: AdminInvitation; guest: AdminGuest } | null>(null);
   const [deletingGuest, setDeletingGuest] = useState<AdminGuest | null>(null);
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
-  const [showOpenLinkModal, setShowOpenLinkModal] = useState(false);
-  const [openLinkEventIds, setOpenLinkEventIds] = useState<number[]>([]);
-  const [openLinkIsPublic, setOpenLinkIsPublic] = useState(false);
 
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['admin', 'events'],
@@ -128,9 +171,10 @@ export default function DashboardPage() {
     queryFn: () => adminApi.getGuests(guestQueryParams),
   });
 
-  const { data: openInvitations = [] } = useQuery({
-    queryKey: ['admin', 'invitations', 'open'],
-    queryFn: adminApi.getOpenInvitations,
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: configApi.getConfig,
+    staleTime: Infinity,
   });
 
   const logoutMutation = useMutation({
@@ -203,22 +247,6 @@ export default function DashboardPage() {
     },
   });
 
-  const createOpenInvMutation = useMutation({
-    mutationFn: (values: CreateOpenInvitationValues) => adminApi.createOpenInvitation(values),
-    onError: () => toast.error('Failed to create open invitation'),
-    onSuccess: (data) => {
-      setShowOpenLinkModal(false);
-      setOpenLinkEventIds([]);
-      setOpenLinkIsPublic(false);
-      toast.success(`Created ${data.length} open invitation link${data.length !== 1 ? 's' : ''}`);
-      qc.invalidateQueries({ queryKey: ['admin', 'invitations', 'open'] });
-      // Copy first URL to clipboard automatically
-      if (data[0]?.token) {
-        const url = `${window.location.origin}/invite/${data[0].token}`;
-        navigator.clipboard.writeText(url).catch(() => {});
-      }
-    },
-  });
 
   const handleAddGuest = (values: AddGuestValues) => addMutation.mutate(values);
   const handleUpdateGuest = (id: number, values: UpdateGuestContactValues) =>
@@ -342,26 +370,8 @@ export default function DashboardPage() {
           <StatsCards events={events} selectedEventId={selectedEventId} isLoading={eventsLoading} />
         </section>
 
-        {/* Open Invitations */}
-        {openInvitations.length > 0 && (
-          <section aria-labelledby="open-inv-heading">
-            <div className="flex items-center justify-between mb-2">
-              <h2 id="open-inv-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
-                Open Links
-                <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>{openInvitations.length} active</span>
-              </h2>
-            </div>
-            <div className="space-y-2">
-              {openInvitations.map((inv) => (
-                <OpenInvitationRow
-                  key={inv.id}
-                  inv={inv as OpenInvitation & { url?: string }}
-                  onDelete={(id) => deleteInvMutation.mutate(id)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Shareable Links */}
+        <ShareableLinksSection baseUrl={config?.baseUrl ?? ''} />
 
         {/* Guest list */}
         <section aria-labelledby="guests-heading">
@@ -406,19 +416,6 @@ export default function DashboardPage() {
                 ))}
               </select>
 
-              {/* Generate open link */}
-              <button
-                onClick={() => setShowOpenLinkModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 whitespace-nowrap"
-                style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                aria-label="Generate open invitation link"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                Open Link
-              </button>
-
               {/* Add guest */}
               <button
                 onClick={() => setShowAddModal(true)}
@@ -458,128 +455,6 @@ export default function DashboardPage() {
           />
         </section>
       </main>
-
-      {/* Generate Open Link Modal */}
-      <AnimatePresence>
-        {showOpenLinkModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowOpenLinkModal(false)}
-              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
-              aria-hidden="true"
-            />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              role="dialog" aria-modal="true" aria-labelledby="open-link-title">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-                className="rounded-xl p-6 w-full max-w-sm shadow-lg"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
-              >
-                <h3 id="open-link-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>
-                  Generate Open Invitation Link
-                </h3>
-                <p className="text-xs font-sans mb-4" style={{ color: ESPRESSO_DIM }}>
-                  Creates a shareable link that any new guest can use to self-register. Select the event(s) to cover.
-                </p>
-
-                {/* Permanent / one-time toggle */}
-                <div className="mb-4 p-3 rounded-lg border" style={{ borderColor: GOLD_DIM, background: CREAM }}>
-                  <label className="flex items-start gap-3 cursor-pointer select-none">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={openLinkIsPublic}
-                      onClick={() => setOpenLinkIsPublic((v) => !v)}
-                      className="mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2"
-                      style={{ background: openLinkIsPublic ? GOLD : 'rgba(184,146,74,0.3)' }}
-                    >
-                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${openLinkIsPublic ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </button>
-                    <div>
-                      <p className="text-xs font-medium font-sans" style={{ color: ESPRESSO }}>
-                        Permanent link <span className="ml-1 text-xs font-normal" style={{ color: GOLD }}>{openLinkIsPublic ? '∞ reusable' : '1× one-time'}</span>
-                      </p>
-                      <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
-                        {openLinkIsPublic
-                          ? 'Anyone can fill this link — no email required, phone for deduplication.'
-                          : 'Single-use link locked after the first person claims it.'}
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                <fieldset className="mb-4">
-                  <legend className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: ESPRESSO_DIM }}>Events</legend>
-                  <div className="space-y-2">
-                    {events.map((ev) => {
-                      const checked = openLinkEventIds.includes(ev.id);
-                      return (
-                        <label
-                          key={ev.id}
-                          className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors"
-                          style={{
-                            background: checked ? 'rgba(184,146,74,0.12)' : PARCHMENT,
-                            borderColor: checked ? GOLD : GOLD_DIM,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={checked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setOpenLinkEventIds((ids) => [...ids, ev.id]);
-                              } else {
-                                setOpenLinkEventIds((ids) => ids.filter((id) => id !== ev.id));
-                              }
-                            }}
-                          />
-                          <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0" style={{ background: checked ? GOLD : PARCHMENT, borderColor: checked ? GOLD : GOLD_DIM }}>
-                            {checked && (
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm font-sans" style={{ color: ESPRESSO }}>{ev.name}</p>
-                            <p className="text-xs" style={{ color: ESPRESSO_DIM }}>{ev.date}</p>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setShowOpenLinkModal(false); setOpenLinkEventIds([]); setOpenLinkIsPublic(false); }}
-                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg"
-                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (openLinkEventIds.length === 0) {
-                        toast.error('Select at least one event');
-                        return;
-                      }
-                      createOpenInvMutation.mutate({ eventIds: openLinkEventIds, isPublic: openLinkIsPublic });
-                    }}
-                    disabled={createOpenInvMutation.isPending || openLinkEventIds.length === 0}
-                    className="flex-1 disabled:opacity-50 font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed"
-                    style={{ background: GOLD, color: PARCHMENT }}
-                  >
-                    {createOpenInvMutation.isPending ? 'Creating…' : 'Generate Link'}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* Modals */}
       <AddGuestModal

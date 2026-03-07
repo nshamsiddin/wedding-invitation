@@ -1,11 +1,12 @@
 function escapeCsvField(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '';
   const str = String(value);
-  // Neutralise CSV formula injection: spreadsheet applications (Excel, Google Sheets)
-  // interpret cells that start with =, +, -, or @ as formulas. Prefix with a tab
-  // character to prevent execution while keeping the value human-readable.
-  const safe = /^[=+\-@\t]/.test(str) ? `\t${str}` : str;
-  if (safe.includes(',') || safe.includes('"') || safe.includes('\n') || safe.includes('\r') || safe.includes('\t')) {
+  // Neutralise CSV formula injection: spreadsheet apps (Excel, Google Sheets) interpret
+  // cells starting with =, +, -, or @ as formulas. Prefix with a single-quote per the
+  // OWASP recommendation — most spreadsheet apps hide the leading apostrophe in display
+  // and treat the cell as plain text, avoiding the stray-whitespace issue caused by \t.
+  const safe = /^[=+\-@]/.test(str) ? `'${str}` : str;
+  if (safe.includes(',') || safe.includes('"') || safe.includes('\n') || safe.includes('\r')) {
     return `"${safe.replace(/"/g, '""')}"`;
   }
   return safe;

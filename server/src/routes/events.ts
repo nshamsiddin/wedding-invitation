@@ -38,6 +38,10 @@ router.get('/:slug', async (req: Request, res: Response): Promise<void> => {
     }
 
     const event = rows[0];
+    // Cache teaser data for 5 minutes in shared caches (CDN/proxy); allow serving
+    // stale while revalidating for up to 60 s to keep latency low for guests.
+    // Event details rarely change once published, so a short TTL is sufficient.
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
     res.json({
       id: event.id,
       slug: event.slug,

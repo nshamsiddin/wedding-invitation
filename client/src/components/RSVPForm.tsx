@@ -250,7 +250,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
       {/* ── A NOTE TO US ── */}
       <FormCard title={t.aNoteToUs}>
-        <FormField label={t.messageLabel} optional={t.messageOptional}>
+        <FormField htmlFor="rsvp-message" label={t.messageLabel} optional={t.messageOptional}>
           <FormTextarea id="rsvp-message" rows={2} {...register('message')} placeholder={t.messagePlaceholder} />
         </FormField>
       </FormCard>

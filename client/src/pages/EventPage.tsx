@@ -1,11 +1,18 @@
+import { useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
+import { LanguageContext } from '../context/LanguageContext';
+import type { Language } from '../lib/i18n';
+import { formatEventDate } from '../lib/formatDate';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function EventPage() {
   const { slug } = useParams<{ slug: string }>();
   const tl = useTranslation();
+  const { language } = useContext(LanguageContext);
+  const lang = language as Language;
 
   const { data: event, isLoading, isError } = useQuery({
     queryKey: ['event', slug],
@@ -27,23 +34,31 @@ export default function EventPage() {
   if (isError || !event) {
     return (
       <div style={styles.page}>
+        <header style={styles.nav}>
+          <Link to="/" style={{ ...styles.link, textDecoration: 'none' }}>← {tl.returnToHomepage}</Link>
+          <LanguageSwitcher />
+        </header>
         <div style={styles.card}>
           <p style={styles.label}>Not Found</p>
-          <h1 style={styles.title}>Event not found</h1>
+          <h1 style={styles.title}>{tl.invitationNotFound}</h1>
           <p style={styles.body}>
             This event does not exist or the link may be incorrect.
           </p>
-          <Link to="/" style={styles.link}>← Back to home</Link>
+          <Link to="/" style={styles.link}>← {tl.returnToHomepage}</Link>
         </div>
       </div>
     );
   }
 
-  const displayDate = 'date' in event ? event.date : null;
+  const displayDate = event.date ? formatEventDate(event.date, lang) : null;
   const eventName = event.name;
 
   return (
     <div style={styles.page}>
+      <header style={styles.nav}>
+        <Link to="/" style={{ ...styles.link, textDecoration: 'none' }}>← {tl.returnToHomepage}</Link>
+        <LanguageSwitcher />
+      </header>
       <div style={styles.card}>
         <p style={styles.label}>{tl.cordiallyInvited}</p>
 
@@ -60,7 +75,7 @@ export default function EventPage() {
           Check your email or contact the couple if you have not received yours.
         </p>
 
-        <Link to="/" style={styles.link}>← Back to home</Link>
+        <Link to="/" style={styles.link}>← {tl.returnToHomepage}</Link>
       </div>
     </div>
   );
@@ -79,10 +94,26 @@ const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: '100dvh',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     background: G.parchment,
     padding: '2rem 1.5rem',
+  },
+  nav: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1rem clamp(1.5rem, 5vw, 3rem)',
+    background: 'rgba(253,250,245,0.88)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    borderBottom: '1px solid rgba(42,31,26,0.08)',
+    zIndex: 400,
   },
   card: {
     maxWidth: '28rem',

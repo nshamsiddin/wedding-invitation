@@ -190,17 +190,17 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
 
       {/* WHO'S COMING */}
       <FormCard title={t.whosComing}>
-        <FormField label={t.nameLabel} required error={errors.name?.message}>
+        <FormField htmlFor="pub-name" label={t.nameLabel} required error={errors.name?.message}>
           <FormInput id="pub-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
         </FormField>
 
         {guestCount > 1 && (
-          <FormField label={t.partnerNameLabel} optional={t.dietaryOptional}>
+          <FormField htmlFor="pub-partner" label={t.partnerNameLabel} optional={t.dietaryOptional}>
             <FormInput id="pub-partner" type="text" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
           </FormField>
         )}
 
-        <FormField label={t.phoneLabel} required error={errors.phone?.message} hint={t.phoneHint}>
+        <FormField htmlFor="pub-phone" label={t.phoneLabel} required error={errors.phone?.message} hint={t.phoneHint}>
           <FormInput id="pub-phone" type="tel" autoComplete="tel" {...register('phone')} placeholder="+1 555 000 0000" />
         </FormField>
 
@@ -231,7 +231,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
 
       {/* A NOTE TO US */}
       <FormCard title={t.aNoteToUs}>
-        <FormField label={t.messageLabel} optional={t.messageOptional}>
+        <FormField htmlFor="pub-message" label={t.messageLabel} optional={t.messageOptional}>
           <FormTextarea id="pub-message" rows={2} {...register('message')} placeholder={t.messagePlaceholder} />
         </FormField>
       </FormCard>
@@ -303,13 +303,13 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
 
       {/* WHO'S COMING */}
       <FormCard title={t.whosComing}>
-        <FormField label={t.nameLabel} required error={errors.name?.message}>
+        <FormField htmlFor="claim-name" label={t.nameLabel} required error={errors.name?.message}>
           <FormInput id="claim-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
         </FormField>
-        <FormField label={t.emailLabel} required error={errors.email?.message}>
+        <FormField htmlFor="claim-email" label={t.emailLabel} required error={errors.email?.message}>
           <FormInput id="claim-email" type="email" autoComplete="email" {...register('email')} placeholder={t.emailPlaceholder} />
         </FormField>
-        <FormField label={t.phoneLabel} optional={t.dietaryOptional}>
+        <FormField htmlFor="claim-phone" label={t.phoneLabel} optional={t.dietaryOptional}>
           <FormInput id="claim-phone" type="tel" {...register('phone')} placeholder="+1 555 000 0000" />
         </FormField>
       </FormCard>
@@ -354,11 +354,11 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
               />
             )}
 
-            <FormField label={t.dietaryLabel} optional={t.dietaryOptional}>
+            <FormField htmlFor={`entry-dietary-${ev.id}`} label={t.dietaryLabel} optional={t.dietaryOptional}>
               <FormInput id={`entry-dietary-${ev.id}`} type="text" {...register(`rsvpEntries.${idx}.dietary`)} placeholder={t.dietaryOptional} />
             </FormField>
 
-            <FormField label={t.messageLabel} optional={t.messageOptional}>
+            <FormField htmlFor={`entry-message-${ev.id}`} label={t.messageLabel} optional={t.messageOptional}>
               <FormTextarea id={`entry-message-${ev.id}`} rows={2} {...register(`rsvpEntries.${idx}.message`)} placeholder={t.messagePlaceholder} />
             </FormField>
           </FormCard>

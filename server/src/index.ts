@@ -322,16 +322,24 @@ app.use(
   })
 );
 
+// ─── Public config ────────────────────────────────────────────────────────────
+// Exposes the BASE_URL so the admin panel can construct shareable link cards
+// without embedding the URL in the client bundle at build time.
+app.get('/api/config', (_req: Request, res: Response) => {
+  res.json({ baseUrl: process.env['BASE_URL'] ?? '' });
+});
+
 // ─── Health check ─────────────────────────────────────────────────────────────
 // Used by load balancers and uptime monitors; no auth required.
-// Includes a live database ping so it reflects actual service health.
+// Returns { status, db, timestamp } so monitors can distinguish between an API
+// process that is up but whose DB connection has failed (status: 'degraded').
 app.get('/api/health', (_req: Request, res: Response) => {
   try {
     sqlite.prepare('SELECT 1').get();
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', db: 'ok', timestamp: new Date().toISOString() });
   } catch (err) {
     console.error('[health] Database ping failed:', err);
-    res.status(503).json({ status: 'degraded', timestamp: new Date().toISOString() });
+    res.status(503).json({ status: 'degraded', db: 'error', timestamp: new Date().toISOString() });
   }
 });
 
@@ -345,6 +353,11 @@ app.use('/api/admin', adminRouter);
 
 if (!isDev) {
   const clientDist = resolve(process.cwd(), '../client/dist');
+  // Browsers request /favicon.ico directly. Redirect to the SVG favicon so they
+  // don't hit a 404 — the SVG is served as a static asset from the client dist.
+  app.get('/favicon.ico', (_req, res) => {
+    res.redirect(301, '/favicon.svg');
+  });
   app.use(express.static(clientDist));
   app.get('*', (_req, res) => {
     res.sendFile(resolve(clientDist, 'index.html'));
