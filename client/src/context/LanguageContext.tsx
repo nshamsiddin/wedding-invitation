@@ -11,7 +11,10 @@ const STORAGE_KEY = 'invitation-lang';
 function getInitialLanguage(): Language {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'en' || stored === 'tr' || stored === 'uz') return stored;
+    if (stored === 'en' || stored === 'tr' || stored === 'uz') {
+      document.documentElement.lang = stored;
+      return stored;
+    }
   } catch {
     // localStorage unavailable
   }
@@ -28,6 +31,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
+    document.documentElement.lang = lang;
     try {
       localStorage.setItem(STORAGE_KEY, lang);
     } catch {

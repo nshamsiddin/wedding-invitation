@@ -1,5 +1,6 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -237,7 +238,7 @@ db.run(sql`
   }
 })();
 
-// Make guests.email nullable — SQLite cannot ALTER COLUMN, so recreate the table if needed.
+// Drop email column from guests (table recreation — SQLite cannot drop UNIQUE columns directly)
 (function migrateGuestsEmailNullable() {
   type ColInfo = { name: string; notnull: number };
   const cols = sqlite.prepare('PRAGMA table_info(guests)').all() as ColInfo[];
@@ -286,6 +287,33 @@ db.run(sql`
     console.log('[migration] Adding source column to guest_invitations…');
     sqlite.prepare("ALTER TABLE guest_invitations ADD COLUMN source TEXT NOT NULL DEFAULT 'admin'").run();
   }
+  if (!cols.some((c) => c.name === 'table_number')) {
+    console.log('[migration] Adding table_number column to guest_invitations…');
+    sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN table_number INTEGER').run();
+  }
+})();
+
+// Drop email column from guests (table recreation — SQLite cannot drop UNIQUE columns directly)
+(function migrateRemoveEmail() {
+  const cols = sqlite.prepare('PRAGMA table_info(guests)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'email')) return;
+  console.log('[migration] Removing email column from guests…');
+  sqlite.transaction(() => {
+    sqlite.prepare(`
+      CREATE TABLE guests_new (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        phone       TEXT,
+        partner_name TEXT,
+        created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `).run();
+    sqlite.prepare(
+      'INSERT INTO guests_new (id, name, phone, partner_name, created_at) SELECT id, name, phone, partner_name, created_at FROM guests'
+    ).run();
+    sqlite.prepare('DROP TABLE guests').run();
+    sqlite.prepare('ALTER TABLE guests_new RENAME TO guests').run();
+  })();
 })();
 
 // ─── Seed wedding events ─────────────────────────────────────────────────────
@@ -313,6 +341,7 @@ db.run(sql`
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
+app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(

@@ -72,7 +72,7 @@ export default function EventPage() {
 
         <p style={styles.body}>
           Please use your personal invitation link to view full event details and RSVP.
-          Check your email or contact the couple if you have not received yours.
+          Contact the couple if you have not received yours.
         </p>
 
         <Link to="/" style={styles.link}>← {tl.returnToHomepage}</Link>

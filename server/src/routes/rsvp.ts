@@ -8,15 +8,6 @@ import { rsvpRateLimit, claimRateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
-// Mask an email address for the token-lookup response to minimise PII exposure.
-// A forwarded invitation link would otherwise hand out the guest's full email.
-// Example: "berfin@example.com" → "b***@example.com"
-function maskEmail(email: string): string {
-  const [local, domain] = email.split('@');
-  if (!local || !domain) return '***';
-  return `${local.charAt(0)}***@${domain}`;
-}
-
 // GET /api/rsvp/token/:token — look up an invitation by its token
 // Handles three cases: personal (pre-assigned), open (unclaimed), claimed (already used)
 router.get('/token/:token', async (req: Request, res: Response): Promise<void> => {
@@ -37,6 +28,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         invDietary: schema.guestInvitations.dietary,
         invPartnerDietary: schema.guestInvitations.partnerDietary,
         invMessage: schema.guestInvitations.message,
+        invTableNumber: schema.guestInvitations.tableNumber,
         invUpdatedAt: schema.guestInvitations.updatedAt,
         invIsOpen: schema.guestInvitations.isOpen,
         invIsPublic: schema.guestInvitations.isPublic,
@@ -110,7 +102,6 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
       .select({
         id: schema.guests.id,
         name: schema.guests.name,
-        email: schema.guests.email,
         partnerName: schema.guests.partnerName,
       })
       .from(schema.guests)
@@ -132,14 +123,13 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         dietary: r.invDietary,
         partnerDietary: r.invPartnerDietary ?? null,
         message: r.invMessage,
+        tableNumber: r.invTableNumber ?? null,
         updatedAt: r.invUpdatedAt,
       },
       guest: {
         id: guestRows[0].id,
         name: guestRows[0].name,
         partnerName: guestRows[0].partnerName ?? null,
-        // Email is masked to prevent PII leakage via a forwarded invitation URL.
-        email: guestRows[0].email ? maskEmail(guestRows[0].email) : null,
       },
       event: {
         id: r.eventId,
@@ -242,7 +232,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
     return;
   }
 
-  const { token, name, partnerName, email, phone, rsvpEntries } = parsed.data;
+  const { token, name, partnerName, phone, rsvpEntries } = parsed.data;
   const now = new Date().toISOString();
 
   try {
@@ -250,7 +240,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
     // better-sqlite3's transaction() is synchronous; we use it here with the
     // raw sqlite connection so Drizzle queries inside are still awaitable.
     type ClaimResult =
-      | { ok: true; guest: { id: number; name: string; email: string }; invitations: unknown[] }
+      | { ok: true; guest: { id: number; name: string }; invitations: unknown[] }
       | { ok: false; status: number; error: string };
 
     // Run the transactional logic synchronously using better-sqlite3's transaction API.
@@ -281,22 +271,14 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         return { ok: false, status: 400, error: 'RSVP entries must only reference your invited event.' };
       }
 
-      // 2. Upsert guest record — reuse existing record if email matches
-      const existingGuest = sqlite
-        .prepare('SELECT id, name, email FROM guests WHERE email = ? LIMIT 1')
-        .get(email) as { id: number; name: string; email: string } | undefined;
-
-      let guest: { id: number; name: string; email: string };
-      if (existingGuest) {
-        guest = existingGuest;
-      } else {
-        const result = sqlite
-          .prepare(
-            'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, ?, ?, ?) RETURNING id, name, email'
-          )
-          .get(name, email, phone ?? null, partnerName ?? null) as { id: number; name: string; email: string };
-        guest = result;
-      }
+      // 2. Insert guest record
+      let guest: { id: number; name: string };
+      const result = sqlite
+        .prepare(
+          'INSERT INTO guests (name, phone, partner_name) VALUES (?, ?, ?) RETURNING id, name'
+        )
+        .get(name, phone ?? null, partnerName ?? null) as { id: number; name: string };
+      guest = result;
 
       // 3. Claim the open invitation: assign guestId and record claimedAt
       const entry = rsvpEntries.find((e) => e.eventId === invRow.event_id) ?? rsvpEntries[0];
@@ -368,7 +350,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
 
       return {
         ok: true,
-        guest: { id: guest.id, name: guest.name, email: guest.email },
+        guest: { id: guest.id, name: guest.name },
         invitations: [
           {
             id: invRow.id,
@@ -452,7 +434,7 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
       } else {
         const inserted = sqlite
           .prepare(
-            'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, NULL, ?, ?) RETURNING id'
+            'INSERT INTO guests (name, phone, partner_name) VALUES (?, ?, ?) RETURNING id'
           )
           .get(name, phone, partnerName ?? null) as { id: number };
         guestId = inserted.id;
@@ -567,7 +549,7 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
       } else {
         const inserted = sqlite
           .prepare(
-            'INSERT INTO guests (name, email, phone) VALUES (?, NULL, ?) RETURNING id'
+            'INSERT INTO guests (name, phone) VALUES (?, ?) RETURNING id'
           )
           .get(name, phone) as { id: number };
         guestId = inserted.id;

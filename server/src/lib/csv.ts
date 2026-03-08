@@ -16,8 +16,6 @@ export interface CSVRow {
   guestId: number;
   name: string;
   partnerName: string | null;
-  // Nullable: guests who registered via a public link have no email
-  email: string | null;
   phone: string | null;
   eventName: string;
   eventSlug: string;
@@ -26,23 +24,23 @@ export interface CSVRow {
   dietary: string | null;
   partnerDietary: string | null;
   message: string | null;
+  tableNumber: number | null;
   rsvpDate: string;
   updatedAt: string;
 }
 
 export function toCSV(rows: CSVRow[]): string {
   const headers = [
-    'Guest ID', 'Name', 'Partner Name', 'Email', 'Phone',
+    'Guest ID', 'Name', 'Partner Name', 'Phone',
     'Event', 'Event Slug', 'Status', 'Guest Count',
     'Dietary Restrictions', 'Partner Dietary', 'Message',
-    'RSVP Date', 'Updated At',
+    'Table Number', 'RSVP Date', 'Updated At',
   ];
 
   const dataRows = rows.map((r) => [
     r.guestId,
     r.name,
     r.partnerName ?? '',
-    r.email,
     r.phone ?? '',
     r.eventName,
     r.eventSlug,
@@ -51,6 +49,7 @@ export function toCSV(rows: CSVRow[]): string {
     r.dietary ?? '',
     r.partnerDietary ?? '',
     r.message ?? '',
+    r.tableNumber ?? '',
     r.rsvpDate,
     r.updatedAt,
   ]);
