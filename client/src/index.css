@@ -22,7 +22,8 @@
   --border-warm: rgba(196, 151, 90, 0.2);
   --text-primary:   #1A1210;
   --text-secondary: rgba(26, 18, 16, 0.55);
-  --text-tertiary:  rgba(26, 18, 16, 0.35);
+  /* Raised from 0.35 → 0.60 to meet WCAG 2.1 AA 4.5:1 against parchment */
+  --text-tertiary:  rgba(26, 18, 16, 0.60);
   --accent-gold:    #B8924A;
   --accent-rose:    #C4848C;
   --glass-bg:    rgba(255, 255, 255, 0.65);
@@ -546,7 +547,7 @@ body {
   --border-warm:    rgba(196, 151, 90, 0.2);
   --text-primary:   #1A1210;
   --text-secondary: rgba(26, 18, 16, 0.55);
-  --text-tertiary:  rgba(26, 18, 16, 0.35);
+  --text-tertiary:  rgba(26, 18, 16, 0.60);
   --accent-gold:    #B8924A;
   --accent-rose:    #C4848C;
   --glass-bg:       rgba(255, 255, 255, 0.65);
@@ -555,4 +556,49 @@ body {
   --shadow-md:      0 8px 32px rgba(0,0,0,0.08);
   --shadow-lg:      0 24px 80px rgba(0,0,0,0.10);
   color-scheme: light;
+}
+
+/* ─── Hero slide — short-viewport guard (iPhone SE, small Androids) ─ */
+/* Compresses the hero inner padding so the countdown + CTA stay       */
+/* visible inside the 100dvh garden-slide on short screens.            */
+@media (max-height: 700px) {
+  .hero-inner {
+    padding-top:    clamp(3rem, 7vh, 4.5rem) !important;
+    padding-bottom: clamp(0.5rem, 2vh, 1.5rem) !important;
+  }
+  /* Table assignment badge is moved to the RSVP slide context on short screens */
+  .table-badge { display: none; }
+}
+
+/* ─── RSVP form — accessible focus rings ────────────────────────── */
+/* Replaces the removed outline:none in FormPrimitives               */
+.form-input:focus-visible,
+.form-textarea:focus-visible,
+.form-select:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ─── Prefers-reduced-motion ─────────────────────────────────────── */
+/* Stops the continuous grain + petal CSS animations for guests       */
+/* who have enabled the OS-level reduced-motion preference.           */
+@media (prefers-reduced-motion: reduce) {
+  .grain-overlay {
+    animation: none;
+  }
+  /* Freeze floating petals in place rather than removing them —       */
+  /* keeps the botanical atmosphere while eliminating vestibular risk. */
+  [class*="gdn-petal-"] {
+    animation-play-state: paused;
+  }
+  .animate-petal-drift {
+    animation: none;
+  }
+  /* Suppress backdrop shimmer on gold text */
+  .gdn-gold-shimmer {
+    animation: none;
+    -webkit-text-fill-color: var(--accent-gold);
+    background: none;
+  }
 }

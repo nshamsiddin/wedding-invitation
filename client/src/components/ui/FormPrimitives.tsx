@@ -25,11 +25,12 @@ export const formInputStyle: CSSProperties = {
   background: 'transparent',
   border: 'none',
   borderBottom: '1px solid var(--border-warm)',
-  padding: '0.5rem 0',
+  /* Increased from 0.5rem → 0.65rem: raises effective tap height above 44px */
+  padding: '0.65rem 0',
   color: 'var(--text-primary)',
   fontFamily: '"DM Sans", system-ui, sans-serif',
   fontSize: '0.9rem',
-  outline: 'none',
+  /* outline removed from inline style — managed via .form-input:focus-visible in index.css */
   appearance: 'none',
   WebkitAppearance: 'none',
   transition: 'border-color 0.3s ease',
@@ -114,11 +115,12 @@ interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   focusColor?: boolean;
 }
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  function FormInput({ focusColor, style, onFocus, onBlur, ...props }, ref) {
+  function FormInput({ focusColor, style, onFocus, onBlur, className, ...props }, ref) {
     const [focused, setFocused] = useState(false);
     return (
       <input
         ref={ref}
+        className={`form-input${className ? ` ${className}` : ''}`}
         style={{
           ...formInputStyle,
           borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
@@ -136,11 +138,12 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
 
 interface FormTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {}
 export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
-  function FormTextarea({ style, onFocus, onBlur, ...props }, ref) {
+  function FormTextarea({ style, onFocus, onBlur, className, ...props }, ref) {
     const [focused, setFocused] = useState(false);
     return (
       <textarea
         ref={ref}
+        className={`form-textarea${className ? ` ${className}` : ''}`}
         style={{
           ...formInputStyle,
           resize: 'none',
@@ -159,11 +162,12 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
 
 interface FormSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {}
 export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
-  function FormSelect({ style, onFocus, onBlur, children, ...props }, ref) {
+  function FormSelect({ style, onFocus, onBlur, children, className, ...props }, ref) {
     const [focused, setFocused] = useState(false);
     return (
       <select
         ref={ref}
+        className={`form-select${className ? ` ${className}` : ''}`}
         style={{
           ...formInputStyle,
           borderBottomColor: focused ? 'var(--accent-gold)' : 'var(--border-warm)',
