@@ -3,19 +3,52 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
 import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM } from '../../garden/tokens';
+import { useAdminTranslation } from '../../lib/i18n/admin';
+import { getEventDisplayName } from './adminTokens';
 
-const STATUS_COLORS: Record<string, string> = {
-  attending: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  declined:  'bg-red-50 text-red-700 border border-red-200',
-  maybe:     'bg-yellow-50 text-yellow-700 border border-yellow-200',
-  pending:   'bg-[rgba(184,146,74,0.12)] text-[#2A1F1A]/70 border border-[rgba(184,146,74,0.35)]',
-};
+// ─── Status styling — colour + icon to avoid colour-only differentiation ───────
+// WCAG 1.4.1: information must not rely solely on colour.
 
-const STATUS_LABELS: Record<string, string> = {
-  attending: 'Attending',
-  declined:  'Declined',
-  maybe:     'Maybe',
-  pending:   'Pending',
+const STATUS_CONFIG: Record<
+  string,
+  { classes: string; icon: React.ReactNode; label: string }
+> = {
+  attending: {
+    classes: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+    icon: (
+      <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      </svg>
+    ),
+    label: 'Attending',
+  },
+  declined: {
+    classes: 'bg-red-50 text-red-800 border border-red-200',
+    icon: (
+      <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+      </svg>
+    ),
+    label: 'Declined',
+  },
+  maybe: {
+    classes: 'bg-yellow-50 text-yellow-800 border border-yellow-200',
+    icon: (
+      <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+      </svg>
+    ),
+    label: 'Maybe',
+  },
+  pending: {
+    classes: 'bg-[rgba(184,146,74,0.10)] text-[#2A1F1A] border border-[rgba(184,146,74,0.35)]',
+    icon: (
+      <svg className="w-3 h-3 flex-shrink-0 opacity-60" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+      </svg>
+    ),
+    label: 'Pending',
+  },
 };
 
 interface Props {
@@ -26,9 +59,10 @@ interface Props {
   onEditInvitation: (invitation: AdminInvitation, guest: AdminGuest) => void;
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
+  showTableColumn?: boolean;
 }
 
-type SortKey = 'name' | 'email' | 'createdAt';
+type SortKey = 'name' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -70,24 +104,32 @@ function CopyLinkButton({ invitation, baseUrl }: { invitation: AdminInvitation; 
   return (
     <button
       onClick={handleCopy}
-      title={`Copy invite link for ${invitation.eventName ?? 'event'}`}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-sans transition-colors focus:outline-none focus:ring-1"
+      title={`Copy personal invite link for ${invitation.eventName ?? 'event'}`}
+      aria-label={`Copy personal invite link for ${invitation.eventName ?? invitation.eventSlug ?? 'event'}`}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-sans transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
       style={{ background: 'rgba(184,146,74,0.12)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
     >
       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
       </svg>
-      Link
+      Copy link
     </button>
   );
 }
 
 export default function GuestTable({
-  guests, events, isLoading,
-  onEditGuest, onEditInvitation, onDeleteGuest, onDeleteInvitation,
+  guests,
+  events,
+  isLoading,
+  onEditGuest,
+  onEditInvitation,
+  onDeleteGuest,
+  onDeleteInvitation,
+  showTableColumn = false,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const at = useAdminTranslation();
 
   const baseUrl = window.location.origin;
 
@@ -105,12 +147,11 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const totalColSpan = 3 + events.length + 1;
+  const totalColSpan = 2 + events.length + 1 + (showTableColumn ? 1 : 0);
 
   const columns: Array<{ key: SortKey; label: string }> = [
-    { key: 'name',      label: 'Name' },
-    { key: 'email',     label: 'Email' },
-    { key: 'createdAt', label: 'Added' },
+    { key: 'name',      label: at.colName },
+    { key: 'createdAt', label: at.colAdded },
   ];
 
   return (
@@ -119,30 +160,51 @@ export default function GuestTable({
         <thead>
           <tr style={{ borderBottom: `1px solid ${GOLD_DIM}`, background: CREAM }}>
             {columns.map((col) => (
-              <th key={col.key} scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+              <th
+                key={col.key}
+                scope="col"
+                // WCAG 1.3.1: aria-sort communicates sort state to screen readers
+                aria-sort={
+                  sortKey === col.key
+                    ? sortDir === 'asc' ? 'ascending' : 'descending'
+                    : 'none'
+                }
+                className="px-4 py-3 text-left font-medium whitespace-nowrap"
+                style={{ color: ESPRESSO_DIM }}
+              >
                 <button
                   onClick={() => handleSort(col.key)}
-                  className="flex items-center gap-1 transition-colors focus:outline-none"
+                  className="flex items-center gap-1 transition-colors focus:outline-none focus-visible:underline"
                   style={{ color: ESPRESSO_DIM }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; }}
-                  aria-label={`Sort by ${col.label}`}
+                  aria-label={`Sort by ${col.label}${sortKey === col.key ? ` (${sortDir === 'asc' ? 'ascending' : 'descending'})` : ''}`}
                 >
                   {col.label}
                   <SortIcon active={sortKey === col.key} dir={sortDir} />
                 </button>
               </th>
             ))}
+
+            {/* Event columns — use getEventDisplayName for consistency */}
             {events.map((ev) => (
               <th key={ev.id} scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
-                {ev.slug.charAt(0).toUpperCase() + ev.slug.slice(1)}
+                {getEventDisplayName(ev)}
               </th>
             ))}
+
+            {showTableColumn && (
+              <th scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+                {at.colTable}
+              </th>
+            )}
+
             <th scope="col" className="px-4 py-3 text-right font-medium" style={{ color: ESPRESSO_DIM }}>
-              Actions
+              {at.colActions}
             </th>
           </tr>
         </thead>
+
         <tbody>
           {isLoading &&
             Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} colSpan={totalColSpan} />)}
@@ -156,8 +218,8 @@ export default function GuestTable({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <p className="font-medium text-sm" style={{ color: ESPRESSO }}>No guests found</p>
-                  <p className="text-xs" style={{ color: ESPRESSO_DIM }}>Try adjusting filters or add a guest manually</p>
+                  <p className="font-medium text-sm" style={{ color: ESPRESSO }}>{at.noGuestsFound}</p>
+                  <p className="text-xs" style={{ color: ESPRESSO_DIM }}>{at.noGuestsHint}</p>
                 </div>
               </td>
             </tr>
@@ -176,7 +238,8 @@ export default function GuestTable({
                 onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
-                <td className="px-4 py-3 font-medium whitespace-nowrap max-w-[150px] truncate" style={{ color: ESPRESSO }}>
+                {/* Name cell */}
+                <td className="px-4 py-3 font-medium whitespace-nowrap max-w-[160px] truncate" style={{ color: ESPRESSO }}>
                   {guest.name}
                   {guest.partnerName && (
                     <p className="text-xs font-normal mt-0.5" style={{ color: ESPRESSO_DIM }}>& {guest.partnerName}</p>
@@ -185,44 +248,52 @@ export default function GuestTable({
                     <p className="text-xs font-normal mt-0.5" style={{ color: ESPRESSO_DIM }}>{guest.phone}</p>
                   )}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap max-w-[180px] truncate" style={{ color: ESPRESSO_DIM }}>
-                  {guest.email}
-                </td>
+
+                {/* Added date */}
                 <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: ESPRESSO_DIM }}>
                   {new Date(guest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </td>
 
+                {/* Per-event invitation cells */}
                 {events.map((ev) => {
                   const inv = guest.invitations.find((i) => i.eventId === ev.id);
+                  const config = inv ? (STATUS_CONFIG[inv.status] ?? STATUS_CONFIG['pending']) : null;
+
                   return (
-                    <td key={ev.id} className="px-4 py-3 min-w-[120px]">
-                      {inv ? (
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium self-start ${STATUS_COLORS[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {STATUS_LABELS[inv.status] ?? inv.status}
+                    <td key={ev.id} className="px-4 py-3 min-w-[140px]">
+                      {inv && config ? (
+                        <div className="flex flex-col gap-1.5">
+                          {/* Status badge with icon — WCAG 1.4.1 */}
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium self-start ${config.classes}`}>
+                            {config.icon}
+                            {config.label}
                           </span>
+
+                          {/* Per-invitation actions */}
                           <div className="flex items-center gap-1">
                             <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
+
                             <button
                               onClick={() => onEditInvitation(inv, guest)}
                               title="Edit RSVP"
-                              className="p-1 rounded transition-colors focus:outline-none focus:ring-1"
+                              className="p-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
                               style={{ color: ESPRESSO_DIM }}
                               onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
-                              aria-label={`Edit ${ev.slug} RSVP for ${guest.name}`}
+                              aria-label={`Edit ${getEventDisplayName(ev)} RSVP for ${guest.name}`}
                             >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
+
                             <button
                               onClick={() => onDeleteInvitation(inv)}
                               title="Remove from this event"
-                              className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:ring-1 focus:ring-red-400"
-                              aria-label={`Remove ${guest.name} from ${ev.slug}`}
+                              className="p-1 rounded text-[rgba(42,31,26,0.35)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                              aria-label={`Remove ${guest.name} from ${getEventDisplayName(ev)}`}
                             >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
@@ -235,11 +306,37 @@ export default function GuestTable({
                   );
                 })}
 
+                {/* Table number cell (Tashkent only) */}
+                {showTableColumn && (
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {(() => {
+                      const tashkentInv = guest.invitations.find((i) => i.eventSlug === 'tashkent');
+                      const tn = tashkentInv?.tableNumber;
+                      return tn != null ? (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold font-sans"
+                          style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.4)' }}
+                        >
+                          #{tn}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>
+                      );
+                    })()}
+                  </td>
+                )}
+
+                {/* Row actions — persistent at reduced opacity, full on hover/focus */}
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <div
+                    className="flex items-center justify-end gap-1 transition-opacity"
+                    // Always visible at 40% — revealed fully on row hover or keyboard focus
+                    // This replaces the previous opacity-0 which broke keyboard and touch access
+                    style={{ opacity: undefined }}
+                  >
                     <button
                       onClick={() => onEditGuest(guest)}
-                      className="p-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2"
+                      className="p-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
                       style={{ color: ESPRESSO_DIM }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
@@ -249,9 +346,10 @@ export default function GuestTable({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </button>
+
                     <button
                       onClick={() => onDeleteGuest(guest)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
+                      className="p-1.5 rounded-lg text-[rgba(42,31,26,0.35)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
                       aria-label={`Delete ${guest.name}`}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
