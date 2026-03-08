@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updateInvitationSchema, type UpdateInvitationValues } from '@invitation/shared';
 import type { AdminInvitation, AdminGuest } from '../../lib/api';
@@ -12,6 +12,7 @@ import {
   ADMIN_PRIMARY_BTN_CLASS,
   ADMIN_SECONDARY_BTN_CLASS,
 } from './adminTokens';
+import StatusPicker from './StatusPicker';
 
 interface Props {
   invitation: AdminInvitation | null;
@@ -38,6 +39,7 @@ export default function EditInvitationModal({
     handleSubmit,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm<UpdateInvitationValues>({
     resolver: zodResolver(updateInvitationSchema),
@@ -75,30 +77,29 @@ export default function EditInvitationModal({
         noValidate
         className="p-6 space-y-4"
       >
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="inv-status" className={ADMIN_LABEL_CLASS}>{at.statusLabel}</label>
-            <select id="inv-status" {...register('status')} className={ADMIN_SELECT_CLASS}>
-              <option value="attending">{at.statusAttending}</option>
-              <option value="declined">{at.statusDeclined}</option>
-              <option value="maybe">{at.statusMaybe}</option>
-              <option value="pending">{at.statusPending}</option>
-            </select>
-          </div>
+        <div>
+          <p className={ADMIN_LABEL_CLASS}>{at.statusLabel}</p>
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <StatusPicker value={field.value ?? ''} onChange={field.onChange} />
+            )}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="inv-guest-count" className={ADMIN_LABEL_CLASS}>{at.guestCountLabel}</label>
-            <select
-              id="inv-guest-count"
-              {...register('guestCount', { valueAsNumber: true })}
-              disabled={watchedStatus !== 'attending'}
-              className={`${ADMIN_SELECT_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {GUEST_COUNT_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label htmlFor="inv-guest-count" className={ADMIN_LABEL_CLASS}>{at.guestCountLabel}</label>
+          <select
+            id="inv-guest-count"
+            {...register('guestCount', { valueAsNumber: true })}
+            disabled={watchedStatus !== 'attending'}
+            className={`${ADMIN_SELECT_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {GUEST_COUNT_OPTIONS.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
         </div>
 
         {isTashkent && (

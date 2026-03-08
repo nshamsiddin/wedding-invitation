@@ -1,71 +1,112 @@
-name: Deploy
+# ─────────────────────────────────────────────────────────────────────────────
+# Required GitHub Actions secrets (Settings → Secrets and variables → Actions):
+#
+#   SERVER_HOST    — IP address or hostname of the Hetzner CX22 VPS
+#   SERVER_SSH_KEY — Private ed25519 key for the `deploy` user
+#                    (the matching public key must be in ~deploy/.ssh/authorized_keys)
+#   DOMAIN         — Public domain used for the health-check URL
+#                    e.g. wedding.example.com  →  https://wedding.example.com/api/health
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CI / Deploy
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy:
-    name: Build & deploy to Hetzner
+  # ── Job 1: Type-check every workspace ──────────────────────────────────────
+  # Runs on the GitHub-hosted runner; catches type errors before touching the
+  # server.  The deploy job will not start if this job fails.
+  validate:
+    name: Type-check
     runs-on: ubuntu-latest
 
     steps:
-      # ── Checkout ───────────────────────────────────────────────────────────
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      # ── Node.js setup ──────────────────────────────────────────────────────
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js 20 LTS
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+          # Caches ~/.npm keyed on the root package-lock.json
           cache: 'npm'
 
-      # ── Install all dependencies (including devDeps needed for the build) ──
       - name: Install dependencies
         run: npm ci
 
-      # ── Build shared types, React client, and Express server ───────────────
-      - name: Build
-        run: npm run build
+      # shared must be compiled first so its type declarations are available
+      # when the client and server workspaces are checked.
+      - name: Build shared (required by downstream type-checks)
+        run: npm run build --workspace=shared
 
-      # ── Sync compiled output + source to the server ────────────────────────
-      # Excludes: .env (secrets live only on the server), database files,
-      # and node_modules (reinstalled on server with --omit=dev below).
-      - name: Sync to server
-        uses: burnett01/rsync-deployments@7.0.1
-        with:
-          switches: >-
-            -avz --delete
-            --exclude='.env'
-            --exclude='*.db'
-            --exclude='*.db-wal'
-            --exclude='*.db-shm'
-            --exclude='node_modules'
-            --exclude='.git'
-            --exclude='backups'
-          path: ./
-          remote_path: /opt/invitation/
-          remote_host: ${{ secrets.SERVER_HOST }}
-          remote_user: deploy
-          remote_key: ${{ secrets.SERVER_SSH_KEY }}
+      # client/tsconfig.json already has "noEmit": true — this is type-check only.
+      - name: Type-check — client
+        run: npx tsc --project client/tsconfig.json
 
-      # ── Install production-only deps and reload the app ────────────────────
-      # PM2 reload is zero-downtime: the old process keeps serving until the
-      # new one is ready, then the old one is gracefully shut down.
-      - name: Reload app
+      # server/tsconfig.json emits by default; --noEmit keeps this to type-check only.
+      - name: Type-check — server
+        run: npx tsc --noEmit --project server/tsconfig.json
+
+  # ── Job 2: Deploy to Hetzner VPS ───────────────────────────────────────────
+  # All deploy steps run directly on the VPS over SSH.
+  # The runner only needs the ssh-action; no Node.js setup is required here.
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    needs: [validate]
+
+    steps:
+      - name: SSH — pull, build, migrate, reload, verify
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: deploy
           key: ${{ secrets.SERVER_SSH_KEY }}
+          # Exit immediately on any error; treat unset variables as errors.
+          script_stop: true
           script: |
             set -euo pipefail
             cd /opt/invitation
 
-            # Install / prune to production dependencies only
-            npm ci --omit=dev
+            echo "──────────────────────────────────────────"
+            echo "Step 1/6 — Pull latest code"
+            echo "──────────────────────────────────────────"
+            git pull origin main
 
-            # Reload without downtime; --update-env picks up any .env changes
+            echo "──────────────────────────────────────────"
+            echo "Step 2/6 — Install dependencies (all workspaces)"
+            echo "──────────────────────────────────────────"
+            npm ci --workspaces
+
+            echo "──────────────────────────────────────────"
+            echo "Step 3/6 — Build: shared → client → server"
+            echo "──────────────────────────────────────────"
+            npm run build
+
+            echo "──────────────────────────────────────────"
+            echo "Step 4/6 — Run DB migrations"
+            echo "──────────────────────────────────────────"
+            npm run db:migrate
+
+            echo "──────────────────────────────────────────"
+            echo "Step 5/6 — Zero-downtime reload via PM2"
+            echo "──────────────────────────────────────────"
             pm2 reload ecosystem.config.cjs --update-env
 
-            # Confirm the process is online
-            pm2 show invitation | grep -E "status|restart"
+            echo "──────────────────────────────────────────"
+            echo "Step 6/6 — Health check"
+            echo "──────────────────────────────────────────"
+            # Give the process a moment to finish binding the port, then probe
+            # /api/health.  -sf: silent + fail on HTTP 4xx/5xx.  --retry* retries
+            # up to 6 times over ~30 s to accommodate slow cold starts.
+            sleep 3
+            curl -sf \
+              --retry 6 \
+              --retry-delay 5 \
+              --retry-connrefused \
+              "https://${{ secrets.DOMAIN }}/api/health" \
+              || { echo "Health check failed — rolling back PM2"; pm2 reload ecosystem.config.cjs --update-env; exit 1; }
+
+            echo "✓ Deployment successful"

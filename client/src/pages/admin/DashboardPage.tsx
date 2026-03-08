@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useRef } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -107,32 +107,82 @@ function ShareableLinksSection({ baseUrl }: { baseUrl: string }) {
   const venues = ['tashkent', 'ankara'];
   const langs  = ['en', 'tr', 'uz'];
   const at     = useAdminTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
   return (
     <section aria-labelledby="shareable-links-heading">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 id="shareable-links-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
+      {/* ── Collapsible header ─────────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={isOpen}
+        aria-controls="shareable-links-body"
+        className="w-full flex items-center justify-between gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] rounded-lg"
+      >
+        <div className="text-left">
+          <h2
+            id="shareable-links-heading"
+            className="font-sans font-semibold text-sm"
+            style={{ color: ESPRESSO }}
+          >
             {at.shareableLinksTitle}
           </h2>
           <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
             {at.shareableLinksDesc}
           </p>
         </div>
-      </div>
 
-      {venues.map((venue) => (
-        <div key={venue} className="mb-4">
-          <p className="text-xs font-sans font-semibold uppercase tracking-wider mb-2" style={{ color: ESPRESSO_DIM }}>
-            {VENUE_META[venue]?.displayName}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {langs.map((lang) => (
-              <ShareableLinkCard key={lang} venue={venue} lang={lang} baseUrl={baseUrl} />
-            ))}
-          </div>
-        </div>
-      ))}
+        <span
+          className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+          style={{ background: isOpen ? 'rgba(184,146,74,0.12)' : 'rgba(184,146,74,0.07)', color: ESPRESSO_DIM }}
+          aria-hidden="true"
+        >
+          <motion.svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </motion.svg>
+        </span>
+      </button>
+
+      {/* ── Collapsible body ───────────────────────────────────────────────── */}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            id="shareable-links-body"
+            key="links-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="pt-4 space-y-4">
+              {venues.map((venue) => (
+                <div key={venue}>
+                  <p
+                    className="text-xs font-sans font-semibold uppercase tracking-wider mb-2"
+                    style={{ color: ESPRESSO_DIM }}
+                  >
+                    {VENUE_META[venue]?.displayName}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {langs.map((lang) => (
+                      <ShareableLinkCard key={lang} venue={venue} lang={lang} baseUrl={baseUrl} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
@@ -516,37 +566,9 @@ export default function DashboardPage() {
             Active tab text uses ESPRESSO on GOLD — 5.85:1 contrast (WCAG AA ✓).
             Inactive tab text uses ESPRESSO on PARCHMENT — ~18:1 (WCAG AAA ✓).
           */}
-          <div className="flex flex-wrap items-center gap-2">
-            {events.map((ev) => {
-              const active = selectedEventId === ev.id;
-              return (
-                <button
-                  key={ev.id}
-                  onClick={() => handleSelectEvent(ev.id)}
-                  className="relative px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
-                  style={
-                    active
-                      ? {
-                          background: GOLD,
-                          color: ESPRESSO,
-                          boxShadow: '0 2px 8px rgba(184,146,74,0.35)',
-                        }
-                      : { background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }
-                  }
-                  aria-pressed={active}
-                >
-                  {getEventDisplayName(ev)}
-                  <span
-                    className="ml-1.5 text-xs font-normal"
-                    style={{ opacity: active ? 0.65 : 0.55 }}
-                  >
-                    {ev.stats.total}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap items-center gap-3">
 
-            {/* "All" tab — same size and shape as event tabs */}
+            {/* "All" standalone pill — default/home state, first in DOM and visual order */}
             <button
               onClick={() => handleSelectEvent(null)}
               className="px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
@@ -559,6 +581,48 @@ export default function DashboardPage() {
             >
               {at.all}
             </button>
+
+            {/* Event tabs — connected segmented group */}
+            <div
+              className="flex items-stretch rounded-lg overflow-hidden"
+              style={{ border: `1px solid ${GOLD_DIM}` }}
+              role="group"
+              aria-label="Filter by event"
+            >
+              {events.map((ev, idx) => {
+                const active = selectedEventId === ev.id;
+                return (
+                  <div key={ev.id} className="flex items-stretch">
+                    {idx > 0 && (
+                      <div className="w-px self-stretch" style={{ background: GOLD_DIM }} aria-hidden="true" />
+                    )}
+                    <button
+                      onClick={() => handleSelectEvent(ev.id)}
+                      className="px-4 py-2 text-sm font-sans font-semibold transition-all inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.8)]"
+                      style={
+                        active
+                          ? { background: GOLD, color: ESPRESSO }
+                          : { background: PARCHMENT, color: ESPRESSO }
+                      }
+                      aria-pressed={active}
+                    >
+                      {getEventDisplayName(ev)}
+                      <span
+                        className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
+                        style={
+                          active
+                            ? { background: 'rgba(42,31,26,0.15)', color: ESPRESSO }
+                            : { background: GOLD, color: ESPRESSO }
+                        }
+                      >
+                        {ev.stats.total}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
           </div>
 
           {selectedEvent && (

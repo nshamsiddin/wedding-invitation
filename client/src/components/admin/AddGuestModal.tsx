@@ -12,6 +12,7 @@ import {
   ADMIN_PRIMARY_BTN_CLASS,
   ADMIN_SECONDARY_BTN_CLASS,
 } from './adminTokens';
+import StatusPicker from './StatusPicker';
 
 interface Props {
   isOpen: boolean;
@@ -206,29 +207,30 @@ export default function AddGuestModal({
           )}
         </fieldset>
 
-        {/* Status + Guest Count */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="add-status" className={ADMIN_LABEL_CLASS}>{at.statusLabel}</label>
-            <select id="add-status" {...register('status')} className={ADMIN_SELECT_CLASS}>
-              <option value="attending">{at.statusAttending}</option>
-              <option value="declined">{at.statusDeclined}</option>
-              <option value="maybe">{at.statusMaybe}</option>
-              <option value="pending">{at.statusPending}</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="add-guest-count" className={ADMIN_LABEL_CLASS}>{at.guestCountLabel}</label>
-            <select
-              id="add-guest-count"
-              {...register('guestCount', { valueAsNumber: true })}
-              className={ADMIN_SELECT_CLASS}
-            >
-              {GUEST_COUNT_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
+        {/* Status */}
+        <div>
+          <p className={ADMIN_LABEL_CLASS}>{at.statusLabel}</p>
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <StatusPicker value={field.value ?? ''} onChange={field.onChange} />
+            )}
+          />
+        </div>
+
+        {/* Guest Count */}
+        <div>
+          <label htmlFor="add-guest-count" className={ADMIN_LABEL_CLASS}>{at.guestCountLabel}</label>
+          <select
+            id="add-guest-count"
+            {...register('guestCount', { valueAsNumber: true })}
+            className={ADMIN_SELECT_CLASS}
+          >
+            {GUEST_COUNT_OPTIONS.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
         </div>
 
         {/* Table Number — Tashkent only */}

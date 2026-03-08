@@ -71,6 +71,11 @@ export const ADMIN_SELECT_CLASS = `${ADMIN_INPUT_CLASS} appearance-none`;
  * components (e.g., "Toshkent" vs "Tashkent").
  */
 export function getEventDisplayName(ev: Pick<AdminEvent, 'name' | 'slug'>): string {
-  if (ev.name && ev.name.trim().length > 0) return ev.name;
+  if (ev.name && ev.name.trim().length > 0) {
+    // Strip any "Owner — " prefix (e.g. "Berfin & Shamsiddin — Toshkent" → "Toshkent")
+    const dashIdx = ev.name.indexOf(' \u2014 ');
+    if (dashIdx !== -1) return ev.name.slice(dashIdx + 3).trim();
+    return ev.name.trim();
+  }
   return ev.slug.charAt(0).toUpperCase() + ev.slug.slice(1);
 }
