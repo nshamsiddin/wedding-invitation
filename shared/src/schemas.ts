@@ -11,10 +11,6 @@ export const rsvpFormSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be under 100 characters')
     .trim(),
-  // Email is display-only (never submitted to the server).
-  // The server returns a masked value like b***@example.com, so strict
-  // .email() validation would always block submission. Accept any string.
-  email: z.string().max(254).trim().optional().default(''),
   status: z.enum(['attending', 'declined', 'maybe'], {
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
@@ -78,14 +74,6 @@ export const claimInvitationSchema = z.object({
     .max(100, 'Name must be under 100 characters')
     .trim(),
   partnerName: z.string().max(100).trim().optional(),
-  // Optional for one-time open links (still validated when provided)
-  email: z
-    .string()
-    .email('Please enter a valid email address')
-    .max(254, 'Email must be under 254 characters')
-    .toLowerCase()
-    .trim()
-    .optional(),
   phone: z.string().max(30).trim().optional(),
   rsvpEntries: z.array(rsvpEntrySchema).min(1, 'At least one RSVP entry is required'),
 });
@@ -130,6 +118,8 @@ export const invitationSchema = z.object({
   partnerDietary: z.string().nullable().optional(),
   message: z.string().nullable(),
   updatedAt: z.string(),
+  // Assigned seating table — only set for Tashkent invitations
+  tableNumber: z.number().int().min(1).max(500).nullable().optional(),
 });
 
 export type InvitationData = z.infer<typeof invitationSchema>;
@@ -142,6 +132,7 @@ export const adminInvitationSchema = invitationSchema.extend({
   isOpen: z.boolean().default(false),
   claimedAt: z.string().nullable().optional(),
   guestId: z.number().nullable().optional(),
+  tableNumber: z.number().int().nullable().optional(),
 });
 
 export type AdminInvitation = z.infer<typeof adminInvitationSchema>;
@@ -151,8 +142,6 @@ export const adminGuestSchema = z.object({
   id: z.number(),
   name: z.string(),
   partnerName: z.string().nullable().optional(),
-  // Nullable: guests who registered via a public link have no email
-  email: z.string().nullable(),
   phone: z.string().nullable(),
   createdAt: z.string(),
   invitations: z.array(adminInvitationSchema),
@@ -202,23 +191,24 @@ export type AdminLoginValues = z.infer<typeof adminLoginSchema>;
 
 export const addGuestSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100).trim(),
-  email: z.string().email('Please enter a valid email').max(254).toLowerCase().trim(),
   phone: z.string().max(30).trim().optional(),
   partnerName: z.string().max(100).trim().optional(),
   eventIds: z
     .array(z.number().int().positive())
     .min(1, 'Select at least one event'),
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional().default('pending'),
-  guestCount: z.number().int().min(1).max(5).optional().default(1),
+  // Admin-facing schemas allow up to 10 (vs 5 on the public RSVP form)
+  guestCount: z.number().int().min(1).max(10).optional().default(1),
   dietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
+  // Assigned seating table for Tashkent event — ignored for other events
+  tableNumber: z.number().int().min(1).max(500).nullable().optional(),
 });
 
 export type AddGuestValues = z.infer<typeof addGuestSchema>;
 
 export const updateGuestContactSchema = z.object({
   name: z.string().min(2).max(100).trim().optional(),
-  email: z.string().email().max(254).toLowerCase().trim().optional(),
   phone: z.string().max(30).trim().nullable().optional(),
   partnerName: z.string().max(100).trim().nullable().optional(),
 });
@@ -229,17 +219,20 @@ export const addInvitationSchema = z.object({
   guestId: z.number().int().positive(),
   eventId: z.number().int().positive(),
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional().default('pending'),
-  guestCount: z.number().int().min(1).max(5).optional().default(1),
+  guestCount: z.number().int().min(1).max(10).optional().default(1),
 });
 
 export type AddInvitationValues = z.infer<typeof addInvitationSchema>;
 
 export const updateInvitationSchema = z.object({
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional(),
-  guestCount: z.number().int().min(1).max(5).optional(),
+  // Admin can set up to 10 guests; public RSVP form enforces max 5 separately
+  guestCount: z.number().int().min(1).max(10).optional(),
   dietary: z.string().max(500).trim().optional(),
   partnerDietary: z.string().max(500).trim().optional(),
   message: z.string().max(1000).trim().optional(),
+  // Assigned seating table — only meaningful for Tashkent invitations
+  tableNumber: z.number().int().min(1).max(500).nullable().optional(),
 });
 
 export type UpdateInvitationValues = z.infer<typeof updateInvitationSchema>;
@@ -319,14 +312,14 @@ export interface RSVPCheckResponse {
     dietary: string | null;
     message: string | null;
   };
-  guest?: { name: string; email: string };
+  guest?: { name: string };
 }
 
 // Discriminated union for token lookup — covers all three states
 export interface PersonalTokenLookupResponse {
   type: 'personal';
-  invitation: InvitationData;
-  guest: { id: number; name: string; email: string; partnerName: string | null };
+  invitation: InvitationData & { tableNumber: number | null };
+  guest: { id: number; name: string; partnerName: string | null };
   event: EventData;
 }
 
@@ -354,6 +347,6 @@ export interface RSVPSubmitResponse {
 }
 
 export interface ClaimInvitationResponse {
-  guest: { id: number; name: string; email: string };
+  guest: { id: number; name: string };
   invitations: InvitationData[];
 }

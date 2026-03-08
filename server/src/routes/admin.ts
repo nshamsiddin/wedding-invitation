@@ -168,8 +168,18 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
     if (eventId || (status && status !== '')) {
       const invConditions = [];
       if (eventId && !isNaN(eventId)) invConditions.push(eq(schema.guestInvitations.eventId, eventId));
-      if (status && ['attending', 'declined', 'maybe', 'pending'].includes(status)) {
-        invConditions.push(eq(schema.guestInvitations.status, status as AttendanceStatus));
+      if (status) {
+        // Support comma-separated statuses for multi-select filtering (e.g. "attending,maybe")
+        const VALID = ['attending', 'declined', 'maybe', 'pending'] as const;
+        const requested = status
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s): s is AttendanceStatus => VALID.includes(s as AttendanceStatus));
+        if (requested.length === 1) {
+          invConditions.push(eq(schema.guestInvitations.status, requested[0]));
+        } else if (requested.length > 1) {
+          invConditions.push(inArray(schema.guestInvitations.status, requested));
+        }
       }
 
       if (invConditions.length > 0) {
@@ -196,10 +206,9 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
       const rawTerm = search.trim();
       const escapedTerm = rawTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
       const term = `%${escapedTerm}%`;
-      guestConditions.push(or(
+      guestConditions.push(
         sql`${schema.guests.name} LIKE ${term} ESCAPE '\\'`,
-        sql`${schema.guests.email} LIKE ${term} ESCAPE '\\'`,
-      ));
+      );
     }
     if (matchingGuestIds !== null) {
       guestConditions.push(inArray(schema.guests.id, matchingGuestIds));
@@ -230,6 +239,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         dietary: schema.guestInvitations.dietary,
         partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
+        tableNumber: schema.guestInvitations.tableNumber,
         isOpen: schema.guestInvitations.isOpen,
         claimedAt: schema.guestInvitations.claimedAt,
         updatedAt: schema.guestInvitations.updatedAt,
@@ -258,7 +268,6 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
       id: g.id,
       name: g.name,
       partnerName: g.partnerName ?? null,
-      email: g.email,
       phone: g.phone,
       createdAt: g.createdAt,
       invitations: (invMap.get(g.id) ?? []).map((inv) => ({
@@ -273,6 +282,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         dietary: inv.dietary,
         partnerDietary: inv.partnerDietary ?? null,
         message: inv.message,
+        tableNumber: inv.tableNumber ?? null,
         isOpen: inv.isOpen,
         claimedAt: inv.claimedAt,
         updatedAt: inv.updatedAt,
@@ -293,36 +303,28 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, email, phone, partnerName, eventIds, status, guestCount, dietary, message } = parsed.data;
+  const { name, phone, partnerName, eventIds, status, guestCount, dietary, message, tableNumber } = parsed.data;
 
   try {
     // Wrap guest + invitation creation in a single transaction so a partial failure
     // (e.g. a duplicate event ID mid-loop) never leaves an orphaned guest record.
     type AddResult =
-      | { ok: true; guest: typeof schema.guests.$inferSelect; invitations: (typeof schema.guestInvitations.$inferSelect)[] }
-      | { ok: false; conflict: true };
+      | { ok: true; guest: typeof schema.guests.$inferSelect; invitations: (typeof schema.guestInvitations.$inferSelect)[] };
 
     const addTransaction = sqlite.transaction((): AddResult => {
-      // Check email uniqueness inside the transaction — this is atomic in SQLite
-      // (serializable writes) so there is no TOCTOU window between check and insert.
-      const existing = sqlite
-        .prepare('SELECT id FROM guests WHERE email = ? LIMIT 1')
-        .get(email);
-      if (existing) return { ok: false, conflict: true };
-
       const guest = sqlite
         .prepare(
-          'INSERT INTO guests (name, email, phone, partner_name) VALUES (?, ?, ?, ?) RETURNING *'
+          'INSERT INTO guests (name, phone, partner_name) VALUES (?, ?, ?) RETURNING *'
         )
-        .get(name, email, phone ?? null, partnerName ?? null) as typeof schema.guests.$inferSelect;
+        .get(name, phone ?? null, partnerName ?? null) as typeof schema.guests.$inferSelect;
 
       const invitations: (typeof schema.guestInvitations.$inferSelect)[] = [];
       for (const eventId of eventIds) {
         const inv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, message)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+               (guest_id, event_id, token, status, guest_count, dietary, message, table_number)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING *`
           )
           .get(
@@ -333,6 +335,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
             guestCount ?? 1,
             dietary ?? null,
             message ?? null,
+            tableNumber ?? null,
           ) as typeof schema.guestInvitations.$inferSelect;
         invitations.push(inv);
       }
@@ -342,17 +345,11 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
 
     const result = addTransaction();
 
-    if (!result.ok) {
-      res.status(409).json({ error: 'A guest with this email already exists' });
-      return;
-    }
-
     res.status(201).json({ guest: result.guest, invitations: result.invitations });
   } catch (error: unknown) {
     console.error('Add guest error:', error);
-    // Catch any DB-level UNIQUE constraint violation (e.g. concurrent duplicate request)
     if (isUniqueConstraintError(error)) {
-      res.status(409).json({ error: 'A guest with this email already exists' });
+      res.status(409).json({ error: 'Duplicate entry' });
       return;
     }
     res.status(500).json({ error: 'Failed to add guest' });
@@ -394,10 +391,8 @@ async function handleUpdateGuest(req: Request, res: Response): Promise<void> {
     res.json(updated);
   } catch (error: unknown) {
     console.error('Update guest error:', error);
-    // Let the DB UNIQUE constraint handle email conflicts rather than a TOCTOU
-    // pre-check SELECT, so concurrent updates are handled correctly.
     if (isUniqueConstraintError(error)) {
-      res.status(409).json({ error: 'A guest with this email address already exists' });
+      res.status(409).json({ error: 'Duplicate entry' });
       return;
     }
     res.status(500).json({ error: 'Failed to update guest' });
@@ -731,7 +726,6 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
         guestId: schema.guests.id,
         name: schema.guests.name,
         partnerName: schema.guests.partnerName,
-        email: schema.guests.email,
         phone: schema.guests.phone,
         eventName: schema.events.name,
         eventSlug: schema.events.slug,
@@ -740,6 +734,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
         dietary: schema.guestInvitations.dietary,
         partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
+        tableNumber: schema.guestInvitations.tableNumber,
         rsvpDate: schema.guestInvitations.createdAt,
         updatedAt: schema.guestInvitations.updatedAt,
       })
