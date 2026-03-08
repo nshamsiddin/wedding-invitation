@@ -145,4 +145,6 @@ export const tr: Translations = {
   youreRegistered: 'Kaydınız tamamlandı!',
   thankYouRegistering: 'Kaydınız için teşekkür ederiz. Sizinle kutlamayı dört gözle bekliyoruz.',
   happyCoupleAlt: 'Mutlu çift',
+  partnerDietaryLabel: 'Eşinizin Diyet Kısıtlamaları',
+  addToCalendar: 'Takvime Ekle',
 };

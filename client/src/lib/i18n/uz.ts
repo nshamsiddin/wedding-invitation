@@ -145,4 +145,6 @@ export const uz: Translations = {
   youreRegistered: 'Ro\'yxatdan o\'tdingiz!',
   thankYouRegistering: 'Ro\'yxatdan o\'tganingiz uchun rahmat. Siz bilan birga nishonlashni sabrsizlik bilan kutamiz.',
   happyCoupleAlt: 'Baxtli juftlik',
+  partnerDietaryLabel: 'Hamrohingizning Ovqatlanish Cheklovlari',
+  addToCalendar: 'Taqvimga Qo\'shish',
 };

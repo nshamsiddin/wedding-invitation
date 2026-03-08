@@ -120,6 +120,10 @@ export type Translations = {
   thankYouRegistering: string;
   // Image alt text
   happyCoupleAlt: string;
+  // RSVP form — partner dietary field
+  partnerDietaryLabel: string;
+  // Success screen — post-RSVP calendar CTA
+  addToCalendar: string;
 };
 
 export const en: Translations = {
@@ -267,4 +271,6 @@ export const en: Translations = {
   youreRegistered: "You're registered!",
   thankYouRegistering: 'Thank you for registering. We look forward to celebrating with you.',
   happyCoupleAlt: 'The happy couple',
+  partnerDietaryLabel: "Partner's Dietary Restrictions",
+  addToCalendar: 'Add to Calendar',
 };
