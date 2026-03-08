@@ -16,7 +16,6 @@ import {
 
 interface PrefillData {
   name: string;
-  email: string;
   status: AttendanceStatus;
   guestCount: number;
   dietary: string | null;
@@ -29,9 +28,11 @@ interface Props {
   eventName?: string;
   prefillData?: PrefillData;
   partnerName?: string | null;
+  /** Pre-built Google Calendar URL for the "Add to Calendar" CTA on the success screen */
+  calendarUrl?: string;
 }
 
-export default function RSVPForm({ token, eventName = '', prefillData, partnerName }: Props) {
+export default function RSVPForm({ token, eventName = '', prefillData, partnerName, calendarUrl }: Props) {
   const [successResult, setSuccessResult] = useState<{
     name: string;
     status: 'attending' | 'declined' | 'maybe';
@@ -55,7 +56,6 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
     defaultValues: prefillData
       ? {
           name:           prefillData.name,
-          email:          prefillData.email,
           status:         prefillData.status as 'attending' | 'declined' | 'maybe',
           guestCount:     prefillData.guestCount,
           dietary:        prefillData.dietary ?? '',
@@ -104,6 +104,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         guestCount={successResult.guestCount}
         eventName={eventName}
         isUpdate={successResult.updated}
+        calendarUrl={calendarUrl}
         onUpdateRsvp={() => setSuccessResult(null)}
       />
     );
@@ -226,7 +227,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
           {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
         </fieldset>
 
-        {/* Guest count */}
+        {/* Guest count + dietary (only when attending) */}
         <AnimatePresence>
           {watchedStatus === 'attending' && (
             <motion.div
@@ -234,6 +235,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
             >
               <GuestCountSelect
                 id="rsvp-guest-count"
@@ -243,6 +245,34 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                 value={watchedCount}
                 onChange={(n) => setValue('guestCount', n)}
               />
+              <FormField
+                htmlFor="rsvp-dietary"
+                label={t.dietaryLabel}
+                optional={t.dietaryOptional}
+                error={errors.dietary?.message}
+              >
+                <FormInput
+                  id="rsvp-dietary"
+                  type="text"
+                  {...register('dietary')}
+                  placeholder={t.dietaryPlaceholder}
+                />
+              </FormField>
+              {(watchedCount > 1 || (partnerName !== null && partnerName !== undefined)) && (
+                <FormField
+                  htmlFor="rsvp-partner-dietary"
+                  label={t.partnerDietaryLabel}
+                  optional={t.dietaryOptional}
+                  error={errors.partnerDietary?.message}
+                >
+                  <FormInput
+                    id="rsvp-partner-dietary"
+                    type="text"
+                    {...register('partnerDietary')}
+                    placeholder={t.dietaryPlaceholder}
+                  />
+                </FormField>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

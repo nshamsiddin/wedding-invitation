@@ -27,15 +27,19 @@ function isZero(t: TimeLeft) {
 interface FlipDigitProps {
   value: number;
   label: string;
+  compact?: boolean;
 }
 
-function FlipUnit({ value, label }: FlipDigitProps) {
+function FlipUnit({ value, label, compact }: FlipDigitProps) {
   const padded = String(value).padStart(2, '0');
+  const sizeClass = compact
+    ? 'w-12 h-12 sm:w-20 sm:h-20'
+    : 'w-16 h-16 sm:w-24 sm:h-24';
 
   return (
-    <div className="flex flex-col items-center gap-2 sm:gap-3">
+    <div className="flex flex-col items-center gap-1.5 sm:gap-3">
       <div
-        className="relative w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 rounded-2xl overflow-hidden noise"
+        className={`relative ${sizeClass} rounded-2xl overflow-hidden noise`}
         style={{
           background: 'var(--glass-bg)',
           backdropFilter: 'blur(20px) saturate(1.4)',
@@ -71,7 +75,7 @@ function FlipUnit({ value, label }: FlipDigitProps) {
             className="absolute inset-0 flex items-center justify-center"
             style={{
               fontFamily: 'var(--font-digits)',
-              fontSize: 'clamp(1.75rem, 5vw, 2.75rem)',
+              fontSize: compact ? 'clamp(1.25rem, 4vw, 1.75rem)' : 'clamp(1.5rem, 4.5vw, 2.75rem)',
               fontWeight: 500,
               color: 'var(--text-primary)',
               letterSpacing: '-0.02em',
@@ -85,7 +89,10 @@ function FlipUnit({ value, label }: FlipDigitProps) {
       </div>
       <span
         className="text-overline"
-        style={{ color: 'var(--text-tertiary)' }}
+        style={{
+          color: 'var(--text-tertiary)',
+          fontSize: compact ? '0.58rem' : undefined,
+        }}
       >
         {label}
       </span>
@@ -95,9 +102,10 @@ function FlipUnit({ value, label }: FlipDigitProps) {
 
 interface Props {
   targetDate: string;
+  compact?: boolean;
 }
 
-export default function CountdownTimer({ targetDate }: Props) {
+export default function CountdownTimer({ targetDate, compact }: Props) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => calculateTimeLeft(targetDate));
   const [mounted, setMounted] = useState(false);
   const t = useTranslation();
@@ -142,12 +150,12 @@ export default function CountdownTimer({ targetDate }: Props) {
 
   return (
     <div
-      className="flex flex-wrap justify-center gap-3 sm:gap-5"
+      className="flex flex-wrap justify-center gap-2 sm:gap-5"
       role="timer"
       aria-label="Countdown to the event"
     >
       {units.map(({ label, value }) => (
-        <FlipUnit key={label} value={value} label={label} />
+        <FlipUnit key={label} value={value} label={label} compact={compact} />
       ))}
     </div>
   );

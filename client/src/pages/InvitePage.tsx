@@ -268,7 +268,6 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
     defaultValues: {
       token,
       name: '',
-      email: '',
       phone: '',
       rsvpEntries: events.map((ev) => ({
         eventId: ev.id,
@@ -305,9 +304,6 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
       <FormCard title={t.whosComing}>
         <FormField htmlFor="claim-name" label={t.nameLabel} required error={errors.name?.message}>
           <FormInput id="claim-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
-        </FormField>
-        <FormField htmlFor="claim-email" label={t.emailLabel} required error={errors.email?.message}>
-          <FormInput id="claim-email" type="email" autoComplete="email" {...register('email')} placeholder={t.emailPlaceholder} />
         </FormField>
         <FormField htmlFor="claim-phone" label={t.phoneLabel} optional={t.dietaryOptional}>
           <FormInput id="claim-phone" type="tel" {...register('phone')} placeholder="+1 555 000 0000" />
@@ -550,14 +546,20 @@ interface HeroSlideProps {
   date?: string | null;
   time?: string | null;
   venueName?: string | null;
+  venueMapUrl?: string | null;
   targetDateTime?: string | null;
+  /** Assigned table number — shown only for Tashkent personal invitations */
+  tableNumber?: number | null;
+  /** Compact layout for short-viewport devices (< 700 px tall) */
+  isShortScreen?: boolean;
   ctaLabel: string;
   onCtaClick: () => void;
 }
 
 function HeroSlide({
   heroRef, overline, guestName, firstName, secondName, cityPart,
-  date, time, venueName, targetDateTime, ctaLabel, onCtaClick,
+  date, time, venueName, venueMapUrl, targetDateTime, tableNumber,
+  isShortScreen, ctaLabel, onCtaClick,
 }: HeroSlideProps) {
   const hasEventDetails = !!(date && time && venueName);
   return (
@@ -572,12 +574,15 @@ function HeroSlide({
       <VineCornerTL inView={true} />
       <VineCornerBR inView={true} />
 
-      <div style={{
-        position: 'relative', zIndex: 10, width: '100%', maxWidth: '68rem', textAlign: 'center',
-        padding: hasEventDetails
-          ? 'clamp(4.5rem, 9vh, 7rem) clamp(1.5rem, 6vw, 4rem) clamp(2rem, 5vh, 4rem)'
-          : 'clamp(5rem, 10vh, 8rem) clamp(1.5rem, 6vw, 4rem) clamp(3rem, 7vh, 5rem)',
-      }}>
+      <div
+        className="hero-inner"
+        style={{
+          position: 'relative', zIndex: 10, width: '100%', maxWidth: '68rem', textAlign: 'center',
+          padding: hasEventDetails
+            ? 'clamp(4.5rem, 9vh, 7rem) clamp(1.5rem, 6vw, 4rem) clamp(2rem, 5vh, 4rem)'
+            : 'clamp(5rem, 10vh, 8rem) clamp(1.5rem, 6vw, 4rem) clamp(3rem, 7vh, 5rem)',
+        }}
+      >
         {/* Overline */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -646,7 +651,53 @@ function HeroSlide({
             <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
             <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
             <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
-            <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{venueName}</span>
+            {venueMapUrl ? (
+              <a
+                href={venueMapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em',
+                  color: GOLD, textDecoration: 'none',
+                  borderBottom: `1px dashed ${GOLD_DIM}`,
+                  display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                }}
+                aria-label={`Open ${venueName} in maps`}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                {venueName}
+              </a>
+            ) : (
+              <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{venueName}</span>
+            )}
+          </motion.div>
+        )}
+
+        {/* Assigned table number — hidden on short screens to protect CTA visibility */}
+        {tableNumber != null && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1.6 }}
+            className="table-badge"
+            style={{ marginBottom: 'clamp(0.5rem, 1.5vh, 1rem)', display: 'flex', justifyContent: 'center' }}
+          >
+            <span style={{
+              fontFamily: sans,
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: GOLD,
+              background: 'rgba(184,146,74,0.1)',
+              border: `1px solid ${GOLD_DIM}`,
+              borderRadius: '999px',
+              padding: '0.3rem 1rem',
+            }}>
+              Table {tableNumber}
+            </span>
           </motion.div>
         )}
 
@@ -655,10 +706,10 @@ function HeroSlide({
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1.65 }}
-            style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.5rem)' }}
+            transition={{ duration: 0.8, delay: tableNumber != null ? 1.75 : 1.65 }}
+            style={{ marginBottom: 'clamp(0.5rem, 1.5vh, 1.25rem)' }}
           >
-            <CountdownTimer targetDate={targetDateTime} />
+            <CountdownTimer targetDate={targetDateTime} compact={isShortScreen} />
           </motion.div>
         )}
 
@@ -793,6 +844,18 @@ export default function InvitePage() {
   const { language } = useContext(LanguageContext);
   const lang = language as Language;
   const [claimSuccess, setClaimSuccess] = useState(false);
+  // Must be declared before early returns to satisfy React's Rules of Hooks
+  const [showForm, setShowForm] = useState(false);
+
+  // Detect short-viewport devices (iPhone SE, small Androids) so the hero
+  // can compress the countdown and hide the table badge to keep the CTA visible.
+  const [isShortScreen, setIsShortScreen] = useState(false);
+  useEffect(() => {
+    const check = () => setIsShortScreen(window.innerHeight < 700);
+    check();
+    window.addEventListener('resize', check, { passive: true });
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -846,7 +909,7 @@ export default function InvitePage() {
             ))}
             <circle cx="24" cy="24" r="5" fill={GOLD} opacity="0.7" />
           </svg>
-          <h1 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: '2rem', color: ESPRESSO, marginBottom: '0.5rem' }}>
+          <h1 style={{ fontFamily: sans, fontStyle: 'normal', fontSize: '1.5rem', fontWeight: 600, color: ESPRESSO, marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>
             {t.invitationNotFound}
           </h1>
           <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, maxWidth: '22rem', margin: '0 auto 1.5rem' }}>
@@ -882,7 +945,7 @@ export default function InvitePage() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
-          <h1 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: '2rem', color: ESPRESSO, marginBottom: '0.75rem' }}>
+          <h1 style={{ fontFamily: sans, fontStyle: 'normal', fontSize: '1.5rem', fontWeight: 600, color: ESPRESSO, marginBottom: '0.75rem', letterSpacing: '-0.01em' }}>
             {t.invitationAlreadyClaimed}
           </h1>
           <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM }}>
@@ -923,7 +986,9 @@ export default function InvitePage() {
           date={openDate}
           time={openEvent?.time ?? null}
           venueName={openEvent?.venueName ?? null}
+          venueMapUrl={openEvent?.venueName ? `https://maps.google.com/?q=${encodeURIComponent(openEvent.venueName)}` : null}
           targetDateTime={openTargetDT}
+          isShortScreen={isShortScreen}
           ctaLabel={t.pleaseRegister}
           onCtaClick={scrollToRSVP}
         />
@@ -954,15 +1019,38 @@ export default function InvitePage() {
   const monogram = buildMonogram(firstName, secondName);
   const partnerName = guest.partnerName ?? null;
 
+  // Google Calendar deep-link for post-RSVP "Add to Calendar" CTA
+  const calendarUrl = (() => {
+    if (!event.date || !event.time) return undefined;
+    const [y, mo, d] = event.date.split('-');
+    const [h, mi] = event.time.split(':');
+    const start = `${y}${mo}${d}T${h}${mi}00`;
+    const endHour = String(parseInt(h, 10) + 4).padStart(2, '0');
+    const end = `${y}${mo}${d}T${endHour}${mi}00`;
+    const qs = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: coupleName,
+      dates: `${start}/${end}`,
+      ...(event.venueName ? { location: event.venueName } : {}),
+    });
+    return `https://calendar.google.com/calendar/render?${qs.toString()}`;
+  })();
+
+  // When the admin pre-sets a guest as attending, skip the RSVP form and
+  // land directly on the confirmed success screen. The guest can still click
+  // "Update RSVP" to open the form and change their response.
+  const isPreConfirmed = invitation.status === 'attending';
+
   const prefill = {
     name:           guest.name,
-    email:          guest.email,
     status:         invitation.status,
     guestCount:     invitation.guestCount,
     dietary:        invitation.dietary,
     partnerDietary: invitation.partnerDietary ?? null,
     message:        invitation.message,
   };
+
+  const tableNumber = invitation.tableNumber ?? null;
 
   return (
     <div ref={wrapRef} className="garden-wrap invite-page" style={{ background: PARCHMENT, color: ESPRESSO }}>
@@ -982,16 +1070,37 @@ export default function InvitePage() {
         date={displayDate}
         time={event.time}
         venueName={event.venueName}
+        venueMapUrl={event.venueName ? `https://maps.google.com/?q=${encodeURIComponent(event.venueName)}` : null}
         targetDateTime={targetDateTime}
-        ctaLabel={t.rsvpButton}
+        tableNumber={tableNumber}
+        isShortScreen={isShortScreen}
+        ctaLabel={isPreConfirmed && !showForm ? t.rsvpConfirmed : t.rsvpButton}
         onCtaClick={scrollToRSVP}
       />
 
-      {/* ════════ RSVP ════════ */}
+      {/* ════════ RSVP / Confirmation ════════ */}
       <RSVPSlide
         rsvpRef={rsvpRef as React.RefObject<HTMLElement>}
         rsvpInView={rsvpInView}
-        formContent={<RSVPForm token={token} eventName={event.name} prefillData={prefill} partnerName={partnerName} />}
+        formContent={
+          isPreConfirmed && !showForm
+            ? <SuccessScreen
+                guestName={guest.name}
+                partnerName={partnerName}
+                status="attending"
+                guestCount={invitation.guestCount}
+                isUpdate={false}
+                calendarUrl={calendarUrl}
+                onUpdateRsvp={() => setShowForm(true)}
+              />
+            : <RSVPForm
+                token={token}
+                eventName={event.name}
+                prefillData={prefill}
+                partnerName={partnerName}
+                calendarUrl={calendarUrl}
+              />
+        }
       />
     </div>
   );

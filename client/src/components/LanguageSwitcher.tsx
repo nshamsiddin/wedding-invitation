@@ -33,10 +33,10 @@ export default function LanguageSwitcher() {
             )}
             <button
               onClick={() => setLanguage(code)}
-              className="relative z-10 px-3 py-1 rounded-full transition-colors"
+              className="relative z-10 px-3 rounded-full transition-colors flex items-center justify-center"
               style={{
                 fontFamily: '"DM Sans", system-ui, sans-serif',
-                fontSize: '0.6rem',
+                fontSize: '0.65rem',
                 fontWeight: 600,
                 letterSpacing: '0.1em',
                 color: active ? '#0C0A09' : 'var(--text-secondary)',
@@ -44,6 +44,8 @@ export default function LanguageSwitcher() {
                 border: 'none',
                 outline: 'none',
                 transition: 'color 0.2s',
+                minHeight: '44px',
+                minWidth: '44px',
               }}
               aria-label={`Switch to ${label}`}
               aria-pressed={active}
