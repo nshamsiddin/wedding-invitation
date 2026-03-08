@@ -1,9 +1,17 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AnimatePresence, motion } from 'framer-motion';
 import { updateInvitationSchema, type UpdateInvitationValues } from '@invitation/shared';
 import type { AdminInvitation, AdminGuest } from '../../lib/api';
+import { useAdminTranslation } from '../../lib/i18n/admin';
+import AdminModal from './AdminModal';
+import {
+  ADMIN_INPUT_CLASS,
+  ADMIN_LABEL_CLASS,
+  ADMIN_SELECT_CLASS,
+  ADMIN_PRIMARY_BTN_CLASS,
+  ADMIN_SECONDARY_BTN_CLASS,
+} from './adminTokens';
 
 interface Props {
   invitation: AdminInvitation | null;
@@ -13,14 +21,16 @@ interface Props {
   isPending: boolean;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'attending', label: 'Attending' },
-  { value: 'declined',  label: 'Declined' },
-  { value: 'maybe',     label: 'Maybe' },
-  { value: 'pending',   label: 'Pending' },
-] as const;
+const GUEST_COUNT_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1);
 
-export default function EditInvitationModal({ invitation, guest, onClose, onSubmit, isPending }: Props) {
+export default function EditInvitationModal({
+  invitation,
+  guest,
+  onClose,
+  onSubmit,
+  isPending,
+}: Props) {
+  const at = useAdminTranslation();
   const isOpen = invitation !== null;
 
   const {
@@ -34,6 +44,7 @@ export default function EditInvitationModal({ invitation, guest, onClose, onSubm
   });
 
   const watchedStatus = watch('status');
+  const isTashkent = invitation?.eventSlug === 'tashkent';
 
   useEffect(() => {
     if (invitation) {
@@ -42,110 +53,111 @@ export default function EditInvitationModal({ invitation, guest, onClose, onSubm
         guestCount: invitation.guestCount,
         dietary: invitation.dietary ?? '',
         message: invitation.message ?? '',
+        tableNumber: invitation.tableNumber ?? undefined,
       });
     }
   }, [invitation, reset]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, onClose]);
-
-  const INPUT_CLASS = 'w-full bg-white border border-gray-300 focus:border-blue-500 rounded-lg px-3 py-2.5 text-gray-900 font-sans text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors';
-  const LABEL_CLASS = 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5';
+  const subtitle = guest
+    ? `${guest.name} · ${invitation?.eventName ?? invitation?.eventSlug ?? ''}`
+    : undefined;
 
   return (
-    <AnimatePresence>
-      {isOpen && invitation && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
-            aria-hidden="true"
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            role="dialog" aria-modal="true" aria-labelledby="edit-inv-title">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 8 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="bg-white border border-gray-200 rounded-xl w-full max-w-sm shadow-xl"
-            >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div>
-                  <h2 id="edit-inv-title" className="font-sans font-semibold text-base text-gray-900">Edit RSVP</h2>
-                  {guest && (
-                    <p className="text-gray-400 text-xs font-sans mt-0.5">
-                      {guest.name} · {invitation.eventName ?? invitation.eventSlug}
-                    </p>
-                  )}
-                </div>
-                <button onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Close dialog">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit((values) => invitation && onSubmit(invitation.id, values))}
-                noValidate className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="inv-status" className={LABEL_CLASS}>Status</label>
-                    <select id="inv-status" {...register('status')} className={`${INPUT_CLASS} appearance-none`}>
-                      {STATUS_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="inv-guest-count" className={LABEL_CLASS}>Guest Count</label>
-                    <select id="inv-guest-count" {...register('guestCount', { valueAsNumber: true })}
-                      disabled={watchedStatus !== 'attending'}
-                      className={`${INPUT_CLASS} appearance-none disabled:opacity-50 disabled:bg-gray-50`}>
-                      {[1,2,3,4,5].map((n) => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="inv-dietary" className={LABEL_CLASS}>Dietary Restrictions</label>
-                  <input id="inv-dietary" type="text" {...register('dietary')}
-                    className={INPUT_CLASS} placeholder="None" />
-                </div>
-
-                <div>
-                  <label htmlFor="inv-message" className={LABEL_CLASS}>Message</label>
-                  <textarea id="inv-message" rows={2} {...register('message')}
-                    className={`${INPUT_CLASS} resize-none`} placeholder="None" />
-                  {errors.message && <p className="mt-1 text-xs text-red-600 font-sans" role="alert">{errors.message.message}</p>}
-                </div>
-
-                <div className="flex gap-3 pt-2 border-t border-gray-100">
-                  <button type="button" onClick={onClose}
-                    className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-sans font-medium text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={isPending}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-sans font-semibold text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed">
-                    {isPending ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+    <AdminModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={at.editRsvpTitle}
+      subtitle={subtitle}
+      titleId="edit-inv-title"
+    >
+      <form
+        onSubmit={handleSubmit((values) => invitation && onSubmit(invitation.id, values))}
+        noValidate
+        className="p-6 space-y-4"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="inv-status" className={ADMIN_LABEL_CLASS}>{at.statusLabel}</label>
+            <select id="inv-status" {...register('status')} className={ADMIN_SELECT_CLASS}>
+              <option value="attending">{at.statusAttending}</option>
+              <option value="declined">{at.statusDeclined}</option>
+              <option value="maybe">{at.statusMaybe}</option>
+              <option value="pending">{at.statusPending}</option>
+            </select>
           </div>
-        </>
-      )}
-    </AnimatePresence>
+
+          <div>
+            <label htmlFor="inv-guest-count" className={ADMIN_LABEL_CLASS}>{at.guestCountLabel}</label>
+            <select
+              id="inv-guest-count"
+              {...register('guestCount', { valueAsNumber: true })}
+              disabled={watchedStatus !== 'attending'}
+              className={`${ADMIN_SELECT_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {GUEST_COUNT_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {isTashkent && (
+          <div>
+            <label htmlFor="inv-table" className={ADMIN_LABEL_CLASS}>
+              {at.tableNumberLabel}{' '}
+              <span className="normal-case tracking-normal font-normal text-[rgba(42,31,26,0.5)]">(Tashkent)</span>
+            </label>
+            <input
+              id="inv-table"
+              type="number"
+              min={1}
+              max={500}
+              {...register('tableNumber', {
+                valueAsNumber: true,
+                setValueAs: (v) => (v === '' || isNaN(Number(v)) ? null : Number(v)),
+              })}
+              className={ADMIN_INPUT_CLASS}
+              placeholder="e.g. 12 (optional)"
+            />
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="inv-dietary" className={ADMIN_LABEL_CLASS}>{at.dietaryLabel}</label>
+          <input
+            id="inv-dietary"
+            type="text"
+            {...register('dietary')}
+            className={ADMIN_INPUT_CLASS}
+            placeholder="None"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="inv-message" className={ADMIN_LABEL_CLASS}>{at.messageLabel}</label>
+          <textarea
+            id="inv-message"
+            rows={2}
+            {...register('message')}
+            className={`${ADMIN_INPUT_CLASS} resize-none`}
+            placeholder="None"
+          />
+          {errors.message && (
+            <p className="mt-1 text-xs text-red-600 font-sans" role="alert">
+              {errors.message.message}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3 pt-2" style={{ borderTop: '1px solid rgba(184,146,74,0.3)' }}>
+          <button type="button" onClick={onClose} className={ADMIN_SECONDARY_BTN_CLASS}>
+            {at.cancel}
+          </button>
+          <button type="submit" disabled={isPending} className={ADMIN_PRIMARY_BTN_CLASS}>
+            {isPending ? at.saving : at.saveChanges}
+          </button>
+        </div>
+      </form>
+    </AdminModal>
   );
 }

@@ -9,6 +9,16 @@ import {
   type UpdateInvitationValues,
 } from '@invitation/shared';
 import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
+import { useAdminTranslation } from '../../lib/i18n/admin';
+import AdminModal from './AdminModal';
+import {
+  ADMIN_INPUT_CLASS,
+  ADMIN_LABEL_CLASS,
+  ADMIN_SELECT_CLASS,
+  ADMIN_PRIMARY_BTN_CLASS,
+  getEventDisplayName,
+} from './adminTokens';
+import { GOLD, GOLD_DIM, ESPRESSO, ESPRESSO_DIM } from '../../garden/tokens';
 
 interface Props {
   guest: AdminGuest | null;
@@ -16,30 +26,34 @@ interface Props {
   onClose: () => void;
   onUpdateContact: (id: number, values: UpdateGuestContactValues) => void;
   onUpdateInvitation: (id: number, values: UpdateInvitationValues) => void;
+  /** Called when the admin assigns this guest to a new event. */
+  onAddToEvent: (guestId: number, eventId: number) => void;
   isContactPending: boolean;
   isInvitationPending: boolean;
+  isAddToEventPending: boolean;
 }
 
-const INPUT_CLASS =
-  'w-full bg-white border border-gray-300 focus:border-blue-500 rounded-lg px-3 py-2.5 text-gray-900 font-sans text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors';
-const LABEL_CLASS = 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5';
+const GUEST_COUNT_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1);
 
-const STATUS_OPTIONS = [
-  { value: 'attending', label: 'Attending' },
-  { value: 'declined',  label: 'Declined' },
-  { value: 'maybe',     label: 'Maybe' },
-  { value: 'pending',   label: 'Pending' },
-] as const;
+// ─── Contact tab ──────────────────────────────────────────────────────────────
 
 function ContactTab({
   guest,
+  events,
   onSubmit,
+  onAddToEvent,
   isPending,
+  isAddToEventPending,
 }: {
   guest: AdminGuest;
+  events: AdminEvent[];
   onSubmit: (values: UpdateGuestContactValues) => void;
+  onAddToEvent: (eventId: number) => void;
   isPending: boolean;
+  isAddToEventPending: boolean;
 }) {
+  const at = useAdminTranslation();
+
   const {
     register,
     handleSubmit,
@@ -52,77 +66,123 @@ function ContactTab({
   useEffect(() => {
     reset({
       name: guest.name,
-      email: guest.email ?? undefined,
       phone: guest.phone ?? undefined,
       partnerName: guest.partnerName ?? undefined,
     });
   }, [guest, reset]);
 
+  // Events this guest is NOT yet assigned to
+  const assignedEventIds = new Set(guest.invitations.map((i) => i.eventId));
+  const unassignedEvents = events.filter((ev) => !assignedEventIds.has(ev.id));
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-6 space-y-4">
-      <div>
-        <label htmlFor="edit-name" className={LABEL_CLASS}>Full Name</label>
-        <input
-          id="edit-name"
-          type="text"
-          autoFocus
-          aria-invalid={!!errors.name}
-          {...register('name')}
-          className={INPUT_CLASS}
-        />
-        {errors.name && (
-          <p className="mt-1 text-xs text-red-600 font-sans" role="alert">{errors.name.message}</p>
-        )}
-      </div>
+    <div>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-6 space-y-4">
+        <div>
+          <label htmlFor="edit-name" className={ADMIN_LABEL_CLASS}>{at.fullName}</label>
+          <input
+            id="edit-name"
+            type="text"
+            autoFocus
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? 'edit-name-error' : undefined}
+            {...register('name')}
+            className={`${ADMIN_INPUT_CLASS} ${errors.name ? 'border-red-400 focus:border-red-400' : ''}`}
+          />
+          {errors.name && (
+            <p id="edit-name-error" className="mt-1 text-xs text-red-600 font-sans" role="alert">
+              {errors.name.message}
+            </p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="edit-email" className={LABEL_CLASS}>Email</label>
-        <input
-          id="edit-email"
-          type="email"
-          aria-invalid={!!errors.email}
-          {...register('email')}
-          className={INPUT_CLASS}
-        />
-        {errors.email && (
-          <p className="mt-1 text-xs text-red-600 font-sans" role="alert">{errors.email.message}</p>
-        )}
-      </div>
+        <div>
+          <label htmlFor="edit-phone" className={ADMIN_LABEL_CLASS}>{at.phone}</label>
+          <input
+            id="edit-phone"
+            type="tel"
+            {...register('phone')}
+            className={ADMIN_INPUT_CLASS}
+            placeholder={at.optional}
+          />
+        </div>
 
-      <div>
-        <label htmlFor="edit-phone" className={LABEL_CLASS}>Phone</label>
-        <input
-          id="edit-phone"
-          type="tel"
-          {...register('phone')}
-          className={INPUT_CLASS}
-          placeholder="Optional"
-        />
-      </div>
+        <div>
+          <label htmlFor="edit-partner-name" className={ADMIN_LABEL_CLASS}>{at.partnerName}</label>
+          <input
+            id="edit-partner-name"
+            type="text"
+            {...register('partnerName')}
+            className={ADMIN_INPUT_CLASS}
+            placeholder={at.optional}
+          />
+        </div>
 
-      <div>
-        <label htmlFor="edit-partner-name" className={LABEL_CLASS}>Partner Name</label>
-        <input
-          id="edit-partner-name"
-          type="text"
-          {...register('partnerName')}
-          className={INPUT_CLASS}
-          placeholder="Optional"
-        />
-      </div>
+        <div className="pt-2" style={{ borderTop: '1px solid rgba(184,146,74,0.3)' }}>
+          <button
+            type="submit"
+            disabled={isPending}
+            className={ADMIN_PRIMARY_BTN_CLASS}
+          >
+            {isPending ? at.saving : at.saveContact}
+          </button>
+        </div>
+      </form>
 
-      <div className="flex gap-3 pt-2 border-t border-gray-100">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-sans font-semibold text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+      {/* ── Add to another event ─────────────────────────────────────── */}
+      {unassignedEvents.length > 0 && (
+        <div
+          className="px-6 pb-6"
+          style={{ borderTop: `1px solid rgba(184,146,74,0.3)` }}
         >
-          {isPending ? 'Saving…' : 'Save Contact'}
-        </button>
-      </div>
-    </form>
+          <p
+            className="text-xs font-sans font-semibold uppercase tracking-wider mt-5 mb-3"
+            style={{ color: ESPRESSO_DIM }}
+          >
+            {at.addToEvent}
+          </p>
+          <div className="flex flex-col gap-2">
+            {unassignedEvents.map((ev) => (
+              <button
+                key={ev.id}
+                onClick={() => onAddToEvent(ev.id)}
+                disabled={isAddToEventPending}
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg border text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                style={{
+                  background: 'rgba(184,146,74,0.06)',
+                  borderColor: GOLD_DIM,
+                  borderStyle: 'dashed',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(184,146,74,0.12)';
+                  e.currentTarget.style.borderColor = GOLD;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(184,146,74,0.06)';
+                  e.currentTarget.style.borderColor = GOLD_DIM;
+                }}
+              >
+                <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <div>
+                  <p className="text-xs font-sans font-medium" style={{ color: ESPRESSO }}>
+                    {at.addToEventLabel(getEventDisplayName(ev))}
+                  </p>
+                  <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
+                    {ev.date} · {ev.venueName}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
+// ─── Invitation (RSVP) tab ────────────────────────────────────────────────────
 
 function InvitationTab({
   invitation,
@@ -133,6 +193,8 @@ function InvitationTab({
   onSubmit: (id: number, values: UpdateInvitationValues) => void;
   isPending: boolean;
 }) {
+  const at = useAdminTranslation();
+
   const {
     register,
     handleSubmit,
@@ -144,6 +206,7 @@ function InvitationTab({
   });
 
   const watchedStatus = watch('status');
+  const isTashkent = invitation.eventSlug === 'tashkent';
 
   useEffect(() => {
     reset({
@@ -152,6 +215,7 @@ function InvitationTab({
       dietary: invitation.dietary ?? '',
       partnerDietary: invitation.partnerDietary ?? '',
       message: invitation.message ?? '',
+      tableNumber: invitation.tableNumber ?? undefined,
     });
   }, [invitation, reset]);
 
@@ -163,84 +227,105 @@ function InvitationTab({
     >
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor={`inv-status-${invitation.id}`} className={LABEL_CLASS}>Status</label>
-          <select
-            id={`inv-status-${invitation.id}`}
-            {...register('status')}
-            className={`${INPUT_CLASS} appearance-none`}
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
+          <label htmlFor={`inv-status-${invitation.id}`} className={ADMIN_LABEL_CLASS}>{at.statusLabel}</label>
+          <select id={`inv-status-${invitation.id}`} {...register('status')} className={ADMIN_SELECT_CLASS}>
+            <option value="attending">{at.statusAttending}</option>
+            <option value="declined">{at.statusDeclined}</option>
+            <option value="maybe">{at.statusMaybe}</option>
+            <option value="pending">{at.statusPending}</option>
           </select>
         </div>
         <div>
-          <label htmlFor={`inv-count-${invitation.id}`} className={LABEL_CLASS}>Guest Count</label>
+          <label htmlFor={`inv-count-${invitation.id}`} className={ADMIN_LABEL_CLASS}>{at.guestCountLabel}</label>
           <select
             id={`inv-count-${invitation.id}`}
             {...register('guestCount', { valueAsNumber: true })}
             disabled={watchedStatus !== 'attending'}
-            className={`${INPUT_CLASS} appearance-none disabled:opacity-50 disabled:bg-gray-50`}
+            className={`${ADMIN_SELECT_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {[1, 2, 3, 4, 5].map((n) => (
+            {GUEST_COUNT_OPTIONS.map((n) => (
               <option key={n} value={n}>{n}</option>
             ))}
           </select>
         </div>
       </div>
 
+      {isTashkent && (
+        <div>
+          <label htmlFor={`inv-table-${invitation.id}`} className={ADMIN_LABEL_CLASS}>
+            {at.tableNumberLabel}{' '}
+            <span className="normal-case tracking-normal font-normal text-[rgba(42,31,26,0.5)]">(Tashkent)</span>
+          </label>
+          <input
+            id={`inv-table-${invitation.id}`}
+            type="number"
+            min={1}
+            max={500}
+            {...register('tableNumber', {
+              setValueAs: (v) => (v === '' || v == null || isNaN(Number(v)) ? null : Number(v)),
+            })}
+            className={ADMIN_INPUT_CLASS}
+            placeholder="e.g. 12 (optional)"
+          />
+        </div>
+      )}
+
       <div>
-        <label htmlFor={`inv-dietary-${invitation.id}`} className={LABEL_CLASS}>
-          Dietary Restrictions
+        <label htmlFor={`inv-dietary-${invitation.id}`} className={ADMIN_LABEL_CLASS}>
+          {at.dietaryLabel}
         </label>
         <input
           id={`inv-dietary-${invitation.id}`}
           type="text"
           {...register('dietary')}
-          className={INPUT_CLASS}
+          className={ADMIN_INPUT_CLASS}
           placeholder="None"
         />
       </div>
 
       <div>
-        <label htmlFor={`inv-partner-dietary-${invitation.id}`} className={LABEL_CLASS}>
-          Partner Dietary
+        <label htmlFor={`inv-partner-dietary-${invitation.id}`} className={ADMIN_LABEL_CLASS}>
+          {at.partnerDietaryLabel}
         </label>
         <input
           id={`inv-partner-dietary-${invitation.id}`}
           type="text"
           {...register('partnerDietary')}
-          className={INPUT_CLASS}
+          className={ADMIN_INPUT_CLASS}
           placeholder="None"
         />
       </div>
 
       <div>
-        <label htmlFor={`inv-message-${invitation.id}`} className={LABEL_CLASS}>Message</label>
+        <label htmlFor={`inv-message-${invitation.id}`} className={ADMIN_LABEL_CLASS}>{at.messageLabel}</label>
         <textarea
           id={`inv-message-${invitation.id}`}
           rows={2}
           {...register('message')}
-          className={`${INPUT_CLASS} resize-none`}
+          className={`${ADMIN_INPUT_CLASS} resize-none`}
           placeholder="None"
         />
         {errors.message && (
-          <p className="mt-1 text-xs text-red-600 font-sans" role="alert">{errors.message.message}</p>
+          <p className="mt-1 text-xs text-red-600 font-sans" role="alert">
+            {errors.message.message}
+          </p>
         )}
       </div>
 
-      <div className="pt-2 border-t border-gray-100">
+      <div className="pt-2" style={{ borderTop: '1px solid rgba(184,146,74,0.3)' }}>
         <button
           type="submit"
           disabled={isPending}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-sans font-semibold text-sm py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+          className={ADMIN_PRIMARY_BTN_CLASS}
         >
-          {isPending ? 'Saving…' : 'Save RSVP'}
+          {isPending ? at.saving : at.saveRsvp}
         </button>
       </div>
     </form>
   );
 }
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function EditGuestModal({
   guest,
@@ -248,33 +333,26 @@ export default function EditGuestModal({
   onClose,
   onUpdateContact,
   onUpdateInvitation,
+  onAddToEvent,
   isContactPending,
   isInvitationPending,
+  isAddToEventPending,
 }: Props) {
   const isOpen = guest !== null;
   const [activeTab, setActiveTab] = useState<'contact' | number>('contact');
+  const [direction, setDirection] = useState(1);
+  const at = useAdminTranslation();
 
-  // Reset to contact tab whenever a different guest is opened
   useEffect(() => {
     if (guest) setActiveTab('contact');
   }, [guest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, onClose]);
-
   const tabs = guest
     ? [
-        { key: 'contact' as const, label: 'Contact' },
+        { key: 'contact' as const, label: at.contactTab },
         ...guest.invitations.map((inv) => {
           const ev = events.find((e) => e.id === inv.eventId);
-          const label = ev
-            ? ev.slug.charAt(0).toUpperCase() + ev.slug.slice(1)
-            : inv.eventName ?? `Event ${inv.eventId}`;
+          const label = ev ? getEventDisplayName(ev) : inv.eventName ?? `Event ${inv.eventId}`;
           return { key: inv.id, label };
         }),
       ]
@@ -285,87 +363,91 @@ export default function EditGuestModal({
       ? guest.invitations.find((inv) => inv.id === activeTab) ?? null
       : null;
 
+  const handleTabChange = (key: 'contact' | number) => {
+    const keys = tabs.map((t) => t.key);
+    const from = keys.indexOf(activeTab);
+    const to = keys.indexOf(key);
+    setDirection(to > from ? 1 : -1);
+    setActiveTab(key);
+  };
+
   return (
-    <AnimatePresence>
-      {isOpen && guest && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
-            aria-hidden="true"
-          />
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="edit-guest-title"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 8 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="bg-white border border-gray-200 rounded-xl w-full max-w-sm shadow-xl max-h-[90vh] overflow-y-auto"
+    <AdminModal
+      isOpen={isOpen && guest !== null}
+      onClose={onClose}
+      title={at.editGuestTitle}
+      subtitle={guest?.name}
+      titleId="edit-guest-title"
+    >
+      {/* Tabs */}
+      {tabs.length > 1 && (
+        <div
+          className="flex px-2 pt-1"
+          style={{ borderBottom: `1px solid ${GOLD_DIM}` }}
+          role="tablist"
+          aria-label="Edit sections"
+        >
+          {tabs.map((tab) => (
+            <button
+              key={String(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`relative px-3 py-2 text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] rounded-t`}
+              style={{
+                color: activeTab === tab.key ? GOLD : ESPRESSO_DIM,
+              }}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div>
-                  <h2 id="edit-guest-title" className="font-sans font-semibold text-base text-gray-900">
-                    Edit Guest
-                  </h2>
-                  <p className="text-gray-400 text-xs font-sans mt-0.5">{guest.name}</p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Close dialog"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Tabs */}
-              {tabs.length > 1 && (
-                <div className="flex border-b border-gray-100 px-2 pt-1">
-                  {tabs.map((tab) => (
-                    <button
-                      key={String(tab.key)}
-                      onClick={() => setActiveTab(tab.key)}
-                      className={`px-3 py-2 text-xs font-sans font-medium rounded-t transition-colors focus:outline-none ${
-                        activeTab === tab.key
-                          ? 'text-blue-600 border-b-2 border-blue-600 -mb-px'
-                          : 'text-gray-500 hover:text-gray-800'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
+              {tab.label}
+              {activeTab === tab.key && (
+                <motion.div
+                  layoutId="edit-tab-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                  style={{ background: GOLD }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
               )}
-
-              {/* Tab content */}
-              {activeTab === 'contact' ? (
-                <ContactTab
-                  guest={guest}
-                  onSubmit={(values) => onUpdateContact(guest.id, values)}
-                  isPending={isContactPending}
-                />
-              ) : activeInvitation ? (
-                <InvitationTab
-                  invitation={activeInvitation}
-                  onSubmit={onUpdateInvitation}
-                  isPending={isInvitationPending}
-                />
-              ) : null}
-            </motion.div>
-          </div>
-        </>
+            </button>
+          ))}
+        </div>
       )}
-    </AnimatePresence>
+
+      {/* Tab content */}
+      <div className="overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={String(activeTab)}
+            custom={direction}
+            variants={{
+              enter: (dir: number) => ({ opacity: 0, x: dir * 14 }),
+              center: { opacity: 1, x: 0 },
+              exit: (dir: number) => ({ opacity: 0, x: dir * -14 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.16, ease: 'easeInOut' }}
+            role="tabpanel"
+          >
+            {activeTab === 'contact' && guest ? (
+              <ContactTab
+                guest={guest}
+                events={events}
+                onSubmit={(values) => onUpdateContact(guest.id, values)}
+                onAddToEvent={(eventId) => onAddToEvent(guest.id, eventId)}
+                isPending={isContactPending}
+                isAddToEventPending={isAddToEventPending}
+              />
+            ) : activeInvitation ? (
+              <InvitationTab
+                invitation={activeInvitation}
+                onSubmit={onUpdateInvitation}
+                isPending={isInvitationPending}
+              />
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </AdminModal>
   );
 }
