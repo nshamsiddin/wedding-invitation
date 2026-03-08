@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,32 +11,28 @@ import type {
   UpdateInvitationValues,
 } from '@invitation/shared';
 import { adminApi, configApi } from '../../lib/api';
-import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM, ROSE } from '../../garden/tokens';
+import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM } from '../../garden/tokens';
+import { LanguageContext } from '../../context/LanguageContext';
+import { LANGUAGES, LANGUAGE_LABELS } from '../../lib/i18n';
+import { useAdminTranslation } from '../../lib/i18n/admin';
+import { getEventDisplayName } from '../../components/admin/adminTokens';
 import StatsCards from '../../components/admin/StatsCards';
 import GuestTable from '../../components/admin/GuestTable';
 import AddGuestModal from '../../components/admin/AddGuestModal';
 import EditGuestModal from '../../components/admin/EditGuestModal';
 import EditInvitationModal from '../../components/admin/EditInvitationModal';
 
-const STATUS_FILTER_OPTIONS = [
-  { value: '',          label: 'All Statuses' },
-  { value: 'attending', label: 'Attending' },
-  { value: 'declined',  label: 'Declined' },
-  { value: 'maybe',     label: 'Maybe' },
-  { value: 'pending',   label: 'No Response' },
-];
-
 // ─── Static shareable link cards ─────────────────────────────────────────────
 
 const LANG_META: Record<string, { label: string; flag: string }> = {
-  en: { label: 'English',  flag: '🇬🇧' },
-  tr: { label: 'Türkçe',   flag: '🇹🇷' },
+  en: { label: 'English',    flag: '🇬🇧' },
+  tr: { label: 'Türkçe',    flag: '🇹🇷' },
   uz: { label: "O'zbekcha", flag: '🇺🇿' },
 };
 
 const VENUE_META: Record<string, { displayName: string; city: string }> = {
-  tashkent: { displayName: 'Toshkent',  city: "Ofarin Restaurant" },
-  ankara:   { displayName: 'Ankara',    city: "Park L'Amore" },
+  tashkent: { displayName: 'Toshkent', city: 'Ofarin Restaurant' },
+  ankara:   { displayName: 'Ankara',   city: "Park L'Amore" },
 };
 
 interface ShareableLinkCardProps {
@@ -50,6 +46,7 @@ function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
   const full  = baseUrl ? `${baseUrl}${path}` : `${window.location.origin}${path}`;
   const lMeta = LANG_META[lang];
   const vMeta = VENUE_META[venue];
+  const at    = useAdminTranslation();
 
   const handleCopy = async () => {
     try {
@@ -77,9 +74,11 @@ function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
             {vMeta?.displayName} · {vMeta?.city}
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
-          style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: GOLD }}>
-          <span aria-hidden="true">∞</span> Permanent
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
+          style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: GOLD }}
+        >
+          <span aria-hidden="true">∞</span> {at.permanent}
         </span>
       </div>
 
@@ -89,12 +88,8 @@ function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
 
       <button
         onClick={handleCopy}
-        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus-visible:outline focus-visible:outline-2"
-        style={{
-          background: 'rgba(184,146,74,0.10)',
-          border: `1px solid ${GOLD_DIM}`,
-          color: ESPRESSO,
-        }}
+        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+        style={{ background: 'rgba(184,146,74,0.10)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.20)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.10)'; }}
         aria-label={`Copy shareable link for ${vMeta?.displayName} in ${lMeta?.label}`}
@@ -102,7 +97,7 @@ function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
-        Copy link
+        {at.copyLink}
       </button>
     </div>
   );
@@ -111,16 +106,17 @@ function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
 function ShareableLinksSection({ baseUrl }: { baseUrl: string }) {
   const venues = ['tashkent', 'ankara'];
   const langs  = ['en', 'tr', 'uz'];
+  const at     = useAdminTranslation();
 
   return (
     <section aria-labelledby="shareable-links-heading">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 id="shareable-links-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
-            Shareable Invitation Links
+            {at.shareableLinksTitle}
           </h2>
           <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
-            6 permanent links — 3 languages × 2 venues. Anyone can RSVP via these.
+            {at.shareableLinksDesc}
           </p>
         </div>
       </div>
@@ -141,19 +137,106 @@ function ShareableLinksSection({ baseUrl }: { baseUrl: string }) {
   );
 }
 
+// ─── Multi-select status filter pills ─────────────────────────────────────────
+
+interface StatusPillsProps {
+  selected: string[];
+  onChange: (next: string[]) => void;
+}
+
+function StatusPills({ selected, onChange }: StatusPillsProps) {
+  const at = useAdminTranslation();
+
+  const OPTIONS = [
+    { value: 'attending', label: at.statsAttending },
+    { value: 'declined',  label: at.statsDeclined },
+    { value: 'maybe',     label: at.statsMaybe },
+    { value: 'pending',   label: at.noResponse },
+  ];
+
+  const toggle = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((v) => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1"
+      role="group"
+      aria-label="Filter by attendance status"
+    >
+      {OPTIONS.map((opt) => {
+        const active = selected.includes(opt.value);
+        return (
+          <button
+            key={opt.value}
+            onClick={() => toggle(opt.value)}
+            aria-pressed={active}
+            className="px-2.5 py-1 rounded-full text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+            style={
+              active
+                ? { background: GOLD, color: ESPRESSO, border: `1px solid ${GOLD}` }
+                : {
+                    background: PARCHMENT,
+                    color: ESPRESSO_DIM,
+                    border: `1px solid ${GOLD_DIM}`,
+                  }
+            }
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+      {selected.length > 0 && (
+        <button
+          onClick={() => onChange([])}
+          className="px-2 py-1 rounded-full text-xs font-sans transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+          style={{ color: ESPRESSO_DIM, background: 'transparent' }}
+          aria-label="Clear status filters"
+        >
+          ✕ {at.allStatuses}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const at = useAdminTranslation();
+  const { language, setLanguage } = useContext(LanguageContext);
 
+  // ── Filter state ────────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+
+  // Search: controlled input value with 300 ms debounce before hitting the API
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingGuest, setEditingGuest] = useState<AdminGuest | null>(null);
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  // Multi-select status filter — replaces the previous single <select>
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+
+  // ── Modal state ─────────────────────────────────────────────────────────────
+  const [showAddModal, setShowAddModal]           = useState(false);
+  const [editingGuest, setEditingGuest]           = useState<AdminGuest | null>(null);
   const [editingInvitation, setEditingInvitation] = useState<{ inv: AdminInvitation; guest: AdminGuest } | null>(null);
-  const [deletingGuest, setDeletingGuest] = useState<AdminGuest | null>(null);
+  const [deletingGuest, setDeletingGuest]         = useState<AdminGuest | null>(null);
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
 
+  // Undo delete: store a snapshot of the guest before deletion for 5s
+  const deletedGuestRef = useRef<AdminGuest | null>(null);
+
+  // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['admin', 'events'],
     queryFn: adminApi.getEvents,
@@ -162,7 +245,7 @@ export default function DashboardPage() {
 
   const guestQueryParams = {
     eventId: selectedEventId ?? undefined,
-    status: statusFilter || undefined,
+    status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
     search: search || undefined,
   };
 
@@ -177,6 +260,8 @@ export default function DashboardPage() {
     staleTime: Infinity,
   });
 
+  // ── Mutations ────────────────────────────────────────────────────────────────
+
   const logoutMutation = useMutation({
     mutationFn: adminApi.logout,
     onSuccess: () => { qc.clear(); navigate('/admin/login', { replace: true }); },
@@ -187,7 +272,7 @@ export default function DashboardPage() {
     onError: (error) => {
       const message =
         axios.isAxiosError(error) && error.response?.status === 409
-          ? (error.response.data?.error as string | undefined) ?? 'A guest with this email already exists'
+          ? (error.response.data?.error as string | undefined) ?? 'Duplicate entry'
           : 'Failed to add guest';
       toast.error(message);
     },
@@ -204,14 +289,14 @@ export default function DashboardPage() {
     onError: (error) => {
       const message =
         axios.isAxiosError(error) && error.response?.status === 409
-          ? (error.response.data?.error as string | undefined) ?? 'A guest with this email already exists'
+          ? (error.response.data?.error as string | undefined) ?? 'Duplicate entry'
           : 'Failed to update guest';
       toast.error(message);
     },
     onSuccess: () => {
       setEditingGuest(null);
       toast.success('Contact updated');
-      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+      qc.invalidateQueries({ queryKey: ['admin'] });
     },
   });
 
@@ -221,21 +306,88 @@ export default function DashboardPage() {
     onError: () => toast.error('Failed to update RSVP'),
     onSuccess: () => {
       setEditingInvitation(null);
+      setEditingGuest(null);
       toast.success('RSVP updated');
       qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
       qc.invalidateQueries({ queryKey: ['admin', 'events'] });
     },
   });
 
+  const addInvitationMutation = useMutation({
+    mutationFn: adminApi.addInvitation,
+    onError: () => toast.error('Failed to add to event'),
+    onSuccess: () => {
+      toast.success('Added to event');
+      qc.invalidateQueries({ queryKey: ['admin'] });
+    },
+  });
+
+  // ── Delete with undo ────────────────────────────────────────────────────────
+
   const deleteGuestMutation = useMutation({
     mutationFn: (id: number) => adminApi.deleteGuest(id),
     onError: () => toast.error('Failed to delete guest'),
     onSuccess: () => {
-      setDeletingGuest(null);
-      toast.success('Guest removed');
+      // Guest was deleted — now offer a 5s undo window by re-adding contact only
+      const snapshot = deletedGuestRef.current;
+      if (!snapshot) { qc.invalidateQueries({ queryKey: ['admin'] }); return; }
+
+      const toastId = toast(
+        (t) => (
+          <span className="flex items-center gap-2">
+            <span style={{ fontSize: '13px' }}>Removed <strong>{snapshot.name}</strong></span>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                // Restore the guest — re-add with original event assignments + pending status
+                const eventIds = snapshot.invitations.map((i) => i.eventId);
+                if (eventIds.length === 0) { return; }
+                addMutation.mutate(
+                  {
+                    name: snapshot.name,
+                    phone: snapshot.phone ?? undefined,
+                    partnerName: snapshot.partnerName ?? undefined,
+                    eventIds,
+                    status: 'pending',
+                    guestCount: 1,
+                    dietary: '',
+                    message: '',
+                  },
+                  {
+                    onSuccess: () => toast.success(at.guestRestored(snapshot.name), { duration: 4000 }),
+                  },
+                );
+              }}
+              style={{
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                background: 'rgba(184,146,74,0.15)',
+                color: '#2A1F1A',
+                border: '1px solid rgba(184,146,74,0.4)',
+                cursor: 'pointer',
+              }}
+            >
+              {at.undoRemove}
+            </button>
+          </span>
+        ),
+        { duration: 5000 },
+      );
+      void toastId; // toast ID captured but not needed for this undo pattern
+      deletedGuestRef.current = null;
+
       qc.invalidateQueries({ queryKey: ['admin'] });
+      setDeletingGuest(null);
     },
   });
+
+  const handleConfirmDeleteGuest = () => {
+    if (!deletingGuest) return;
+    deletedGuestRef.current = deletingGuest;
+    deleteGuestMutation.mutate(deletingGuest.id);
+  };
 
   const deleteInvMutation = useMutation({
     mutationFn: (id: number) => adminApi.deleteInvitation(id),
@@ -247,30 +399,55 @@ export default function DashboardPage() {
     },
   });
 
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const handleAddGuest = (values: AddGuestValues) => addMutation.mutate(values);
+
   const handleUpdateGuest = (id: number, values: UpdateGuestContactValues) =>
     updateGuestMutation.mutate({ id, values });
+
   const handleUpdateInvFromUnified = (id: number, values: UpdateInvitationValues) =>
     updateInvMutation.mutate({ id, values });
+
   const handleUpdateInv = (id: number, values: UpdateInvitationValues) =>
     updateInvMutation.mutate({ id, values });
 
-  const handleExportCSV = () => {
-    adminApi.exportCSV(selectedEventId ?? undefined);
-    toast.success('Downloading CSV…');
+  const handleAddToEvent = (guestId: number, eventId: number) =>
+    addInvitationMutation.mutate({ guestId, eventId, status: 'pending', guestCount: 1 });
+
+  const handleExportCSV = async () => {
+    try {
+      adminApi.exportCSV(selectedEventId ?? undefined);
+      toast.success('Downloading CSV…');
+    } catch {
+      toast.error('Export failed');
+    }
   };
 
   const selectedEvent = selectedEventId !== null ? events.find((e) => e.id === selectedEventId) : null;
 
+  // ── Clear filters when switching tabs ────────────────────────────────────────
+  const handleSelectEvent = (id: number | null) => {
+    setSelectedEventId(id);
+    setStatusFilters([]);
+    setSearchInput('');
+  };
+
+  // Is any filter active? — show indicator
+  const isFiltered = statusFilters.length > 0 || searchInput.length > 0;
+
   return (
     <div className="admin-page min-h-screen" style={{ background: CREAM, color: ESPRESSO }}>
 
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30" style={{ background: PARCHMENT, borderBottom: `1px solid ${GOLD_DIM}` }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `rgba(184,146,74,0.1)`, border: `1px solid ${GOLD_DIM}` }} aria-hidden="true">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: `rgba(184,146,74,0.1)`, border: `1px solid ${GOLD_DIM}` }}
+              aria-hidden="true"
+            >
               <svg className="w-4 h-4" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -280,29 +457,51 @@ export default function DashboardPage() {
               <p className="text-xs font-sans mt-0.5 hidden sm:block" style={{ color: ESPRESSO_DIM }}>B & S · Wedding 2026</p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
+            {/* Language switcher */}
+            <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD_DIM}` }}>
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLanguage(l)}
+                  className="px-2.5 py-1.5 text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  style={
+                    language === l
+                      ? { background: GOLD, color: ESPRESSO }
+                      : { background: PARCHMENT, color: ESPRESSO_DIM }
+                  }
+                  aria-pressed={language === l}
+                  aria-label={`Switch to ${LANGUAGE_LABELS[l]}`}
+                >
+                  {LANGUAGE_LABELS[l]}
+                </button>
+              ))}
+            </div>
+
+            {/* Export CSV — desktop */}
             <button
               onClick={handleExportCSV}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
               style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
-              aria-label="Export CSV"
+              aria-label={at.exportCsv}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export CSV
+              {at.exportCsv}
             </button>
+
             <button
               onClick={() => logoutMutation.mutate()}
-              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
               style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
-              aria-label="Sign out"
             >
-              Sign out
+              {at.signOut}
             </button>
           </div>
         </div>
@@ -310,35 +509,56 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {/* Event tabs */}
+        {/* ── Event tabs ──────────────────────────────────────────────────── */}
         <section aria-label="Event selector">
-          <div className="flex flex-wrap gap-1.5">
+          {/*
+            "All" tab uses identical sizing/shape to event tabs.
+            Active tab text uses ESPRESSO on GOLD — 5.85:1 contrast (WCAG AA ✓).
+            Inactive tab text uses ESPRESSO on PARCHMENT — ~18:1 (WCAG AAA ✓).
+          */}
+          <div className="flex flex-wrap items-center gap-2">
+            {events.map((ev) => {
+              const active = selectedEventId === ev.id;
+              return (
+                <button
+                  key={ev.id}
+                  onClick={() => handleSelectEvent(ev.id)}
+                  className="relative px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
+                  style={
+                    active
+                      ? {
+                          background: GOLD,
+                          color: ESPRESSO,
+                          boxShadow: '0 2px 8px rgba(184,146,74,0.35)',
+                        }
+                      : { background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }
+                  }
+                  aria-pressed={active}
+                >
+                  {getEventDisplayName(ev)}
+                  <span
+                    className="ml-1.5 text-xs font-normal"
+                    style={{ opacity: active ? 0.65 : 0.55 }}
+                  >
+                    {ev.stats.total}
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* "All" tab — same size and shape as event tabs */}
             <button
-              onClick={() => setSelectedEventId(null)}
-              className="px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
+              onClick={() => handleSelectEvent(null)}
+              className="px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
               style={
                 selectedEventId === null
-                  ? { background: GOLD, color: PARCHMENT }
+                  ? { background: ESPRESSO, color: PARCHMENT }
                   : { background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }
               }
+              aria-pressed={selectedEventId === null}
             >
-              All Events
+              {at.all}
             </button>
-            {events.map((ev) => (
-              <button
-                key={ev.id}
-                onClick={() => setSelectedEventId(ev.id)}
-                className="px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors focus:outline-none focus:ring-2"
-                style={
-                  selectedEventId === ev.id
-                    ? { background: GOLD, color: PARCHMENT }
-                    : { background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }
-                }
-              >
-                {ev.slug.charAt(0).toUpperCase() + ev.slug.slice(1)}
-                <span className="ml-1.5" style={{ opacity: selectedEventId === ev.id ? 0.7 : 0.6 }}>{ev.stats.total}</span>
-              </button>
-            ))}
           </div>
 
           {selectedEvent && (
@@ -348,13 +568,13 @@ export default function DashboardPage() {
               className="mt-2 flex flex-wrap gap-x-5 gap-y-1"
             >
               <span className="text-xs font-sans flex items-center gap-1.5" style={{ color: ESPRESSO_DIM }}>
-                <svg className="w-3 h-3 flex-shrink-0" style={{ color: ESPRESSO_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 {selectedEvent.date} at {selectedEvent.time}
               </span>
               <span className="text-xs font-sans flex items-center gap-1.5" style={{ color: ESPRESSO_DIM }}>
-                <svg className="w-3 h-3 flex-shrink-0" style={{ color: ESPRESSO_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -364,83 +584,97 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Stats */}
+        {/* ── Stats ──────────────────────────────────────────────────────── */}
         <section aria-labelledby="stats-heading">
           <h2 id="stats-heading" className="sr-only">Event Statistics</h2>
           <StatsCards events={events} selectedEventId={selectedEventId} isLoading={eventsLoading} />
         </section>
 
-        {/* Shareable Links */}
+        {/* ── Shareable Links ─────────────────────────────────────────────── */}
         <ShareableLinksSection baseUrl={config?.baseUrl ?? ''} />
 
-        {/* Guest list */}
+        {/* ── Guest list ──────────────────────────────────────────────────── */}
         <section aria-labelledby="guests-heading">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 mb-4">
             <div className="flex-1">
               <h2 id="guests-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
-                Guest List
+                {at.guestList}
                 {!guestsLoading && (
                   <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>
-                    {guests.length} {guests.length === 1 ? 'guest' : 'guests'}
+                    {guests.length} {guests.length === 1 ? at.guestSingular : at.guestPlural}
+                    {isFiltered && (
+                      <span className="ml-1 text-[rgba(184,146,74,0.9)]">· filtered</span>
+                    )}
                   </span>
                 )}
               </h2>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {/* Search */}
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: ESPRESSO_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search name or email…"
-                  aria-label="Search guests"
-                  className="pl-8 pr-3 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus:ring-2 transition-colors w-48"
+
+            <div className="flex flex-col gap-2 sm:items-end">
+              {/* Row 1: search + add + mobile-CSV */}
+              <div className="flex flex-wrap gap-2">
+                {/* Search with loading indicator */}
+                <div className="relative">
+                  <svg
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                    style={{ color: ESPRESSO_DIM }}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder={at.searchPlaceholder}
+                    aria-label="Search guests"
+                    className="pl-8 pr-8 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] transition-colors w-48"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                  />
+                  {/* Debounce loading indicator */}
+                  {guestsLoading && search.length > 0 && (
+                    <span
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-t-transparent animate-spin"
+                      style={{ borderColor: `${GOLD} transparent transparent transparent` }}
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
+
+                {/* Add guest */}
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 font-sans font-semibold text-xs rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] whitespace-nowrap"
+                  style={{ background: GOLD, color: ESPRESSO }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#A07840'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = GOLD; }}
+                  aria-label={at.addGuest}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {at.addGuest}
+                </button>
+
+                {/* Mobile CSV */}
+                <button
+                  onClick={handleExportCSV}
+                  className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
                   style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                />
+                  aria-label="Export CSV"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  CSV
+                </button>
               </div>
 
-              {/* Status filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                aria-label="Filter by attendance status"
-                className="px-3 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus:ring-2 transition-colors appearance-none"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-              >
-                {STATUS_FILTER_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-
-              {/* Add guest */}
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap"
-                style={{ background: GOLD, color: PARCHMENT }}
-                aria-label="Add a new guest"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Guest
-              </button>
-
-              {/* Mobile CSV */}
-              <button
-                onClick={handleExportCSV}
-                className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans rounded-lg transition-colors focus:outline-none focus:ring-2"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                aria-label="Export CSV"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                CSV
-              </button>
+              {/* Row 2: multi-select status pills */}
+              <StatusPills selected={statusFilters} onChange={setStatusFilters} />
             </div>
           </div>
 
@@ -452,31 +686,34 @@ export default function DashboardPage() {
             onEditInvitation={(inv, guest) => setEditingInvitation({ inv, guest })}
             onDeleteGuest={setDeletingGuest}
             onDeleteInvitation={setDeletingInvitation}
+            showTableColumn={selectedEvent?.slug === 'tashkent'}
           />
         </section>
       </main>
 
-      {/* Modals */}
+      {/* ── Modals ───────────────────────────────────────────────────────────── */}
+
       <AddGuestModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddGuest}
         isPending={addMutation.isPending}
         events={events}
+        defaultEventId={selectedEventId ?? undefined}
       />
 
-      {/* Unified edit modal: contact info + per-event RSVP tabs */}
       <EditGuestModal
         guest={editingGuest}
         events={events}
         onClose={() => setEditingGuest(null)}
         onUpdateContact={handleUpdateGuest}
         onUpdateInvitation={handleUpdateInvFromUnified}
+        onAddToEvent={handleAddToEvent}
         isContactPending={updateGuestMutation.isPending}
         isInvitationPending={updateInvMutation.isPending}
+        isAddToEventPending={addInvitationMutation.isPending}
       />
 
-      {/* Separate invitation modal accessible from per-event edit button in table */}
       <EditInvitationModal
         invitation={editingInvitation?.inv ?? null}
         guest={editingInvitation?.guest ?? null}
@@ -485,19 +722,29 @@ export default function DashboardPage() {
         isPending={updateInvMutation.isPending}
       />
 
-      {/* Delete Guest confirmation */}
+      {/* ── Delete Guest confirmation ─────────────────────────────────────── */}
       <AnimatePresence>
         {deletingGuest && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setDeletingGuest(null)}
-              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40" aria-hidden="true" />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              role="dialog" aria-modal="true" aria-labelledby="delete-guest-title">
+              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+              aria-hidden="true"
+            />
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-guest-title"
+            >
               <motion.div
-                initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
                 className="rounded-xl p-6 w-full max-w-sm shadow-lg"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}>
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+              >
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
                     <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -505,22 +752,31 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 id="delete-guest-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>Remove guest?</h3>
+                    <h3 id="delete-guest-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>
+                      {at.removeGuestTitle}
+                    </h3>
                     <p className="text-xs font-sans leading-relaxed" style={{ color: ESPRESSO_DIM }}>
-                      <span className="font-medium" style={{ color: ESPRESSO }}>{deletingGuest.name}</span> and all their invitations will be permanently deleted.
+                      {at.removeGuestDesc(deletingGuest.name)}
+                    </p>
+                    <p className="text-xs font-sans mt-1" style={{ color: ESPRESSO_DIM }}>
+                      You&apos;ll have 5 seconds to undo this action.
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-5">
-                  <button onClick={() => setDeletingGuest(null)}
-                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
-                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}>
-                    Cancel
+                  <button
+                    onClick={() => setDeletingGuest(null)}
+                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                  >
+                    {at.cancel}
                   </button>
-                  <button onClick={() => deleteGuestMutation.mutate(deletingGuest.id)}
+                  <button
+                    onClick={handleConfirmDeleteGuest}
                     disabled={deleteGuestMutation.isPending}
-                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed">
-                    {deleteGuestMutation.isPending ? 'Removing…' : 'Remove'}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed"
+                  >
+                    {deleteGuestMutation.isPending ? at.deleting : at.remove}
                   </button>
                 </div>
               </motion.div>
@@ -529,19 +785,29 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Delete Invitation confirmation */}
+      {/* ── Delete Invitation confirmation ────────────────────────────────── */}
       <AnimatePresence>
         {deletingInvitation && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setDeletingInvitation(null)}
-              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40" aria-hidden="true" />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              role="dialog" aria-modal="true" aria-labelledby="delete-inv-title">
+              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+              aria-hidden="true"
+            />
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-inv-title"
+            >
               <motion.div
-                initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
                 className="rounded-xl p-6 w-full max-w-sm shadow-lg"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}>
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+              >
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
                     <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -549,22 +815,28 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 id="delete-inv-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>Remove from event?</h3>
+                    <h3 id="delete-inv-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>
+                      {at.removeInvTitle}
+                    </h3>
                     <p className="text-xs font-sans leading-relaxed" style={{ color: ESPRESSO_DIM }}>
-                      Invitation for <span className="font-medium" style={{ color: ESPRESSO }}>{deletingInvitation.eventName ?? deletingInvitation.eventSlug}</span> will be removed. The guest record is kept.
+                      {at.removeInvDesc(deletingInvitation.eventName ?? deletingInvitation.eventSlug ?? '')}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-5">
-                  <button onClick={() => setDeletingInvitation(null)}
-                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2"
-                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}>
-                    Cancel
+                  <button
+                    onClick={() => setDeletingInvitation(null)}
+                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                  >
+                    {at.cancel}
                   </button>
-                  <button onClick={() => deleteInvMutation.mutate(deletingInvitation.id)}
+                  <button
+                    onClick={() => deleteInvMutation.mutate(deletingInvitation.id)}
                     disabled={deleteInvMutation.isPending}
-                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed">
-                    {deleteInvMutation.isPending ? 'Removing…' : 'Remove'}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed"
+                  >
+                    {deleteInvMutation.isPending ? at.deleting : at.remove}
                   </button>
                 </div>
               </motion.div>
