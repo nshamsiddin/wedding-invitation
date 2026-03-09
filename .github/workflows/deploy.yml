@@ -42,11 +42,11 @@ jobs:
 
       # client/tsconfig.json already has "noEmit": true — this is type-check only.
       - name: Type-check — client
-        run: npx tsc --project client/tsconfig.json
+        run: node_modules/.bin/tsc --project client/tsconfig.json
 
       # server/tsconfig.json emits by default; --noEmit keeps this to type-check only.
       - name: Type-check — server
-        run: npx tsc --noEmit --project server/tsconfig.json
+        run: node_modules/.bin/tsc --noEmit --project server/tsconfig.json
 
   # ── Job 2: Deploy to Hetzner VPS ───────────────────────────────────────────
   # All deploy steps run directly on the VPS over SSH.
