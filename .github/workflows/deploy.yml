@@ -106,7 +106,7 @@ jobs:
               --retry 6 \
               --retry-delay 5 \
               --retry-connrefused \
-              "https://${{ secrets.DOMAIN }}/api/health" \
+              "http://localhost:3001/api/health" \
               || { echo "Health check failed — rolling back PM2"; pm2 reload ecosystem.config.cjs --update-env; exit 1; }
 
             echo "✓ Deployment successful"
