@@ -317,7 +317,6 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function PublicInvitePage() {
   const { venue, lang } = useParams<{ venue: string; lang: string }>();
-  const navigate       = useNavigate();
   const { setLanguage } = useContext(LanguageContext);
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -363,7 +362,6 @@ export default function PublicInvitePage() {
   }, []);
 
   const t = useTranslation();
-  const { language } = useContext(LanguageContext);
 
   // Redirect invalid params to homepage
   if (!isValidVenue || !isValidLang) {
