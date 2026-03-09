@@ -36,10 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # shared must be compiled first so its type declarations are available
-      # when the client and server workspaces are checked.
-      - name: Build shared (required by downstream type-checks)
-        run: npm run build --workspace=shared
+      # Both client and server resolve @invitation/shared via path aliases pointing
+      # directly at shared/src/index.ts, so type-checking them implicitly validates
+      # all shared code — no separate shared build step is needed here.
 
       # client/tsconfig.json already has "noEmit": true — this is type-check only.
       - name: Type-check — client
