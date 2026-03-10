@@ -16,7 +16,9 @@ module.exports = {
 
       // Entry point is the compiled TypeScript output.
       // The build step (npm run build) must have run before starting.
-      script: 'server/dist/index.js',
+      // Path mirrors rootDir:".." in server/tsconfig.json — tsc outputs
+      // server/src/** under server/dist/server/src/.
+      script: 'server/dist/server/src/index.js',
 
       // Run from the repo root so relative paths (client/dist, etc.) resolve.
       cwd: '/opt/invitation',
