@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "declaration": true,
+    "types": ["node", "bcryptjs", "better-sqlite3", "compression", "cookie-parser", "cors", "express", "jsonwebtoken"],
     "paths": {
       "@invitation/shared": ["../shared/src/index.ts"]
     }
