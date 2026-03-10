@@ -41,12 +41,13 @@ jobs:
       # all shared code — no separate shared build step is needed here.
 
       # client/tsconfig.json already has "noEmit": true — this is type-check only.
+      # npm workspace script execution adds each workspace's node_modules/.bin to
+      # PATH, so tsc is always found regardless of hoisting behaviour.
       - name: Type-check — client
-        run: node_modules/.bin/tsc --project client/tsconfig.json
+        run: npm run typecheck --workspace=client
 
-      # server/tsconfig.json emits by default; --noEmit keeps this to type-check only.
       - name: Type-check — server
-        run: node_modules/.bin/tsc --noEmit --project server/tsconfig.json
+        run: npm run typecheck --workspace=server
 
   # ── Job 2: Deploy to Hetzner VPS ───────────────────────────────────────────
   # All deploy steps run directly on the VPS over SSH.
