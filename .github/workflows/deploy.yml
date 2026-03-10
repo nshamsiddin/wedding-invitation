@@ -64,8 +64,6 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: deploy
           key: ${{ secrets.SERVER_SSH_KEY }}
-          # Exit immediately on any error; treat unset variables as errors.
-          script_stop: true
           script: |
             set -euo pipefail
             cd /opt/invitation
@@ -86,17 +84,12 @@ jobs:
             npm run build
 
             echo "──────────────────────────────────────────"
-            echo "Step 4/6 — Run DB migrations"
-            echo "──────────────────────────────────────────"
-            npm run db:migrate
-
-            echo "──────────────────────────────────────────"
-            echo "Step 5/6 — Zero-downtime reload via PM2"
+            echo "Step 4/5 — Zero-downtime reload via PM2"
             echo "──────────────────────────────────────────"
             pm2 reload ecosystem.config.cjs --update-env
 
             echo "──────────────────────────────────────────"
-            echo "Step 6/6 — Health check"
+            echo "Step 5/5 — Health check"
             echo "──────────────────────────────────────────"
             # Give the process a moment to finish binding the port, then probe
             # /api/health.  -sf: silent + fail on HTTP 4xx/5xx.  --retry* retries
