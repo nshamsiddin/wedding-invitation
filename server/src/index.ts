@@ -381,7 +381,7 @@ app.use('/api/admin', adminRouter);
 // ─── Static files (production) ────────────────────────────────────────────────
 
 if (!isDev) {
-  const clientDist = resolve(process.cwd(), '../client/dist');
+  const clientDist = resolve(process.cwd(), 'client/dist');
   // Browsers request /favicon.ico directly. Redirect to the SVG favicon so they
   // don't hit a 404 — the SVG is served as a static asset from the client dist.
   app.get('/favicon.ico', (_req, res) => {
