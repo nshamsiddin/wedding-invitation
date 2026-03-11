@@ -1,3 +1,4 @@
+import 'dotenv/config'; // Load .env from process.cwd() before any env var reads
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
