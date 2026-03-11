@@ -98,20 +98,25 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        // 'unsafe-inline' is needed for Vite's injected inline scripts in the built bundle
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         // Google Maps embed requires frame-src and connect-src allowlisting
         frameSrc: ["'self'", 'https://maps.google.com', 'https://www.google.com'],
         connectSrc: ["'self'", 'https://maps.googleapis.com'],
-        fontSrc: ["'self'", 'https:', 'data:'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https:', 'data:'],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
-        upgradeInsecureRequests: isDev ? null : [],
+        // upgradeInsecureRequests is intentionally omitted — it would force the
+        // browser to load all sub-resources over HTTPS, which breaks the app
+        // when running on plain HTTP (no TLS certificate configured yet).
+        upgradeInsecureRequests: null,
       },
     },
-    // HSTS only in production (breaks local HTTP dev)
-    strictTransportSecurity: isDev ? false : { maxAge: 31536000, includeSubDomains: true },
+    // HSTS intentionally disabled — only safe to enable once HTTPS/TLS is
+    // configured; enabling it over plain HTTP permanently breaks the domain.
+    strictTransportSecurity: false,
   })
 );
 
