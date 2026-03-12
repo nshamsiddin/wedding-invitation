@@ -103,9 +103,11 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
-        // Google Maps embed requires frame-src and connect-src allowlisting
+        // Google Maps embed requires frame-src and connect-src allowlisting.
+        // fonts.googleapis.com is needed so html-to-image can fetch and inline
+        // the Google Fonts CSS when generating downloadable invitation cards.
         frameSrc: ["'self'", 'https://maps.google.com', 'https://www.google.com'],
-        connectSrc: ["'self'", 'https://maps.googleapis.com'],
+        connectSrc: ["'self'", 'https://maps.googleapis.com', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https:', 'data:'],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
