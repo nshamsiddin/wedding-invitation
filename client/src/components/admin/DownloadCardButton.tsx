@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { toPng } from 'html-to-image';
+import toast from 'react-hot-toast';
 import type { AdminGuest, AdminEvent, AdminInvitation } from '../../lib/api';
 import InvitationCard from './InvitationCard';
 import type { Language } from '../../lib/i18n';
@@ -41,12 +42,17 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
 
     try {
       await document.fonts.ready;
-      // Brief pause to let the browser paint the off-screen render
-      await new Promise(r => setTimeout(r, 150));
+      // Let the browser fully paint the off-screen portal before capturing
+      await new Promise(r => setTimeout(r, 300));
+
+      if (!cardRef.current) throw new Error('Card element disappeared before capture');
 
       const dataUrl = await toPng(cardRef.current, {
         pixelRatio: 2,
         cacheBust:  true,
+        // Ensure html-to-image sees the card even though it's off-screen
+        width:  540,
+        height: 960,
       });
 
       const a = document.createElement('a');
@@ -55,6 +61,9 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    } catch (err) {
+      console.error('[DownloadCard] Failed to generate card:', err);
+      toast.error('Failed to generate card image. Please try again.');
     } finally {
       setGenerating(false);
       triggered.current = false;
@@ -122,10 +131,11 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
         <div
           aria-hidden="true"
           style={{
-            position:   'fixed',
-            top:        '-9999px',
-            left:       '-9999px',
-            visibility: 'hidden',
+            position: 'fixed',
+            top:      '-9999px',
+            left:     '-9999px',
+            // No visibility:hidden — html-to-image needs the element painted.
+            // Off-screen position keeps it invisible to the user.
           }}
         >
           <div ref={cardRef}>
