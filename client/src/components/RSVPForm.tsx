@@ -163,7 +163,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         {/* Name row */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-            <label style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+            <label style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
               {partnerName ? t.guestsShortLabel : t.nameLabel}
             </label>
             <button
@@ -183,7 +183,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               )}
-              <span style={{ fontSize: '0.72rem', fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500, letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '0.78rem', fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500, letterSpacing: '0.05em' }}>
                 {editingNames ? t.lockName : t.editName}
               </span>
             </button>
@@ -192,7 +192,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
           {editingNames ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               <FormInput id="rsvp-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
-              {errors.name && <p style={{ fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">{errors.name.message}</p>}
+              {errors.name && <p style={{ fontSize: '0.78rem', color: 'var(--accent-rose)' }} role="alert">{errors.name.message}</p>}
               {partnerName !== undefined && partnerName !== null && (
                 <FormInput id="rsvp-partner-name" type="text" autoComplete="off" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
               )}
@@ -215,7 +215,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
         {/* Attendance */}
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
+          <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
             {t.attendanceLabel} <span aria-hidden="true" style={{ color: 'var(--accent-rose)' }}>*</span>
           </legend>
           <AttendancePicker
@@ -224,7 +224,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
             labels={attendanceLabels}
             name="rsvp-status"
           />
-          {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
+          {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
         </fieldset>
 
         {/* Guest count + dietary (only when attending) */}
@@ -291,7 +291,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         pendingLabel={t.sending}
       />
 
-      <p style={{ textAlign: 'center', fontSize: '0.68rem', color: 'var(--text-tertiary)', fontFamily: '"DM Sans", system-ui, sans-serif', marginTop: '0.25rem' }}>
+      <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: '"DM Sans", system-ui, sans-serif', marginTop: '0.25rem' }}>
         {t.rsvpDeadlineHint}
       </p>
     </motion.form>

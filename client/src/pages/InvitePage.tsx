@@ -93,7 +93,7 @@ function ScrollCue({ inView }: { inView: boolean }) {
           <path d="M1 1L8 8L15 1" stroke={ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </motion.svg>
       ))}
-      <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginTop: '0.1rem' }}>
+      <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginTop: '0.1rem' }}>
         {t.scrollToRsvp}
       </span>
     </motion.div>
@@ -205,7 +205,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
         </FormField>
 
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
+          <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
             {t.attendanceLabel} <span aria-hidden="true" style={{ color: 'var(--accent-rose)' }}>*</span>
           </legend>
           <AttendancePicker
@@ -214,7 +214,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
             labels={attendanceLabels}
             name="pub-status"
           />
-          {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
+          {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
         </fieldset>
 
         {status === 'attending' && (
@@ -316,7 +316,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
         return (
           <FormCard key={ev.id} title={ev.name}>
             <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-              <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
+              <legend style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
                 {t.attendanceLabel} <span aria-hidden="true" style={{ color: 'var(--accent-rose)' }}>*</span>
               </legend>
               <Controller
@@ -405,6 +405,7 @@ function InviteDotNav({
   return (
     <nav
       aria-label="Slide navigation"
+      className="invite-dot-nav"
       style={{
         position: 'fixed',
         right: '1rem',
@@ -472,7 +473,7 @@ function InviteNav({ monogram, scrolled }: { monogram: string; scrolled: boolean
     >
       <Link to="/" style={{ textDecoration: 'none' }} aria-label={t.returnToHomepage}>
         <p
-          style={{ fontFamily: sans, fontSize: '0.72rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
+          style={{ fontFamily: sans, fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
           onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
           onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
         >
@@ -591,7 +592,7 @@ function HeroSlide({
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: guestName ? '0.5rem' : '1rem' }}
         >
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
-          <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+          <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
             {overline}
           </span>
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
@@ -620,7 +621,7 @@ function HeroSlide({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: guestName ? 1.3 : 1.2, duration: 0.6 }}
-            style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.4rem, 1vh, 0.75rem)' }}
+            style={{ fontFamily: sans, fontSize: '0.82rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.4rem, 1vh, 0.75rem)' }}
           >
             {cityPart}
           </motion.p>
@@ -635,7 +636,7 @@ function HeroSlide({
           aria-hidden="true"
         >
           <div style={{ height: 1, width: 60, background: `linear-gradient(to right, transparent, ${GOLD_DIM})` }} />
-          <span style={{ color: ROSE, fontSize: '0.6rem' }}>♡</span>
+          <span style={{ color: ROSE, fontSize: '0.9rem' }}>♡</span>
           <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
         </motion.div>
 
@@ -647,30 +648,30 @@ function HeroSlide({
             transition={{ duration: 0.7, delay: 1.5 }}
             style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1rem', marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)' }}
           >
-            <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
-            <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
+            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
+            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
+            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
+            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
             {venueMapUrl ? (
               <a
                 href={venueMapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em',
+                  fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em',
                   color: GOLD, textDecoration: 'none',
                   borderBottom: `1px dashed ${GOLD_DIM}`,
                   display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
                 }}
                 aria-label={`Open ${venueName} in maps`}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                 </svg>
                 {venueName}
               </a>
             ) : (
-              <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{venueName}</span>
+              <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{venueName}</span>
             )}
           </motion.div>
         )}
@@ -686,7 +687,7 @@ function HeroSlide({
           >
             <span style={{
               fontFamily: sans,
-              fontSize: '0.7rem',
+              fontSize: '0.78rem',
               fontWeight: 600,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
@@ -694,7 +695,7 @@ function HeroSlide({
               background: 'rgba(184,146,74,0.1)',
               border: `1px solid ${GOLD_DIM}`,
               borderRadius: '999px',
-              padding: '0.3rem 1rem',
+              padding: '0.35rem 1.1rem',
             }}>
               Table {tableNumber}
             </span>
@@ -774,7 +775,7 @@ function RSVPSlide({
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
         >
           <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to right, transparent, ${ROSE})` }} aria-hidden="true" />
-          <span style={{ fontFamily: sans, fontSize: '0.7rem', letterSpacing: '0.26em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, whiteSpace: 'nowrap' }}>
+          <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.26em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, whiteSpace: 'nowrap' }}>
             {t.kindlyReply}
           </span>
           <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to left, transparent, ${ROSE})` }} aria-hidden="true" />
@@ -795,7 +796,7 @@ function RSVPSlide({
             style={{ height: 1, maxWidth: '6rem', margin: '0 auto 0.5rem', background: `linear-gradient(to right, transparent, ${GOLD_DIM}, transparent)` }}
             aria-hidden="true"
           />
-          <p style={{ fontFamily: sans, fontSize: '0.68rem', letterSpacing: '0.1em', color: ESPRESSO_DIM }}>
+          <p style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.1em', color: ESPRESSO_DIM }}>
             {t.madeWithLove}
           </p>
         </div>
@@ -898,7 +899,7 @@ export default function InvitePage() {
   // ── Loading ──
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100dvh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
@@ -912,7 +913,7 @@ export default function InvitePage() {
   // ── Error / not found ──
   if (isError || !data || !token) {
     return (
-      <div style={{ minHeight: '100vh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ minHeight: '100dvh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
         <div style={{ textAlign: 'center' }}>
           <svg width="40" height="40" viewBox="0 0 48 48" fill="none" style={{ margin: '0 auto 1rem' }} aria-hidden="true">
             {[0, 60, 120, 180, 240, 300].map((angle, i) => (
@@ -930,9 +931,9 @@ export default function InvitePage() {
             to="/"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.1em',
+              fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.1em',
               color: GOLD, textDecoration: 'none', fontWeight: 500,
-              padding: '0.65rem 1.4rem',
+              padding: '0.75rem 1.6rem',
               border: `1px solid ${GOLD_DIM}`,
               borderRadius: '999px',
               background: 'rgba(253,250,245,0.6)',
@@ -948,7 +949,7 @@ export default function InvitePage() {
   // ── Already-claimed open link ──
   if (data.type === 'claimed') {
     return (
-      <div style={{ minHeight: '100vh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ minHeight: '100dvh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
         <div style={{ textAlign: 'center', maxWidth: '28rem' }}>
           <div style={{ marginBottom: '1rem' }} aria-hidden="true">
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke={ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }}>

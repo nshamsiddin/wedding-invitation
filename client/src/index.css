@@ -516,23 +516,36 @@ body {
 /* ─── Garden System — Scroll-snap container & slides ─────────────── */
 .garden-wrap {
   scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth intentionally removed — it conflicts with iOS
+     momentum scrolling and causes the snap container to get "stuck".
+     JS-driven scrollIntoView({behavior:'smooth'}) handles animated scrolls. */
   overflow-y: scroll;
+  /* contain rubber-band so it never leaks to the document root on iOS */
+  overscroll-behavior-y: contain;
   height: 100dvh;
 }
 .garden-wrap::-webkit-scrollbar { display: none; }
 .garden-slide {
   scroll-snap-align: start;
+  /* always stop on this slide — prevents fast-flick from skipping two slides */
+  scroll-snap-stop: always;
   height: 100dvh;
-  overflow: clip;
+  /* overflow: hidden instead of clip — broader browser support on mobile */
+  overflow: hidden;
   position: relative;
 }
 .garden-slide-tall {
   scroll-snap-align: start;
+  scroll-snap-stop: always;
   min-height: 100dvh;
   height: auto;
-  overflow: clip;
+  overflow: hidden;
   position: relative;
+}
+
+/* ─── Invite dot nav — hide on narrow phones (content too tight) ──── */
+@media (max-width: 480px) {
+  .invite-dot-nav { display: none; }
 }
 
 /* ─── Invite page — always light, no dark mode ───────────────────── */

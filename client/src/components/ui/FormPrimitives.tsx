@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 export const formLabelStyle: CSSProperties = {
   display: 'block',
   fontFamily: '"DM Sans", system-ui, sans-serif',
-  fontSize: '0.7rem',
+  fontSize: '0.78rem',
   fontWeight: 500,
   letterSpacing: '0.1em',
   textTransform: 'uppercase',
@@ -47,7 +47,7 @@ export const formCardStyle: CSSProperties = {
 };
 
 export const formErrorStyle: CSSProperties = {
-  fontSize: '0.72rem',
+  fontSize: '0.78rem',
   color: 'var(--accent-rose)',
   marginTop: '0.2rem',
 };
@@ -59,7 +59,7 @@ export function FormCard({ title, children }: { title: string; children: React.R
     <div style={formCardStyle}>
       <p style={{
         fontFamily: '"DM Sans", system-ui, sans-serif',
-        fontSize: '0.7rem',
+        fontSize: '0.78rem',
         fontWeight: 600,
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
@@ -100,7 +100,7 @@ export function FormField({
       </label>
       {children}
       {hint && !error && (
-        <p style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
+        <p style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
           {hint}
         </p>
       )}
@@ -211,7 +211,7 @@ export function AttendancePicker({
         return (
           <label
             key={v}
-            className="relative flex flex-col items-center justify-center py-2.5 px-1 rounded-xl"
+            className="relative flex flex-col items-center justify-center py-3 px-1 rounded-xl"
             style={{
               background: isSelected ? 'rgba(196,151,90,0.1)' : 'var(--bg-subtle)',
               border: `1px solid ${isSelected ? 'var(--accent-gold)' : 'var(--border-warm)'}`,
@@ -229,11 +229,11 @@ export function AttendancePicker({
               className="sr-only"
               aria-label={labels[v]}
             />
-            <span style={{ fontSize: '0.9rem', marginBottom: '0.2rem', display: 'block' }} aria-hidden="true">
+            <span style={{ fontSize: '1rem', marginBottom: '0.25rem', display: 'block' }} aria-hidden="true">
               {symbol}
             </span>
             <span style={{
-              fontSize: '0.72rem',
+              fontSize: '0.78rem',
               fontFamily: '"DM Sans", system-ui, sans-serif',
               fontWeight: 500,
               letterSpacing: '0.04em',
