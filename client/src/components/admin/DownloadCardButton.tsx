@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminEvent, AdminInvitation } from '../../lib/api';
 import InvitationCard from './InvitationCard';
@@ -42,18 +42,28 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
 
     try {
       await document.fonts.ready;
-      // Let the browser fully paint the off-screen portal before capturing
+      // Let the browser fully paint before capturing
       await new Promise(r => setTimeout(r, 300));
 
       if (!cardRef.current) throw new Error('Card element disappeared before capture');
 
-      const dataUrl = await toPng(cardRef.current, {
-        pixelRatio: 2,
-        cacheBust:  true,
-        // Ensure html-to-image sees the card even though it's off-screen
-        width:  540,
-        height: 960,
+      // html2canvas works cross-browser (including Firefox) unlike html-to-image
+      // which crashes on Firefox due to getComputedStyle() returning undefined for
+      // some CSS property values.
+      const canvas = await html2canvas(cardRef.current, {
+        scale:       2,
+        useCORS:     true,
+        allowTaint:  false,
+        logging:     false,
+        width:       540,
+        height:      960,
+        // Element is positioned at top:0/left:0 behind all content (z-index:-9999)
+        // so we capture starting from (0,0)
+        x:           0,
+        y:           0,
       });
+
+      const dataUrl = canvas.toDataURL('image/png');
 
       const a = document.createElement('a');
       a.download = filename;
@@ -132,11 +142,13 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
         <div
           aria-hidden="true"
           style={{
-            position: 'fixed',
-            top:      '-9999px',
-            left:     '-9999px',
-            // No visibility:hidden — html-to-image needs the element painted.
-            // Off-screen position keeps it invisible to the user.
+            // Positioned at (0,0) but behind everything — html2canvas requires
+            // the element to be at a real screen position to capture it.
+            position:      'fixed',
+            top:           0,
+            left:          0,
+            zIndex:        -9999,
+            pointerEvents: 'none',
           }}
         >
           <div ref={cardRef}>
