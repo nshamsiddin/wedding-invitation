@@ -240,6 +240,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         tableNumber: schema.guestInvitations.tableNumber,
+        language: schema.guestInvitations.language,
         isOpen: schema.guestInvitations.isOpen,
         claimedAt: schema.guestInvitations.claimedAt,
         updatedAt: schema.guestInvitations.updatedAt,
@@ -283,6 +284,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         partnerDietary: inv.partnerDietary ?? null,
         message: inv.message,
         tableNumber: inv.tableNumber ?? null,
+        language: inv.language,
         isOpen: inv.isOpen,
         claimedAt: inv.claimedAt,
         updatedAt: inv.updatedAt,
@@ -303,7 +305,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, phone, partnerName, eventIds, status, guestCount, dietary, message, tableNumber } = parsed.data;
+  const { name, phone, partnerName, eventIds, status, guestCount, dietary, message, tableNumber, language } = parsed.data;
 
   try {
     // Wrap guest + invitation creation in a single transaction so a partial failure
@@ -323,8 +325,8 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
         const inv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, message, table_number)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               (guest_id, event_id, token, status, guest_count, dietary, message, table_number, language)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING *`
           )
           .get(
@@ -336,6 +338,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
             dietary ?? null,
             message ?? null,
             tableNumber ?? null,
+            language ?? 'en',
           ) as typeof schema.guestInvitations.$inferSelect;
         invitations.push(inv);
       }
@@ -559,7 +562,7 @@ router.post('/invitations', requireAuth, async (req: Request, res: Response): Pr
     return;
   }
 
-  const { guestId, eventId, status, guestCount } = parsed.data;
+  const { guestId, eventId, status, guestCount, language } = parsed.data;
 
   try {
     const guestExists = await db
@@ -592,6 +595,7 @@ router.post('/invitations', requireAuth, async (req: Request, res: Response): Pr
         token: randomUUID(),
         status: status ?? 'pending',
         guestCount: guestCount ?? 1,
+        language: language ?? 'en',
       })
       .returning();
 

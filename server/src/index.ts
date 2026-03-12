@@ -300,6 +300,17 @@ db.run(sql`
   }
 })();
 
+// Add language column to store the invitation's predefined display language.
+(function migrateGuestInvitationsLanguage() {
+  type ColInfo = { name: string };
+  const cols = sqlite.prepare('PRAGMA table_info(guest_invitations)').all() as ColInfo[];
+  if (cols.length === 0) return; // Just created above — already has the column
+  if (!cols.some((c) => c.name === 'language')) {
+    console.log('[migration] Adding language column to guest_invitations…');
+    sqlite.prepare("ALTER TABLE guest_invitations ADD COLUMN language TEXT NOT NULL DEFAULT 'en'").run();
+  }
+})();
+
 // Drop email column from guests (table recreation — SQLite cannot drop UNIQUE columns directly)
 (function migrateRemoveEmail() {
   const cols = sqlite.prepare('PRAGMA table_info(guests)').all() as { name: string }[];

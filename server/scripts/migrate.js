@@ -69,6 +69,7 @@ db.exec(`
     dietary         TEXT,
     message         TEXT,
     partner_dietary TEXT,
+    language        TEXT NOT NULL DEFAULT 'en',
     is_open         INTEGER NOT NULL DEFAULT 0,
     is_public       INTEGER NOT NULL DEFAULT 0,
     claimed_at  TEXT,

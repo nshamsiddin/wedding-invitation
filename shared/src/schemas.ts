@@ -120,6 +120,8 @@ export const invitationSchema = z.object({
   updatedAt: z.string(),
   // Assigned seating table — only set for Tashkent invitations
   tableNumber: z.number().int().min(1).max(500).nullable().optional(),
+  // Language the invitation page defaults to when the guest opens their link
+  language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
 });
 
 export type InvitationData = z.infer<typeof invitationSchema>;
@@ -133,6 +135,7 @@ export const adminInvitationSchema = invitationSchema.extend({
   claimedAt: z.string().nullable().optional(),
   guestId: z.number().nullable().optional(),
   tableNumber: z.number().int().nullable().optional(),
+  language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
 });
 
 export type AdminInvitation = z.infer<typeof adminInvitationSchema>;
@@ -203,6 +206,8 @@ export const addGuestSchema = z.object({
   message: z.string().max(1000).trim().optional().default(''),
   // Assigned seating table for Tashkent event — ignored for other events
   tableNumber: z.number().int().min(1).max(500).nullable().optional(),
+  // Language the invitation page should default to when the guest opens their link
+  language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
 });
 
 export type AddGuestValues = z.infer<typeof addGuestSchema>;
@@ -220,6 +225,7 @@ export const addInvitationSchema = z.object({
   eventId: z.number().int().positive(),
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional().default('pending'),
   guestCount: z.number().int().min(1).max(10).optional().default(1),
+  language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
 });
 
 export type AddInvitationValues = z.infer<typeof addInvitationSchema>;
@@ -233,6 +239,7 @@ export const updateInvitationSchema = z.object({
   message: z.string().max(1000).trim().optional(),
   // Assigned seating table — only meaningful for Tashkent invitations
   tableNumber: z.number().int().min(1).max(500).nullable().optional(),
+  language: z.enum(['en', 'tr', 'uz']).optional(),
 });
 
 export type UpdateInvitationValues = z.infer<typeof updateInvitationSchema>;

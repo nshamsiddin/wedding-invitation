@@ -69,6 +69,7 @@ export interface AdminTranslations {
   // Edit Invitation modal
   editRsvpTitle: string;
   saveChanges: string;
+  languageLabel: string;
 
   // Status option labels
   statusAttending: string;
@@ -155,6 +156,7 @@ const adminEn: AdminTranslations = {
 
   editRsvpTitle: 'Edit RSVP',
   saveChanges: 'Save Changes',
+  languageLabel: 'Invitation Language',
 
   statusAttending: 'Attending',
   statusDeclined: 'Declined',
@@ -233,6 +235,7 @@ const adminTr: AdminTranslations = {
 
   editRsvpTitle: 'RSVP Düzenle',
   saveChanges: 'Değişiklikleri Kaydet',
+  languageLabel: 'Davet Dili',
 
   statusAttending: 'Katılıyor',
   statusDeclined: 'Katılmıyor',
@@ -311,6 +314,7 @@ const adminUz: AdminTranslations = {
 
   editRsvpTitle: 'RSVP Tahrirlash',
   saveChanges: "O'zgarishlarni Saqlash",
+  languageLabel: "Taklif Tili",
 
   statusAttending: 'Qatnashadi',
   statusDeclined: 'Rad etdi',

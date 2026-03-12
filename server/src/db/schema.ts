@@ -50,6 +50,8 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   isPublic: integer('is_public', { mode: 'boolean' }).notNull().default(false),
   // Assigned seating table — only used for Tashkent event; null for all others
   tableNumber: integer('table_number'),
+  // Language the invitation page should default to when the guest opens their link
+  language: text('language', { enum: ['en', 'tr', 'uz'] }).notNull().default('en'),
   // Timestamp when an open invitation was claimed by a self-registrant
   claimedAt: text('claimed_at'),
   createdAt: text('created_at')

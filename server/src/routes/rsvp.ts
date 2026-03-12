@@ -29,6 +29,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         invPartnerDietary: schema.guestInvitations.partnerDietary,
         invMessage: schema.guestInvitations.message,
         invTableNumber: schema.guestInvitations.tableNumber,
+        invLanguage: schema.guestInvitations.language,
         invUpdatedAt: schema.guestInvitations.updatedAt,
         invIsOpen: schema.guestInvitations.isOpen,
         invIsPublic: schema.guestInvitations.isPublic,
@@ -124,6 +125,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
         partnerDietary: r.invPartnerDietary ?? null,
         message: r.invMessage,
         tableNumber: r.invTableNumber ?? null,
+        language: r.invLanguage ?? 'en',
         updatedAt: r.invUpdatedAt,
       },
       guest: {

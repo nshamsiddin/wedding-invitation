@@ -218,6 +218,7 @@ function InvitationTab({
       partnerDietary: invitation.partnerDietary ?? '',
       message: invitation.message ?? '',
       tableNumber: invitation.tableNumber ?? undefined,
+      language: invitation.language ?? 'en',
     });
   }, [invitation, reset]);
 
@@ -271,6 +272,22 @@ function InvitationTab({
           />
         </div>
       )}
+
+      {/* Invitation Language */}
+      <div>
+        <label htmlFor={`inv-language-${invitation.id}`} className={ADMIN_LABEL_CLASS}>
+          {at.languageLabel}
+        </label>
+        <select
+          id={`inv-language-${invitation.id}`}
+          {...register('language')}
+          className={ADMIN_SELECT_CLASS}
+        >
+          <option value="en">EN — English</option>
+          <option value="tr">TR — Türkçe</option>
+          <option value="uz">UZ — O'zbek</option>
+        </select>
+      </div>
 
       <div>
         <label htmlFor={`inv-dietary-${invitation.id}`} className={ADMIN_LABEL_CLASS}>

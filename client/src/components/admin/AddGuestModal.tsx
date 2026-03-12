@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addGuestSchema, type AddGuestValues } from '@invitation/shared';
 import type { AdminEvent } from '../../lib/api';
 import { useAdminTranslation } from '../../lib/i18n/admin';
+import { LanguageContext } from '../../context/LanguageContext';
 import AdminModal from './AdminModal';
 import {
   ADMIN_INPUT_CLASS,
@@ -34,6 +35,7 @@ export default function AddGuestModal({
   defaultEventId,
 }: Props) {
   const at = useAdminTranslation();
+  const { language: currentLanguage } = useContext(LanguageContext);
 
   const {
     register,
@@ -53,6 +55,7 @@ export default function AddGuestModal({
       message: '',
       eventIds: defaultEventId ? [defaultEventId] : [],
       partnerName: '',
+      language: currentLanguage,
     },
   });
 
@@ -71,9 +74,10 @@ export default function AddGuestModal({
         message: '',
         eventIds: defaultEventId ? [defaultEventId] : [],
         partnerName: '',
+        language: currentLanguage,
       });
     }
-  }, [isOpen, reset, defaultEventId, isTashkentDefault]);
+  }, [isOpen, reset, defaultEventId, isTashkentDefault, currentLanguage]);
 
   // Auto-set status to attending when Tashkent is toggled on mid-form
   const prevShowTableNumber = useRef(showTableNumber);
@@ -217,6 +221,20 @@ export default function AddGuestModal({
               <StatusPicker value={field.value ?? ''} onChange={field.onChange} />
             )}
           />
+        </div>
+
+        {/* Invitation Language */}
+        <div>
+          <label htmlFor="add-language" className={ADMIN_LABEL_CLASS}>{at.languageLabel}</label>
+          <select
+            id="add-language"
+            {...register('language')}
+            className={ADMIN_SELECT_CLASS}
+          >
+            <option value="en">EN — English</option>
+            <option value="tr">TR — Türkçe</option>
+            <option value="uz">UZ — O'zbek</option>
+          </select>
         </div>
 
         {/* Guest Count */}
