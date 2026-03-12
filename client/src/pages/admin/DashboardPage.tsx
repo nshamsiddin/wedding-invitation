@@ -402,6 +402,7 @@ export default function DashboardPage() {
                     guestCount: 1,
                     dietary: '',
                     message: '',
+                    language: 'en',
                   },
                   {
                     onSuccess: () => toast.success(at.guestRestored(snapshot.name), { duration: 4000 }),
@@ -463,7 +464,7 @@ export default function DashboardPage() {
     updateInvMutation.mutate({ id, values });
 
   const handleAddToEvent = (guestId: number, eventId: number) =>
-    addInvitationMutation.mutate({ guestId, eventId, status: 'pending', guestCount: 1 });
+    addInvitationMutation.mutate({ guestId, eventId, status: 'pending', guestCount: 1, language: 'en' });
 
   const handleExportCSV = async () => {
     try {

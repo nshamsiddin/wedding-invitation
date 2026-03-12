@@ -845,16 +845,6 @@ export default function InvitePage() {
   const { language, setLanguage } = useContext(LanguageContext);
   const lang = language as Language;
 
-  // Apply the invitation's predefined language the first time the data loads.
-  // The guest can still switch language afterward via the LanguageSwitcher.
-  useEffect(() => {
-    if (data?.type === 'personal' && data.invitation.language) {
-      setLanguage(data.invitation.language as Language);
-    }
-  // Run only once when data first resolves — intentionally exclude setLanguage
-  // to avoid re-running on every render when the context reference changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
   const [claimSuccess, setClaimSuccess] = useState(false);
   // Must be declared before early returns to satisfy React's Rules of Hooks
   const [showForm, setShowForm] = useState(false);
@@ -889,6 +879,17 @@ export default function InvitePage() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  // Apply the invitation's predefined language the first time the data loads.
+  // The guest can still switch language afterward via the LanguageSwitcher.
+  useEffect(() => {
+    if (data?.type === 'personal' && data.invitation.language) {
+      setLanguage(data.invitation.language as Language);
+    }
+  // Run only once when data first resolves — intentionally exclude setLanguage
+  // to avoid re-running on every render when the context reference changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const scrollToRSVP = useCallback(() =>
     rsvpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), []);
