@@ -63,7 +63,8 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
       document.body.removeChild(a);
     } catch (err) {
       console.error('[DownloadCard] Failed to generate card:', err);
-      toast.error('Failed to generate card image. Please try again.');
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Card error: ${msg}`, { duration: 8000 });
     } finally {
       setGenerating(false);
       triggered.current = false;
