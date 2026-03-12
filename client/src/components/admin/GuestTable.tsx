@@ -5,6 +5,7 @@ import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
 import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM } from '../../garden/tokens';
 import { useAdminTranslation } from '../../lib/i18n/admin';
 import { getEventDisplayName } from './adminTokens';
+import DownloadCardButton from './DownloadCardButton';
 
 // ─── Status styling — colour + icon to avoid colour-only differentiation ───────
 // WCAG 1.4.1: information must not rely solely on colour.
@@ -270,8 +271,10 @@ export default function GuestTable({
                           </span>
 
                           {/* Per-invitation actions */}
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
+
+                            <DownloadCardButton guest={guest} invitation={inv} events={events} />
 
                             <button
                               onClick={() => onEditInvitation(inv, guest)}

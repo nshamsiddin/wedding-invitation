@@ -11,6 +11,7 @@ import {
 import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
 import { useAdminTranslation } from '../../lib/i18n/admin';
 import AdminModal from './AdminModal';
+import DownloadCardButton from './DownloadCardButton';
 import {
   ADMIN_INPUT_CLASS,
   ADMIN_LABEL_CLASS,
@@ -187,10 +188,14 @@ function ContactTab({
 
 function InvitationTab({
   invitation,
+  guest,
+  events,
   onSubmit,
   isPending,
 }: {
   invitation: AdminInvitation;
+  guest: AdminGuest;
+  events: AdminEvent[];
   onSubmit: (id: number, values: UpdateInvitationValues) => void;
   isPending: boolean;
 }) {
@@ -228,6 +233,14 @@ function InvitationTab({
       noValidate
       className="p-6 space-y-4"
     >
+      {/* Download card */}
+      <div className="flex items-center justify-between pb-1" style={{ borderBottom: '1px solid rgba(184,146,74,0.2)' }}>
+        <span className="text-xs font-sans font-semibold uppercase tracking-wider" style={{ color: ESPRESSO_DIM }}>
+          Invitation Card
+        </span>
+        <DownloadCardButton guest={guest} invitation={invitation} events={events} />
+      </div>
+
       <div>
         <p className={ADMIN_LABEL_CLASS}>{at.statusLabel}</p>
         <Controller
@@ -457,9 +470,11 @@ export default function EditGuestModal({
                 isPending={isContactPending}
                 isAddToEventPending={isAddToEventPending}
               />
-            ) : activeInvitation ? (
+            ) : activeInvitation && guest ? (
               <InvitationTab
                 invitation={activeInvitation}
+                guest={guest}
+                events={events}
                 onSubmit={onUpdateInvitation}
                 isPending={isInvitationPending}
               />
