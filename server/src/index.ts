@@ -1,4 +1,5 @@
-import 'dotenv/config'; // Load .env from process.cwd() before any env var reads
+import dotenv from 'dotenv';
+dotenv.config({ override: true }); // Always use .env file values, overriding any cached PM2 env vars
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
