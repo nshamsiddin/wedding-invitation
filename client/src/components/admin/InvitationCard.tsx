@@ -226,7 +226,7 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
         <div style={{ marginTop: 10, display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
           <div style={{ width:32, height:0.55, background:GOLD, opacity:0.40 }}/>
           <span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:500, letterSpacing:'0.42em', color:GOLD, textTransform:'uppercase' }}>
-            Wedding Invitation
+            {t.cardWeddingInvitation}
           </span>
           <div style={{ width:32, height:0.55, background:GOLD, opacity:0.40 }}/>
         </div>

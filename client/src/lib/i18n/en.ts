@@ -128,6 +128,7 @@ export type Translations = {
   cardWeInviteYou: string;
   cardScanRsvp: string;
   cardTable: string;
+  cardWeddingInvitation: string;
 };
 
 export const en: Translations = {
@@ -283,4 +284,5 @@ export const en: Translations = {
   cardWeInviteYou: 'We joyfully invite you,',
   cardScanRsvp: 'Scan to RSVP',
   cardTable: 'TABLE',
+  cardWeddingInvitation: 'Wedding Invitation',
 };

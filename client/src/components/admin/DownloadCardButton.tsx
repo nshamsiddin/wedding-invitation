@@ -24,8 +24,12 @@ function DownloadIcon() {
   );
 }
 
+const LANG_LABELS: Record<Language, string> = { en: 'EN', tr: 'TR', uz: 'UZ' };
+const LANG_OPTIONS: Language[] = ['en', 'tr', 'uz'];
+
 export default function DownloadCardButton({ guest, invitation, events, style, className }: DownloadCardButtonProps) {
   const [generating, setGenerating] = useState(false);
+  const [cardLang, setCardLang]     = useState<Language>((invitation.language ?? 'en') as Language);
   const cardRef    = useRef<HTMLDivElement>(null);
   const triggered  = useRef(false);
 
@@ -34,7 +38,7 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
   const rsvpUrl = `${window.location.origin}/invite/${invitation.token}`;
 
   const slug = (guest.name.toLowerCase().replace(/\s+/g, '-') ?? 'guest');
-  const filename = `invitation-${slug}-${invitation.eventSlug ?? 'event'}.png`;
+  const filename = `invitation-${slug}-${invitation.eventSlug ?? 'event'}-${cardLang}.png`;
 
   const capture = useCallback(async () => {
     if (!cardRef.current || triggered.current) return;
@@ -89,61 +93,92 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
 
   if (!event) return null;
 
-  const language = (invitation.language ?? 'en') as Language;
+  const btnBase: React.CSSProperties = {
+    display:    'inline-flex',
+    alignItems: 'center',
+    fontFamily: '"DM Sans", system-ui, sans-serif',
+    fontSize:   12,
+    background: 'transparent',
+    cursor:     'pointer',
+    transition: 'color 0.15s, border-color 0.15s, background 0.15s',
+    whiteSpace: 'nowrap',
+  };
 
   return (
     <>
-      <button
-        onClick={() => setGenerating(true)}
-        disabled={generating}
+      {/* Grouped control: language tabs + download button */}
+      <div
         className={className}
-        title="Download invitation card"
         style={{
-          display:         'inline-flex',
-          alignItems:      'center',
-          gap:             5,
-          padding:         '4px 10px',
-          fontSize:        12,
-          fontFamily:      '"DM Sans", system-ui, sans-serif',
-          color:           generating ? 'rgba(42,31,26,0.4)' : '#B8924A',
-          background:      'transparent',
-          border:          '1px solid rgba(184,146,74,0.3)',
-          borderRadius:    6,
-          cursor:          generating ? 'default' : 'pointer',
-          whiteSpace:      'nowrap',
-          transition:      'color 0.15s, border-color 0.15s, background 0.15s',
+          display:     'inline-flex',
+          alignItems:  'center',
+          border:      '1px solid rgba(184,146,74,0.3)',
+          borderRadius: 6,
+          overflow:    'hidden',
           ...style,
         }}
-        onMouseEnter={e => {
-          if (!generating) {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(184,146,74,0.08)';
-            (e.currentTarget as HTMLButtonElement).style.borderColor      = 'rgba(184,146,74,0.55)';
-          }
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-          (e.currentTarget as HTMLButtonElement).style.borderColor      = 'rgba(184,146,74,0.3)';
-        }}
       >
-        {generating ? (
-          <>
-            <span style={{ fontSize: 11 }}>⟳</span>
-            <span>Generating…</span>
-          </>
-        ) : (
-          <>
-            <DownloadIcon />
-            <span>Card</span>
-          </>
-        )}
-      </button>
+        {/* Language picker tabs */}
+        {LANG_OPTIONS.map((lang, idx) => (
+          <button
+            key={lang}
+            disabled={generating}
+            onClick={() => setCardLang(lang)}
+            title={`Generate card in ${LANG_LABELS[lang]}`}
+            style={{
+              ...btnBase,
+              padding:          '4px 7px',
+              color:            cardLang === lang ? '#B8924A' : 'rgba(42,31,26,0.35)',
+              fontWeight:       cardLang === lang ? 600 : 400,
+              background:       cardLang === lang ? 'rgba(184,146,74,0.08)' : 'transparent',
+              borderRight:      '1px solid rgba(184,146,74,0.3)',
+              borderRadius:     0,
+              cursor:           generating ? 'default' : 'pointer',
+              borderLeft:       idx === 0 ? 'none' : undefined,
+            }}
+          >
+            {LANG_LABELS[lang]}
+          </button>
+        ))}
+
+        {/* Download button */}
+        <button
+          onClick={() => setGenerating(true)}
+          disabled={generating}
+          title="Download invitation card"
+          style={{
+            ...btnBase,
+            gap:          5,
+            padding:      '4px 10px',
+            color:        generating ? 'rgba(42,31,26,0.4)' : '#B8924A',
+            cursor:       generating ? 'default' : 'pointer',
+            borderRadius: 0,
+          }}
+          onMouseEnter={e => {
+            if (!generating) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(184,146,74,0.08)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+          }}
+        >
+          {generating ? (
+            <>
+              <span style={{ fontSize: 11 }}>⟳</span>
+              <span>Generating…</span>
+            </>
+          ) : (
+            <>
+              <DownloadIcon />
+              <span>Card</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {generating && createPortal(
         <div
           aria-hidden="true"
           style={{
-            // Positioned at (0,0) but behind everything — html2canvas requires
-            // the element to be at a real screen position to capture it.
             position:      'fixed',
             top:           0,
             left:          0,
@@ -159,7 +194,7 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
               venueName={event.venueName}
               eventName={event.name}
               tableNumber={invitation.tableNumber ?? null}
-              language={language}
+              language={cardLang}
               rsvpUrl={rsvpUrl}
             />
           </div>

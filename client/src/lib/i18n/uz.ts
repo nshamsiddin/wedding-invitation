@@ -151,4 +151,5 @@ export const uz: Translations = {
   cardWeInviteYou: 'Sizi bayramimizda ko\'rishdan mamnun bo\'lamiz,',
   cardScanRsvp: 'RSVP uchun skan qiling',
   cardTable: 'STOL',
+  cardWeddingInvitation: 'To\'y Taklifi',
 };
