@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminEvent, AdminInvitation } from '../../lib/api';
-import InvitationCard from './InvitationCard';
+import InvitationCard, { CARD_THEMES } from './InvitationCard';
+import type { CardTheme } from './InvitationCard';
 import type { Language } from '../../lib/i18n';
 
 interface DownloadCardButtonProps {
@@ -27,9 +28,18 @@ function DownloadIcon() {
 const LANG_LABELS: Record<Language, string> = { en: 'EN', tr: 'TR', uz: 'UZ' };
 const LANG_OPTIONS: Language[] = ['en', 'tr', 'uz'];
 
+const THEME_OPTIONS: CardTheme[] = ['parchment', 'noir', 'blush', 'sage'];
+const THEME_LABELS: Record<CardTheme, string> = {
+  parchment: 'Parchment',
+  noir:      'Noir',
+  blush:     'Blush',
+  sage:      'Sage',
+};
+
 export default function DownloadCardButton({ guest, invitation, events, style, className }: DownloadCardButtonProps) {
-  const [generating, setGenerating] = useState(false);
-  const [cardLang, setCardLang]     = useState<Language>((invitation.language ?? 'en') as Language);
+  const [generating, setGenerating]   = useState(false);
+  const [cardLang, setCardLang]       = useState<Language>((invitation.language ?? 'en') as Language);
+  const [cardTheme, setCardTheme]     = useState<CardTheme>('parchment');
   const cardRef    = useRef<HTMLDivElement>(null);
   const triggered  = useRef(false);
 
@@ -38,7 +48,7 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
   const rsvpUrl = `${window.location.origin}/invite/${invitation.token}`;
 
   const slug = (guest.name.toLowerCase().replace(/\s+/g, '-') ?? 'guest');
-  const filename = `invitation-${slug}-${invitation.eventSlug ?? 'event'}-${cardLang}.png`;
+  const filename = `invitation-${slug}-${invitation.eventSlug ?? 'event'}-${cardLang}-${cardTheme}.png`;
 
   const capture = useCallback(async () => {
     if (!cardRef.current || triggered.current) return;
@@ -104,22 +114,62 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
     whiteSpace: 'nowrap',
   };
 
+  const divider = (
+    <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(184,146,74,0.3)' }} />
+  );
+
   return (
     <>
-      {/* Grouped control: language tabs + download button */}
+      {/* Grouped control: theme swatches | language tabs | download button */}
       <div
         className={className}
         style={{
-          display:     'inline-flex',
-          alignItems:  'center',
-          border:      '1px solid rgba(184,146,74,0.3)',
+          display:      'inline-flex',
+          alignItems:   'center',
+          border:       '1px solid rgba(184,146,74,0.3)',
           borderRadius: 6,
-          overflow:    'hidden',
+          overflow:     'hidden',
           ...style,
         }}
       >
+        {/* Theme swatches */}
+        {THEME_OPTIONS.map(th => {
+          const bgColor = CARD_THEMES[th].bg;
+          const isActive = cardTheme === th;
+          return (
+            <button
+              key={th}
+              disabled={generating}
+              onClick={() => setCardTheme(th)}
+              title={THEME_LABELS[th]}
+              style={{
+                ...btnBase,
+                padding:     '5px 6px',
+                borderRadius: 0,
+                cursor:       generating ? 'default' : 'pointer',
+                background:   isActive ? 'rgba(184,146,74,0.08)' : 'transparent',
+                borderRight:  'none',
+              }}
+            >
+              <span style={{
+                display:      'block',
+                width:        13,
+                height:       13,
+                borderRadius: 3,
+                background:   bgColor,
+                border:       isActive
+                  ? '2px solid #B8924A'
+                  : '1px solid rgba(184,146,74,0.45)',
+                flexShrink:   0,
+              }}/>
+            </button>
+          );
+        })}
+
+        {divider}
+
         {/* Language picker tabs */}
-        {LANG_OPTIONS.map((lang, idx) => (
+        {LANG_OPTIONS.map(lang => (
           <button
             key={lang}
             disabled={generating}
@@ -127,19 +177,20 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
             title={`Generate card in ${LANG_LABELS[lang]}`}
             style={{
               ...btnBase,
-              padding:          '4px 7px',
-              color:            cardLang === lang ? '#B8924A' : 'rgba(42,31,26,0.35)',
-              fontWeight:       cardLang === lang ? 600 : 400,
-              background:       cardLang === lang ? 'rgba(184,146,74,0.08)' : 'transparent',
-              borderRight:      '1px solid rgba(184,146,74,0.3)',
-              borderRadius:     0,
-              cursor:           generating ? 'default' : 'pointer',
-              borderLeft:       idx === 0 ? 'none' : undefined,
+              padding:     '4px 7px',
+              color:       cardLang === lang ? '#B8924A' : 'rgba(42,31,26,0.35)',
+              fontWeight:  cardLang === lang ? 600 : 400,
+              background:  cardLang === lang ? 'rgba(184,146,74,0.08)' : 'transparent',
+              borderRight: 'none',
+              borderRadius: 0,
+              cursor:      generating ? 'default' : 'pointer',
             }}
           >
             {LANG_LABELS[lang]}
           </button>
         ))}
+
+        {divider}
 
         {/* Download button */}
         <button
@@ -195,6 +246,7 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
               eventName={event.name}
               tableNumber={invitation.tableNumber ?? null}
               language={cardLang}
+              theme={cardTheme}
               rsvpUrl={rsvpUrl}
             />
           </div>
