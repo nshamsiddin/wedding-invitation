@@ -6,20 +6,23 @@ import { en, tr, uz } from '../../lib/i18n';
 const T = { en, tr, uz };
 
 // ─── Palette — warm European stationery ──────────────────────────────────────
-const BG        = '#F6EFE2';   // warm beige paper
-const BG_PANEL  = '#F0E8D5';   // slightly deeper for event box
-const INK       = '#2A1F14';   // dark warm brown — primary text
-const INK_GREY  = 'rgba(42,31,20,0.50)'; // supporting text
-const GOLD      = '#B8924A';   // gold accents
-const GOLD_RULE = 'rgba(184,146,74,0.40)'; // rules / borders
-const PINK      = '#D4A0A7';   // pastel pink florals
-const PINK_LT   = '#EAC5C9';   // lighter petals
-const STEM      = '#8FAB90';   // muted sage stems & leaves
+const BG         = '#FAF5EC';  // warm ivory parchment
+const BG_DEEP    = '#F2E9D5';  // for event panel
+const INK        = '#28180E';  // deep warm brown — primary
+const INK_SUB    = 'rgba(40,24,14,0.52)';  // supporting grey-brown
+const GOLD       = '#A8832E';  // deeper gold — visible on ivory
+const GOLD_RULE  = 'rgba(168,131,46,0.38)';
+const PETAL_DEEP = '#C9909A';  // pastel rose, outer petals
+const PETAL_LT   = '#E8C0C6';  // soft inner petals
+const STEM_CLR   = '#7A9E7C';  // muted botanical green
+const LEAF_CLR   = '#9AB89B';  // lighter leaf green
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
-// Playfair Display: the Didot/Canela editorial serif the art direction calls for
-const PLAYFAIR  = '"Playfair Display", "Cormorant Garamond", Georgia, serif';
-// Cormorant italic: used ONLY for the "&" refined script accent
+// Names: GlossilyEnigmatic (romantic script, same as website — loaded via index.css)
+// "&": Cormorant Garamond italic (refined elegant accent)
+// Body text: Cormorant Garamond (luxurious readable serif)
+// Tiny labels: DM Sans
+const GLOSSILY  = "'GlossilyEnigmatic', 'Cormorant Garamond', cursive";
 const CORMORANT = '"Cormorant Garamond", Georgia, serif';
 const SANS      = '"DM Sans", system-ui, sans-serif';
 
@@ -34,152 +37,145 @@ export interface InvitationCardProps {
   rsvpUrl:     string;
 }
 
-// ─── Delicate top botanical garland ───────────────────────────────────────────
-// Art direction: "minimal and airy, pastel pink flowers with muted green stems,
-// gentle framing without overpowering the typography"
-// 7 evenly-spaced flowers on a gentle horizontal arc — nothing denser.
-function TopGarland() {
-  // Flower positions along a gentle curve across 460px width
-  const flowers = [
-    { x: 28,  y: 62, stemH: 24, scale: 0.75 },
-    { x: 96,  y: 50, stemH: 30, scale: 0.90 },
-    { x: 166, y: 42, stemH: 36, scale: 1.00 },
-    { x: 230, y: 38, stemH: 40, scale: 1.10 },  // centre — tallest
-    { x: 294, y: 42, stemH: 36, scale: 1.00 },
-    { x: 364, y: 50, stemH: 30, scale: 0.90 },
-    { x: 432, y: 62, stemH: 24, scale: 0.75 },
-  ];
-
-  // Leaf positions — small pairs on the main branch
-  const leaves = [
-    { x: 62,  y: 58, angle: -35 },
-    { x: 130, y: 48, angle: -28 },
-    { x: 196, y: 42, angle: -22 },
-    { x: 268, y: 42, angle:  22 },
-    { x: 330, y: 48, angle:  28 },
-    { x: 398, y: 58, angle:  35 },
-  ];
-
+// ─── 5-Petal flower helper ────────────────────────────────────────────────────
+function Flower({ cx, cy, r = 1, opacity = 1 }: { cx: number; cy: number; r?: number; opacity?: number }) {
+  const petalR  = 5.5 * r;
+  const petalD  = 7.5 * r;
+  const centreR = 3.0 * r;
+  const angles  = [0, 72, 144, 216, 288];
   return (
-    <svg width="460" height="80" viewBox="0 0 460 80" fill="none" aria-hidden="true">
-      {/* ── Main horizontal branch (gentle arc) ── */}
-      <path
-        d="M20 66 C80 56 150 46 230 40 C310 46 380 56 440 66"
-        stroke={STEM} strokeWidth="1.0" strokeLinecap="round" opacity="0.65"
-      />
-
-      {/* ── Vertical flower stems ── */}
-      {flowers.map((f, i) => (
-        <line key={i}
-          x1={f.x} y1={f.y + 6}
-          x2={f.x} y2={f.y + f.stemH}
-          stroke={STEM} strokeWidth="0.85" strokeLinecap="round" opacity="0.60"
-        />
-      ))}
-
-      {/* ── Small leaves on the main branch ── */}
-      {leaves.map((l, i) => (
-        <ellipse key={i}
-          cx={l.x} cy={l.y}
-          rx="7" ry="3"
-          fill={STEM} opacity="0.45"
-          transform={`rotate(${l.angle} ${l.x} ${l.y})`}
-        />
-      ))}
-
-      {/* ── Flowers — 5-petal daisy style ── */}
-      {flowers.map((f, i) => {
-        const r  = 5.5 * f.scale;   // petal radius
-        const cr = 7   * f.scale;   // petal dist from centre
-        const cc = 3   * f.scale;   // centre circle
-        const angles = [0, 72, 144, 216, 288];
+    <g opacity={opacity}>
+      {angles.map((a, i) => {
+        const rad = (a * Math.PI) / 180;
+        const px  = cx + petalD * Math.sin(rad);
+        const py  = cy - petalD * Math.cos(rad);
         return (
-          <g key={i}>
-            {/* 5 petals */}
-            {angles.map((a, j) => {
-              const rad = (a * Math.PI) / 180;
-              return (
-                <ellipse key={j}
-                  cx={f.x + cr * Math.sin(rad)}
-                  cy={f.y - cr * Math.cos(rad)}
-                  rx={r * 0.6} ry={r}
-                  fill={j === 0 ? PINK : PINK_LT}
-                  opacity="0.82"
-                  transform={`rotate(${a} ${f.x + cr * Math.sin(rad)} ${f.y - cr * Math.cos(rad)})`}
-                />
-              );
-            })}
-            {/* Gold centre */}
-            <circle cx={f.x} cy={f.y} r={cc} fill={GOLD} opacity="0.80"/>
-            <circle cx={f.x} cy={f.y} r={cc * 0.45} fill={BG} opacity="0.9"/>
-          </g>
+          <ellipse
+            key={i}
+            cx={px} cy={py}
+            rx={petalR * 0.55} ry={petalR}
+            fill={i === 0 ? PETAL_DEEP : PETAL_LT}
+            transform={`rotate(${a} ${px} ${py})`}
+          />
         );
       })}
+      <circle cx={cx} cy={cy} r={centreR}         fill={GOLD} opacity={0.85}/>
+      <circle cx={cx} cy={cy} r={centreR * 0.42}  fill={BG}   opacity={0.90}/>
+    </g>
+  );
+}
+
+// ─── Top botanical garland ────────────────────────────────────────────────────
+// 7 flowers on a gentle horizontal arc — airy, not crowded
+function TopGarland() {
+  const flowers = [
+    { x: 34,  arcY: 64, stemLen: 22, scale: 0.72 },
+    { x: 100, arcY: 52, stemLen: 30, scale: 0.88 },
+    { x: 172, arcY: 43, stemLen: 38, scale: 1.00 },
+    { x: 230, arcY: 38, stemLen: 44, scale: 1.10 },  // tallest — centre
+    { x: 288, arcY: 43, stemLen: 38, scale: 1.00 },
+    { x: 360, arcY: 52, stemLen: 30, scale: 0.88 },
+    { x: 426, arcY: 64, stemLen: 22, scale: 0.72 },
+  ];
+  const leafPairs = [
+    { x: 67,  y: 60, a: -30 },
+    { x: 136, y: 49, a: -22 },
+    { x: 200, y: 42, a: -15 },
+    { x: 260, y: 42, a:  15 },
+    { x: 324, y: 49, a:  22 },
+    { x: 393, y: 60, a:  30 },
+  ];
+  return (
+    <svg width="460" height="92" viewBox="0 0 460 92" fill="none" aria-hidden="true">
+      {/* Main gentle arc */}
+      <path d="M16 70 C80 58 154 46 230 40 C306 46 380 58 444 70"
+        stroke={STEM_CLR} strokeWidth="0.9" strokeLinecap="round" opacity="0.55"/>
+
+      {/* Vertical stems */}
+      {flowers.map((f, i) => (
+        <line key={i}
+          x1={f.x} y1={f.arcY + 5}
+          x2={f.x} y2={f.arcY + f.stemLen}
+          stroke={STEM_CLR} strokeWidth="0.8" strokeLinecap="round" opacity="0.55"/>
+      ))}
+
+      {/* Paired leaves at branch nodes */}
+      {leafPairs.map((l, i) => (
+        <g key={i}>
+          <ellipse cx={l.x - 5} cy={l.y} rx={8} ry={3}
+            fill={LEAF_CLR} opacity="0.50"
+            transform={`rotate(${l.a - 10} ${l.x - 5} ${l.y})`}/>
+          <ellipse cx={l.x + 5} cy={l.y} rx={8} ry={3}
+            fill={LEAF_CLR} opacity="0.45"
+            transform={`rotate(${-l.a + 10} ${l.x + 5} ${l.y})`}/>
+        </g>
+      ))}
+
+      {/* Flowers */}
+      {flowers.map((f, i) => (
+        <Flower key={i} cx={f.x} cy={f.arcY} r={f.scale} opacity={0.88 - i * 0.02} />
+      ))}
     </svg>
   );
 }
 
-// ─── Small bottom botanical mirror ───────────────────────────────────────────
-// Simpler — 3 flowers only, same language
+// ─── Bottom garland — 5 flowers, smaller ─────────────────────────────────────
 function BottomGarland() {
   const flowers = [
-    { x: 90,  y: 22, stemH: 22, scale: 0.85 },
-    { x: 160, y: 16, stemH: 28, scale: 1.00 },
-    { x: 230, y: 13, stemH: 30, scale: 1.10 },
-    { x: 300, y: 16, stemH: 28, scale: 1.00 },
-    { x: 370, y: 22, stemH: 22, scale: 0.85 },
+    { x: 90,  arcY: 28, stemLen: 18, scale: 0.80 },
+    { x: 158, arcY: 20, stemLen: 24, scale: 0.95 },
+    { x: 230, arcY: 15, stemLen: 28, scale: 1.05 },
+    { x: 302, arcY: 20, stemLen: 24, scale: 0.95 },
+    { x: 370, arcY: 28, stemLen: 18, scale: 0.80 },
   ];
-
   return (
-    <svg width="460" height="60" viewBox="0 0 460 60" fill="none" aria-hidden="true">
-      {/* Branch */}
-      <path
-        d="M70 40 C130 34 180 26 230 22 C280 26 330 34 390 40"
-        stroke={STEM} strokeWidth="0.9" strokeLinecap="round" opacity="0.55"
-      />
-      {/* Stems */}
+    <svg width="460" height="58" viewBox="0 0 460 58" fill="none" aria-hidden="true">
+      <path d="M68 44 C130 36 180 24 230 18 C280 24 330 36 392 44"
+        stroke={STEM_CLR} strokeWidth="0.85" strokeLinecap="round" opacity="0.50"/>
       {flowers.map((f, i) => (
         <line key={i}
-          x1={f.x} y1={f.y + 4}
-          x2={f.x} y2={f.y + f.stemH}
-          stroke={STEM} strokeWidth="0.8" strokeLinecap="round" opacity="0.55"
-        />
+          x1={f.x} y1={f.arcY + 4}
+          x2={f.x} y2={f.arcY + f.stemLen}
+          stroke={STEM_CLR} strokeWidth="0.75" strokeLinecap="round" opacity="0.50"/>
       ))}
-      {/* Flowers */}
-      {flowers.map((f, i) => {
-        const r = 4.5 * f.scale;
-        const cr = 6  * f.scale;
-        const cc = 2.5 * f.scale;
+      {/* Small side leaves */}
+      {[124, 194, 266, 336].map((lx, i) => {
+        const ly = i < 2 ? 32 : 32;
+        const a  = i < 2 ? -25 : 25;
         return (
-          <g key={i}>
-            {[0,72,144,216,288].map((a, j) => {
-              const rad = (a * Math.PI) / 180;
-              return (
-                <ellipse key={j}
-                  cx={f.x + cr * Math.sin(rad)}
-                  cy={f.y - cr * Math.cos(rad)}
-                  rx={r * 0.6} ry={r}
-                  fill={j === 0 ? PINK : PINK_LT}
-                  opacity="0.78"
-                  transform={`rotate(${a} ${f.x + cr * Math.sin(rad)} ${f.y - cr * Math.cos(rad)})`}
-                />
-              );
-            })}
-            <circle cx={f.x} cy={f.y} r={cc}        fill={GOLD} opacity="0.78"/>
-            <circle cx={f.x} cy={f.y} r={cc * 0.4}  fill={BG}   opacity="0.9"/>
-          </g>
+          <ellipse key={i} cx={lx} cy={ly} rx={7} ry={2.5}
+            fill={LEAF_CLR} opacity="0.42"
+            transform={`rotate(${a} ${lx} ${ly})`}/>
         );
       })}
+      {flowers.map((f, i) => (
+        <Flower key={i} cx={f.x} cy={f.arcY} r={f.scale * 0.88} opacity={0.82}/>
+      ))}
     </svg>
   );
 }
 
-// ─── Gold geometric ornament ──────────────────────────────────────────────────
-function GoldDiamond({ size = 8 }: { size?: number }) {
+// ─── Gold rule with ornament ──────────────────────────────────────────────────
+function OrnamentRule({ width = 300, slim = false }: { width?: number; slim?: boolean }) {
+  if (slim) {
+    return (
+      <svg width={width} height={4} viewBox={`0 0 ${width} 4`} fill="none" aria-hidden="true">
+        <line x1={0} y1={2} x2={width} y2={2} stroke={GOLD} strokeWidth="0.55" opacity="0.35"/>
+      </svg>
+    );
+  }
+  const half = (width - 20) / 2;
   return (
-    <svg width={size * 2.4} height={size * 2.4} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 2 L18 12 L12 22 L6 12 Z" fill={GOLD} opacity="0.45"/>
-      <path d="M12 7 L15 12 L12 17 L9 12 Z" fill={GOLD} opacity="0.60"/>
+    <svg width={width} height={22} viewBox={`0 0 ${width} 22`} fill="none" aria-hidden="true">
+      <line x1={0} y1={11} x2={half - 8} y2={11} stroke={GOLD} strokeWidth="0.65" opacity="0.40"/>
+      <circle cx={half - 2} cy={11} r={2} fill={GOLD} opacity="0.38"/>
+      {/* Diamond */}
+      <path d={`M${width/2} 4 L${width/2+7} 11 L${width/2} 18 L${width/2-7} 11 Z`}
+        fill={PETAL_DEEP} opacity="0.45"/>
+      <path d={`M${width/2} 8 L${width/2+3} 11 L${width/2} 14 L${width/2-3} 11 Z`}
+        fill={GOLD} opacity="0.62"/>
+      <circle cx={half + 22} cy={11} r={2} fill={GOLD} opacity="0.38"/>
+      <line x1={half + 28} y1={11} x2={width} y2={11} stroke={GOLD} strokeWidth="0.65" opacity="0.40"/>
     </svg>
   );
 }
@@ -214,293 +210,144 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
-          background:    BG,
-          fontFamily:    PLAYFAIR,
+          // Warm parchment — very subtle gradient for printed-paper depth
+          background: `linear-gradient(170deg, #EEE4CC 0%, ${BG} 18%, ${BG} 82%, #EEE4CC 100%)`,
         }}
       >
-        {/* ── Thin gold border frame ── */}
-        <div style={{
-          position:      'absolute',
-          inset:         16,
-          border:        `0.75px solid ${GOLD_RULE}`,
-          pointerEvents: 'none',
-        }}/>
+        {/* ── Thin gold border ── */}
+        <div style={{ position:'absolute', inset:16, border:`0.75px solid ${GOLD_RULE}`, pointerEvents:'none' }}/>
 
-        {/* ══ SECTION 1 — TOP FLORAL ══════════════════════════════════ */}
-        <div style={{ marginTop: 38, flexShrink: 0 }}>
+        {/* ══ TOP GARLAND ══════════════════════════════════════════════ */}
+        <div style={{ marginTop: 34, flexShrink: 0 }}>
           <TopGarland />
         </div>
 
-        {/* ── "Wedding Invitation" header label ── */}
-        <div style={{
-          marginTop:  10,
-          display:    'flex',
-          alignItems: 'center',
-          gap:        10,
-          flexShrink: 0,
-        }}>
-          <div style={{ width: 36, height: 0.6, background: GOLD, opacity: 0.38 }}/>
-          <span style={{
-            fontFamily:    SANS,
-            fontSize:      8.5,
-            fontWeight:    500,
-            letterSpacing: '0.42em',
-            color:         GOLD,
-            textTransform: 'uppercase',
-          }}>
+        {/* ── "Wedding Invitation" overline ── */}
+        <div style={{ marginTop: 10, display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+          <div style={{ width:32, height:0.55, background:GOLD, opacity:0.40 }}/>
+          <span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:500, letterSpacing:'0.42em', color:GOLD, textTransform:'uppercase' }}>
             Wedding Invitation
           </span>
-          <div style={{ width: 36, height: 0.6, background: GOLD, opacity: 0.38 }}/>
+          <div style={{ width:32, height:0.55, background:GOLD, opacity:0.40 }}/>
         </div>
 
-        {/* ══ SECTION 2 — NAMES (HERO) ════════════════════════════════ */}
-        {/* Generous spacing above — the names are the primary visual focus */}
+        {/* ══ NAMES — HERO ════════════════════════════════════════════ */}
         <div style={{
-          marginTop:     28,
+          marginTop:     24,
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
           flexShrink:    0,
-          gap:           0,
+          lineHeight:    1,
         }}>
-          {/* Name 1 — Playfair Display, weight 600, non-italic: editorial/Didot feel */}
-          <span style={{
-            fontFamily:    PLAYFAIR,
-            fontWeight:    600,
-            fontStyle:     'normal',
-            fontSize:      88,
-            color:         INK,
-            lineHeight:    0.92,
-            letterSpacing: '-0.01em',
-          }}>
+          {/* GlossilyEnigmatic — the romantic script from the website */}
+          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:INK, lineHeight:0.90 }}>
             Berfin
           </span>
-
-          {/* "&" — Cormorant Garamond italic: the ONLY script accent, per art direction */}
-          <span style={{
-            fontFamily:    CORMORANT,
-            fontWeight:    400,
-            fontStyle:     'italic',
-            fontSize:      52,
-            color:         GOLD,
-            lineHeight:    1.05,
-            letterSpacing: '0.06em',
-          }}>
+          {/* Cormorant italic — refined script accent ONLY for "&" */}
+          <span style={{ fontFamily:CORMORANT, fontStyle:'italic', fontWeight:400, fontSize:52, color:GOLD, lineHeight:1.05, letterSpacing:'0.08em' }}>
             &amp;
           </span>
-
-          {/* Name 2 */}
-          <span style={{
-            fontFamily:    PLAYFAIR,
-            fontWeight:    600,
-            fontStyle:     'normal',
-            fontSize:      88,
-            color:         INK,
-            lineHeight:    0.92,
-            letterSpacing: '-0.01em',
-          }}>
+          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:INK, lineHeight:0.90 }}>
             Shamsiddin
           </span>
         </div>
 
-        {/* ── Gold rule with geometric diamond ornament ── */}
-        <div style={{
-          marginTop:  26,
-          display:    'flex',
-          alignItems: 'center',
-          gap:        10,
-          flexShrink: 0,
-        }}>
-          <div style={{ width: 100, height: 0.6, background: GOLD, opacity: 0.38 }}/>
-          <GoldDiamond size={7} />
-          <div style={{ width: 100, height: 0.6, background: GOLD, opacity: 0.38 }}/>
+        {/* ── Primary ornament rule ── */}
+        <div style={{ marginTop:24, flexShrink:0 }}>
+          <OrnamentRule width={300} />
         </div>
 
-        {/* ══ SECTION 3 — GUEST INVITATION ════════════════════════════ */}
+        {/* ══ GUEST SECTION ═══════════════════════════════════════════ */}
         <div style={{
-          marginTop:     22,
+          marginTop:     18,
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
-          gap:           9,
+          gap:           8,
           flexShrink:    0,
-          paddingInline: 64,
+          paddingInline: 60,
         }}>
-          {/* Understated grey italic — art direction: "understated grey typography" */}
-          <span style={{
-            fontFamily: PLAYFAIR,
-            fontStyle:  'italic',
-            fontWeight: 400,
-            fontSize:   18,
-            color:      INK_GREY,
-            textAlign:  'center',
-            lineHeight: 1.5,
-          }}>
+          <span style={{ fontFamily:CORMORANT, fontStyle:'italic', fontSize:19, color:INK_SUB, textAlign:'center', lineHeight:1.5 }}>
             {t.cardWeInviteYou}
           </span>
-
-          {/* Guest name — "centered and slightly larger than body text" */}
-          <span style={{
-            fontFamily:    PLAYFAIR,
-            fontWeight:    500,
-            fontStyle:     'normal',
-            fontSize:      26,
-            color:         INK,
-            textAlign:     'center',
-            letterSpacing: '0.02em',
-          }}>
+          <span style={{ fontFamily:CORMORANT, fontWeight:600, fontSize:26, color:INK, textAlign:'center', letterSpacing:'0.02em' }}>
             {guestName}
           </span>
         </div>
 
-        {/* ── Thin separator line ── */}
-        <div style={{
-          marginTop: 22,
-          width:     180,
-          height:    0.6,
-          background: GOLD,
-          opacity:   0.30,
-          flexShrink: 0,
-        }}/>
+        {/* ── Slim rule ── */}
+        <div style={{ marginTop:20, flexShrink:0 }}>
+          <OrnamentRule width={180} slim />
+        </div>
 
-        {/* ══ SECTION 4 — EVENT DETAILS ════════════════════════════════ */}
-        {/* "Inside a soft rectangular container with subtle beige tint" */}
+        {/* ══ EVENT DETAILS ════════════════════════════════════════════ */}
         <div style={{
-          marginTop:     20,
+          marginTop:     18,
           width:         460,
           flexShrink:    0,
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
           gap:           8,
-          padding:       '18px 28px',
-          background:    BG_PANEL,
+          padding:       '16px 28px',
+          background:    BG_DEEP,
           border:        `0.75px solid ${GOLD_RULE}`,
         }}>
-          {/* Event label */}
           {eventName && (
-            <span style={{
-              fontFamily:    SANS,
-              fontSize:      8,
-              fontWeight:    500,
-              letterSpacing: '0.38em',
-              color:         PINK,
-              textTransform: 'uppercase',
-              opacity:       0.9,
-            }}>
-              {eventName}
-            </span>
+            <>
+              <span style={{ fontFamily:SANS, fontSize:8, fontWeight:500, letterSpacing:'0.38em', color:PETAL_DEEP, textTransform:'uppercase' }}>
+                {eventName}
+              </span>
+              <div style={{ width:24, height:0.5, background:GOLD, opacity:0.32 }}/>
+            </>
           )}
-
-          {/* Short gold rule inside panel */}
-          <div style={{ width: 24, height: 0.5, background: GOLD, opacity: 0.35 }}/>
-
-          {/* Date — prominent */}
-          <span style={{
-            fontFamily:    PLAYFAIR,
-            fontWeight:    600,
-            fontSize:      22,
-            color:         INK,
-            letterSpacing: '0.01em',
-          }}>
+          <span style={{ fontFamily:CORMORANT, fontWeight:600, fontSize:22, color:INK, letterSpacing:'0.01em' }}>
             {formattedDate}
           </span>
-
-          {/* Time · Venue */}
           {(eventTime || venueName) && (
-            <span style={{
-              fontFamily: PLAYFAIR,
-              fontStyle:  'italic',
-              fontWeight: 400,
-              fontSize:   16.5,
-              color:      INK_GREY,
-              textAlign:  'center',
-            }}>
+            <span style={{ fontFamily:CORMORANT, fontStyle:'italic', fontSize:17, color:INK_SUB, textAlign:'center' }}>
               {[eventTime, venueName].filter(Boolean).join('  ·  ')}
             </span>
           )}
-
-          {/* Table badge */}
           {tableNumber != null && (
             <div style={{
-              marginTop:     4,
-              paddingInline: 18,
-              paddingBlock:  6,
-              border:        `0.75px solid ${GOLD_RULE}`,
-              borderRadius:  20,
-              display:       'flex',
-              alignItems:    'center',
-              gap:           8,
-              background:    'rgba(184,146,74,0.06)',
+              marginTop:4, paddingInline:18, paddingBlock:5,
+              border:`0.75px solid ${GOLD_RULE}`, borderRadius:20,
+              display:'flex', alignItems:'center', gap:8,
+              background:'rgba(168,131,46,0.06)',
             }}>
               <span style={{ fontFamily:SANS, fontSize:7.5, letterSpacing:'0.34em', color:GOLD, textTransform:'uppercase', fontWeight:500 }}>
                 {t.cardTable}
               </span>
-              <span style={{ fontFamily:PLAYFAIR, fontSize:20, color:GOLD, fontWeight:600, lineHeight:1 }}>
+              <span style={{ fontFamily:CORMORANT, fontSize:20, color:GOLD, fontWeight:600, lineHeight:1 }}>
                 {tableNumber}
               </span>
             </div>
           )}
         </div>
 
-        {/* ══ SECTION 5 — QR CODE ══════════════════════════════════════ */}
-        {/* "Reduce visual weight with thinner frame" — art direction */}
-        <div style={{
-          marginTop:     26,
-          display:       'flex',
-          flexDirection: 'column',
-          alignItems:    'center',
-          gap:           11,
-          flexShrink:    0,
-        }}>
-          {/* Thin single-line frame — NOT the heavy previous version */}
-          <div style={{
-            padding:    8,
-            border:     `0.75px solid ${GOLD_RULE}`,
-            background: BG,
-          }}>
-            <QRCodeSVG
-              value={rsvpUrl}
-              size={84}
-              bgColor={BG}
-              fgColor={INK}
-              level="M"
-            />
+        {/* ══ QR CODE ══════════════════════════════════════════════════ */}
+        <div style={{ marginTop:24, display:'flex', flexDirection:'column', alignItems:'center', gap:11, flexShrink:0 }}>
+          <div style={{ padding:8, border:`0.75px solid ${GOLD_RULE}`, background:BG }}>
+            <QRCodeSVG value={rsvpUrl} size={84} bgColor={BG} fgColor={INK} level="M"/>
           </div>
-
-          {/* "Scan to RSVP" caption */}
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-            <div style={{ width: 22, height: 0.6, background: GOLD, opacity: 0.35 }}/>
-            <span style={{
-              fontFamily:    SANS,
-              fontSize:      8,
-              fontWeight:    400,
-              letterSpacing: '0.34em',
-              color:         INK_GREY,
-              textTransform: 'uppercase',
-            }}>
+            <div style={{ width:20, height:0.55, background:GOLD, opacity:0.38 }}/>
+            <span style={{ fontFamily:SANS, fontSize:8, fontWeight:400, letterSpacing:'0.34em', color:INK_SUB, textTransform:'uppercase' }}>
               {t.cardScanRsvp}
             </span>
-            <div style={{ width: 22, height: 0.6, background: GOLD, opacity: 0.35 }}/>
+            <div style={{ width:20, height:0.55, background:GOLD, opacity:0.38 }}/>
           </div>
         </div>
 
         {/* ── Year ── */}
-        <div style={{
-          marginTop:     10,
-          fontFamily:    SANS,
-          fontWeight:    400,
-          fontSize:      8.5,
-          letterSpacing: '0.34em',
-          color:         'rgba(42,31,20,0.25)',
-          textTransform: 'uppercase',
-          flexShrink:    0,
-        }}>
+        <div style={{ marginTop:10, fontFamily:SANS, fontSize:8.5, letterSpacing:'0.34em', color:'rgba(40,24,14,0.24)', textTransform:'uppercase', flexShrink:0 }}>
           · 2026 ·
         </div>
 
-        {/* ══ SECTION 6 — BOTTOM FLORAL ═══════════════════════════════ */}
-        <div style={{ marginTop: 14, flexShrink: 0, paddingBottom: 36 }}>
+        {/* ══ BOTTOM GARLAND ═══════════════════════════════════════════ */}
+        <div style={{ marginTop:14, flexShrink:0, paddingBottom:34 }}>
           <BottomGarland />
         </div>
       </div>
