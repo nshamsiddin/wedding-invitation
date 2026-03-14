@@ -282,8 +282,10 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
         </div>
 
         {/* ══ NAMES — HERO ════════════════════════════════════════════ */}
+        {/* "&" is absolutely pinned to the vertical midpoint of the gap */}
         <div style={{
           marginTop:     20,
+          position:      'relative',
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
@@ -292,24 +294,28 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
           <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.88 }}>
             Berfin
           </span>
+          {/* Gap that the "&" sits in */}
+          <div style={{ height: 32 }} />
+          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.88 }}>
+            Shamsiddin
+          </span>
+          {/* Absolute centre — equidistant from both names */}
           <span style={{
-            display:      'block',
+            position:     'absolute',
+            top:          '50%',
+            left:         '50%',
+            transform:    'translate(-50%, -50%)',
             fontFamily:   CORMORANT,
             fontStyle:    'italic',
             fontWeight:   400,
-            fontSize:     22,
+            fontSize:     28,
             color:        c.gold,
             lineHeight:   1,
-            letterSpacing:'0.12em',
-            marginTop:    6,
-            marginBottom: 6,
-            textAlign:    'center',
-            width:        '100%',
+            letterSpacing:'0.08em',
+            zIndex:       1,
+            whiteSpace:   'nowrap',
           }}>
             &amp;
-          </span>
-          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.88 }}>
-            Shamsiddin
           </span>
         </div>
 
