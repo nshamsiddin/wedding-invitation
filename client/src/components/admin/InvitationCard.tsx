@@ -289,24 +289,26 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
           alignItems:    'center',
           flexShrink:    0,
         }}>
-          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.90 }}>
+          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.88 }}>
             Berfin
           </span>
-          {/* Small "&" nestled between names with negative margins */}
           <span style={{
+            display:      'block',
             fontFamily:   CORMORANT,
             fontStyle:    'italic',
             fontWeight:   400,
-            fontSize:     32,
+            fontSize:     22,
             color:        c.gold,
             lineHeight:   1,
-            letterSpacing:'0.06em',
-            marginTop:    -6,
-            marginBottom: -8,
+            letterSpacing:'0.12em',
+            marginTop:    6,
+            marginBottom: 6,
+            textAlign:    'center',
+            width:        '100%',
           }}>
             &amp;
           </span>
-          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.90 }}>
+          <span style={{ fontFamily:GLOSSILY, fontSize:88, color:c.ink, lineHeight:0.88 }}>
             Shamsiddin
           </span>
         </div>
