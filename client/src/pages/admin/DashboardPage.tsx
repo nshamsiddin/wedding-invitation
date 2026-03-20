@@ -293,16 +293,28 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   });
 
+  const [guestPage, setGuestPage] = useState(1);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setGuestPage(1); }, [selectedEventId, statusFilters, search]);
+
   const guestQueryParams = {
     eventId: selectedEventId ?? undefined,
     status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
     search: search || undefined,
+    page: guestPage,
+    limit: 100,
   };
 
-  const { data: guests = [], isLoading: guestsLoading } = useQuery({
+  const { data: guestsData, isLoading: guestsLoading } = useQuery({
     queryKey: ['admin', 'guests', guestQueryParams],
     queryFn: () => adminApi.getGuests(guestQueryParams),
+    placeholderData: (prev) => prev,
   });
+  const guests    = guestsData?.guests ?? [];
+  const guestTotal = guestsData?.total ?? 0;
+  const guestLimit = guestsData?.limit ?? 100;
+  const totalPages = Math.ceil(guestTotal / guestLimit);
 
   const { data: config } = useQuery({
     queryKey: ['config'],
@@ -666,9 +678,12 @@ export default function DashboardPage() {
                 {at.guestList}
                 {!guestsLoading && (
                   <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>
-                    {guests.length} {guests.length === 1 ? at.guestSingular : at.guestPlural}
+                    {guestTotal} {guestTotal === 1 ? at.guestSingular : at.guestPlural}
                     {isFiltered && (
                       <span className="ml-1 text-[rgba(184,146,74,0.9)]">· filtered</span>
+                    )}
+                    {totalPages > 1 && (
+                      <span className="ml-1">· page {guestPage}/{totalPages}</span>
                     )}
                   </span>
                 )}
@@ -753,6 +768,30 @@ export default function DashboardPage() {
             onDeleteInvitation={setDeletingInvitation}
             showTableColumn={selectedEvent?.slug === 'tashkent'}
           />
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <button
+                onClick={() => setGuestPage((p) => Math.max(1, p - 1))}
+                disabled={guestPage <= 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              >
+                ← Prev
+              </button>
+              <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
+                {guestPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setGuestPage((p) => Math.min(totalPages, p + 1))}
+                disabled={guestPage >= totalPages}
+                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </section>
       </main>
 

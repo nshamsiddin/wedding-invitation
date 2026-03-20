@@ -1,11 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminEvent, AdminInvitation } from '../../lib/api';
+import { configApi } from '../../lib/api';
 import InvitationCard, { CARD_THEMES } from './InvitationCard';
 import type { CardTheme } from './InvitationCard';
 import type { Language } from '../../lib/i18n';
+import { LanguageContext } from '../../context/LanguageContext';
 
 interface DownloadCardButtonProps {
   guest:      AdminGuest;
@@ -37,15 +40,33 @@ const THEME_LABELS: Record<CardTheme, string> = {
 };
 
 export default function DownloadCardButton({ guest, invitation, events, style, className }: DownloadCardButtonProps) {
+  const { language: contextLang } = useContext(LanguageContext);
   const [generating, setGenerating]   = useState(false);
-  const [cardLang, setCardLang]       = useState<Language>((invitation.language ?? 'en') as Language);
+  // Initialise from the page-level language (header EN/TR/UZ switcher) so both
+  // controls stay in sync. The per-button picker still lets the admin override.
+  const [cardLang, setCardLang]       = useState<Language>(contextLang);
   const [cardTheme, setCardTheme]     = useState<CardTheme>('parchment');
+
+  // Keep card language in sync when the admin changes the header language switcher,
+  // but only while the user hasn't actively picked a different per-button language.
+  useEffect(() => {
+    if (!generating) setCardLang(contextLang);
+  }, [contextLang, generating]);
   const cardRef    = useRef<HTMLDivElement>(null);
   const triggered  = useRef(false);
 
   const event = events.find(e => e.id === invitation.eventId);
 
-  const rsvpUrl = `${window.location.origin}/invite/${invitation.token}`;
+  // Use the server-configured BASE_URL so QR codes in downloaded cards always
+  // point to the canonical production domain, even if the admin opens the
+  // dashboard from a staging URL or a different origin.
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: configApi.getConfig,
+    staleTime: Infinity,
+  });
+  const baseUrl = config?.baseUrl || window.location.origin;
+  const rsvpUrl = `${baseUrl}/invite/${invitation.token}`;
 
   const slug = (guest.name.toLowerCase().replace(/\s+/g, '-') ?? 'guest');
   const filename = `invitation-${slug}-${invitation.eventSlug ?? 'event'}-${cardLang}-${cardTheme}.png`;
@@ -238,7 +259,10 @@ export default function DownloadCardButton({ guest, invitation, events, style, c
           }}
         >
           <div ref={cardRef}>
+            {/* key forces a full remount whenever language or theme changes so
+                html2canvas always captures a freshly-rendered card */}
             <InvitationCard
+              key={`${cardLang}-${cardTheme}`}
               guestName={guest.name}
               eventDate={event.date}
               eventTime={event.time}

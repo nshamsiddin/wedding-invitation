@@ -1,21 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { getLastLogoutAt, recordLogout } from '../lib/adminSession.js';
+
+export { recordLogout };
 
 export interface AuthenticatedRequest extends Request {
   admin?: boolean;
-}
-
-// Tracks when the admin last logged out (in milliseconds since epoch).
-// Tokens issued before this timestamp are rejected, providing server-side
-// session invalidation without a database lookup or token blacklist.
-// This is an in-memory store — suitable for a single-process deployment.
-// If the process restarts, this resets to 0, which means pre-restart tokens
-// remain valid until they expire naturally (24h). Acceptable trade-off for
-// a single-admin wedding app; use Redis for multi-process deployments.
-let lastLogoutAt = 0;
-
-export function recordLogout(): void {
-  lastLogoutAt = Date.now();
 }
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
@@ -36,9 +26,10 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
     const payload = jwt.verify(token, secret) as jwt.JwtPayload;
     if (typeof payload === 'object' && payload !== null && payload['admin'] === true) {
       // Reject tokens issued before the most recent logout.
-      // jwt.verify guarantees iat is a number when present.
+      // getLastLogoutAt() reads from an in-memory cache seeded from SQLite at
+      // startup, so this is zero-cost on the hot path while surviving restarts.
       const issuedAt = (payload['iat'] ?? 0) * 1000;
-      if (issuedAt < lastLogoutAt) {
+      if (issuedAt < getLastLogoutAt()) {
         res.status(401).json({ error: 'Session has been invalidated. Please log in again.' });
         return;
       }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
+import logger from '../lib/logger.js';
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.get('/:slug', async (req: Request, res: Response): Promise<void> => {
       restricted: true,
     });
   } catch (error) {
-    console.error('Event fetch error:', error);
+    logger.error({ err: error, slug }, 'event fetch error');
     res.status(500).json({ error: 'Failed to fetch event details' });
   }
 });

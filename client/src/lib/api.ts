@@ -116,8 +116,10 @@ export const adminApi = {
     eventId?: number;
     status?: string;
     search?: string;
-  }): Promise<AdminGuest[]> => {
-    const { data } = await api.get<AdminGuest[]>('/admin/guests', { params });
+    page?: number;
+    limit?: number;
+  }): Promise<{ guests: AdminGuest[]; total: number; page: number; limit: number }> => {
+    const { data } = await api.get<{ guests: AdminGuest[]; total: number; page: number; limit: number }>('/admin/guests', { params });
     return data;
   },
   addGuest: async (values: AddGuestValues): Promise<{ guest: AdminGuest; invitations: AdminInvitation[] }> => {

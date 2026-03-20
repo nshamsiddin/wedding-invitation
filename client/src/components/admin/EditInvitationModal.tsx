@@ -51,11 +51,12 @@ export default function EditInvitationModal({
   useEffect(() => {
     if (invitation) {
       reset({
-        status: invitation.status,
-        guestCount: invitation.guestCount,
-        dietary: invitation.dietary ?? '',
-        message: invitation.message ?? '',
+        status:      invitation.status,
+        guestCount:  invitation.guestCount,
+        dietary:     invitation.dietary ?? '',
+        message:     invitation.message ?? '',
         tableNumber: invitation.tableNumber ?? undefined,
+        language:    (invitation.language as 'en' | 'tr' | 'uz') ?? 'en',
       });
     }
   }, [invitation, reset]);
@@ -114,14 +115,26 @@ export default function EditInvitationModal({
               min={1}
               max={500}
               {...register('tableNumber', {
-                valueAsNumber: true,
-                setValueAs: (v) => (v === '' || isNaN(Number(v)) ? null : Number(v)),
+                setValueAs: (v) => (v === '' || v == null || isNaN(Number(v)) ? null : Number(v)),
               })}
               className={ADMIN_INPUT_CLASS}
               placeholder="e.g. 12 (optional)"
             />
           </div>
         )}
+
+        <div>
+          <label htmlFor="inv-language" className={ADMIN_LABEL_CLASS}>{at.languageLabel}</label>
+          <select
+            id="inv-language"
+            {...register('language')}
+            className={ADMIN_SELECT_CLASS}
+          >
+            <option value="en">EN — English</option>
+            <option value="tr">TR — Türkçe</option>
+            <option value="uz">UZ — O'zbekcha</option>
+          </select>
+        </div>
 
         <div>
           <label htmlFor="inv-dietary" className={ADMIN_LABEL_CLASS}>{at.dietaryLabel}</label>

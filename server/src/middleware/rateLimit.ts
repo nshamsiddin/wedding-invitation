@@ -27,6 +27,11 @@ const loginStore = new Map<string, RateLimitEntry>();
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const LOGIN_MAX_REQUESTS = 5;
 
+// Token lookup: generous limit since guests may refresh; still prevents mass scanning.
+const tokenLookupStore = new Map<string, RateLimitEntry>();
+const TOKEN_LOOKUP_WINDOW_MS = 60 * 1000; // 1 minute
+const TOKEN_LOOKUP_MAX_REQUESTS = 30;
+
 // Uses req.ip only — never the user-controllable X-Forwarded-For header.
 // Configure app.set('trust proxy', 1) in index.ts if behind a trusted proxy.
 function getClientIp(req: Request): string {
@@ -56,15 +61,19 @@ function checkRateLimit(
   return { allowed: true };
 }
 
+// Sends a 429 response with both a Retry-After HTTP header (RFC 6585) and a
+// JSON body. The header is what HTTP clients and load-balancers act on;
+// the body is what our own frontend reads to display a countdown.
+function rejectRateLimit(res: Response, message: string, retryAfter: number): void {
+  res.set('Retry-After', String(retryAfter));
+  res.status(429).json({ error: message, retryAfter });
+}
+
 export function rsvpRateLimit(req: Request, res: Response, next: NextFunction): void {
   const ip = getClientIp(req);
   const result = checkRateLimit(rsvpStore, ip, RSVP_WINDOW_MS, RSVP_MAX_REQUESTS);
-
   if (!result.allowed) {
-    res.status(429).json({
-      error: 'Too many requests. Please wait a moment before trying again.',
-      retryAfter: result.retryAfter,
-    });
+    rejectRateLimit(res, 'Too many requests. Please wait a moment before trying again.', result.retryAfter!);
     return;
   }
   next();
@@ -74,12 +83,8 @@ export function rsvpRateLimit(req: Request, res: Response, next: NextFunction): 
 export function claimRateLimit(req: Request, res: Response, next: NextFunction): void {
   const ip = getClientIp(req);
   const result = checkRateLimit(claimStore, ip, CLAIM_WINDOW_MS, CLAIM_MAX_REQUESTS);
-
   if (!result.allowed) {
-    res.status(429).json({
-      error: 'Too many registration attempts. Please try again later.',
-      retryAfter: result.retryAfter,
-    });
+    rejectRateLimit(res, 'Too many registration attempts. Please try again later.', result.retryAfter!);
     return;
   }
   next();
@@ -89,12 +94,20 @@ export function claimRateLimit(req: Request, res: Response, next: NextFunction):
 export function loginRateLimit(req: Request, res: Response, next: NextFunction): void {
   const ip = getClientIp(req);
   const result = checkRateLimit(loginStore, ip, LOGIN_WINDOW_MS, LOGIN_MAX_REQUESTS);
-
   if (!result.allowed) {
-    res.status(429).json({
-      error: 'Too many login attempts. Please try again later.',
-      retryAfter: result.retryAfter,
-    });
+    rejectRateLimit(res, 'Too many login attempts. Please try again later.', result.retryAfter!);
+    return;
+  }
+  next();
+}
+
+// Token lookup: generous limit to accommodate page refreshes while still
+// preventing automated scanning of the invitation token space.
+export function tokenLookupRateLimit(req: Request, res: Response, next: NextFunction): void {
+  const ip = getClientIp(req);
+  const result = checkRateLimit(tokenLookupStore, ip, TOKEN_LOOKUP_WINDOW_MS, TOKEN_LOOKUP_MAX_REQUESTS);
+  if (!result.allowed) {
+    rejectRateLimit(res, 'Too many requests. Please try again shortly.', result.retryAfter!);
     return;
   }
   next();
@@ -115,6 +128,9 @@ cleanupInterval = setInterval(() => {
   for (const [ip, entry] of loginStore.entries()) {
     if (now > entry.resetAt) loginStore.delete(ip);
   }
+  for (const [ip, entry] of tokenLookupStore.entries()) {
+    if (now > entry.resetAt) tokenLookupStore.delete(ip);
+  }
 }, 5 * 60 * 1000);
 
 // Call this during graceful shutdown to allow the Node process to exit cleanly.
@@ -126,4 +142,5 @@ export function clearRateLimitStore(): void {
   rsvpStore.clear();
   claimStore.clear();
   loginStore.clear();
+  tokenLookupStore.clear();
 }

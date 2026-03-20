@@ -4,13 +4,25 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db, schema, sqlite } from '../db/index.js';
 import { rsvpSubmitSchema, claimInvitationSchema, publicRsvpSchema, publicPageRsvpSchema } from '@invitation/shared';
-import { rsvpRateLimit, claimRateLimit } from '../middleware/rateLimit.js';
+import { rsvpRateLimit, claimRateLimit, tokenLookupRateLimit } from '../middleware/rateLimit.js';
+import logger from '../lib/logger.js';
 
 const router = Router();
 
+// Returns true when the event date (YYYY-MM-DD) is strictly in the past (UTC day).
+// A small grace period of 1 day is included so late-night attendees in UTC+offset
+// time zones can still update their RSVP on the event day itself.
+function isEventPast(eventDate: string | null | undefined): boolean {
+  if (!eventDate) return false;
+  const eventMs = new Date(`${eventDate}T00:00:00Z`).getTime();
+  const nowMs   = Date.now();
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  return nowMs > eventMs + ONE_DAY_MS;
+}
+
 // GET /api/rsvp/token/:token — look up an invitation by its token
 // Handles three cases: personal (pre-assigned), open (unclaimed), claimed (already used)
-router.get('/token/:token', async (req: Request, res: Response): Promise<void> => {
+router.get('/token/:token', tokenLookupRateLimit, async (req: Request, res: Response): Promise<void> => {
   const token = req.params['token']?.trim();
   if (!token) {
     res.status(400).json({ error: 'Token is required' });
@@ -146,7 +158,7 @@ router.get('/token/:token', async (req: Request, res: Response): Promise<void> =
       },
     });
   } catch (error) {
-    console.error('Token lookup error:', error);
+    logger.error({ err: error }, 'token lookup error');
     res.status(500).json({ error: 'Failed to fetch invitation' });
   }
 });
@@ -172,8 +184,13 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
 
   try {
     const existing = await db
-      .select({ id: schema.guestInvitations.id, isOpen: schema.guestInvitations.isOpen })
+      .select({
+        id: schema.guestInvitations.id,
+        isOpen: schema.guestInvitations.isOpen,
+        eventDate: schema.events.date,
+      })
       .from(schema.guestInvitations)
+      .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
       .where(eq(schema.guestInvitations.token, data.token))
       .limit(1);
 
@@ -185,6 +202,12 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
     // Open invitations must go through the /rsvp/claim endpoint
     if (existing[0].isOpen) {
       res.status(400).json({ error: 'Open invitations must be claimed via /api/rsvp/claim.' });
+      return;
+    }
+
+    // Reject RSVP submissions after the event has passed
+    if (isEventPast(existing[0].eventDate)) {
+      res.status(410).json({ error: 'This event has already taken place. RSVPs are no longer accepted.' });
       return;
     }
 
@@ -216,9 +239,10 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
       }
     }
 
+    logger.info({ token: data.token, status: data.status, guestCount: data.guestCount ?? 1 }, 'rsvp submitted');
     res.json({ invitation: updated[0], updated: true });
   } catch (error) {
-    console.error('RSVP submit error:', error);
+    logger.error({ err: error }, 'rsvp submit error');
     res.status(500).json({ error: 'Failed to save RSVP. Please try again.' });
   }
 });
@@ -251,19 +275,25 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
       // 1. Validate the token is an unclaimed open invitation (lock the row)
       const invRow = sqlite
         .prepare(
-          `SELECT * FROM guest_invitations
-           WHERE token = ? AND is_open = 1 AND claimed_at IS NULL
+          `SELECT gi.*, e.date AS event_date
+           FROM guest_invitations gi
+           LEFT JOIN events e ON e.id = gi.event_id
+           WHERE gi.token = ? AND gi.is_open = 1 AND gi.claimed_at IS NULL
            LIMIT 1`
         )
         .get(token) as {
           id: number; guest_id: number | null; event_id: number; token: string;
           status: string; guest_count: number; dietary: string | null;
           message: string | null; is_open: number; claimed_at: string | null;
-          created_at: string; updated_at: string;
+          created_at: string; updated_at: string; event_date: string | null;
         } | undefined;
 
       if (!invRow) {
         return { ok: false, status: 404, error: 'This invitation link is invalid or has already been used.' };
+      }
+
+      if (isEventPast(invRow.event_date)) {
+        return { ok: false, status: 410, error: 'This event has already taken place. RSVPs are no longer accepted.' };
       }
 
       // Validate that every RSVP entry references the event this token belongs to.
@@ -376,12 +406,13 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
       return;
     }
 
+    logger.info({ token, guestId: result.guest.id, name: result.guest.name }, 'invitation claimed');
     res.status(201).json({
       guest: result.guest,
       invitations: result.invitations,
     });
   } catch (error) {
-    console.error('Claim invitation error:', error);
+    logger.error({ err: error }, 'claim invitation error');
     res.status(500).json({ error: 'Failed to process registration. Please try again.' });
   }
 });
@@ -411,14 +442,20 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
       // 1. Validate the token is a permanent public invitation for the given event
       const templateRow = sqlite
         .prepare(
-          `SELECT id, event_id FROM guest_invitations
-           WHERE token = ? AND is_open = 1 AND is_public = 1 AND event_id = ?
+          `SELECT gi.id, gi.event_id, e.date AS event_date
+           FROM guest_invitations gi
+           LEFT JOIN events e ON e.id = gi.event_id
+           WHERE gi.token = ? AND gi.is_open = 1 AND gi.is_public = 1 AND gi.event_id = ?
            LIMIT 1`
         )
-        .get(token, eventId) as { id: number; event_id: number } | undefined;
+        .get(token, eventId) as { id: number; event_id: number; event_date: string | null } | undefined;
 
       if (!templateRow) {
         return { ok: false, status: 404, error: 'Public invitation link not found or invalid.' };
+      }
+
+      if (isEventPast(templateRow.event_date)) {
+        return { ok: false, status: 410, error: 'This event has already taken place. RSVPs are no longer accepted.' };
       }
 
       // 2. Phone-based deduplication — reuse existing guest if phone matches
@@ -504,9 +541,10 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
       return;
     }
 
+    logger.info({ eventId, guestId: result.guestId, status }, 'public rsvp submitted');
     res.status(201).json({ ok: true });
   } catch (error) {
-    console.error('Public RSVP submit error:', error);
+    logger.error({ err: error }, 'public rsvp submit error');
     res.status(500).json({ error: 'Failed to save RSVP. Please try again.' });
   }
 });
@@ -532,11 +570,15 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
     const pageTransaction = sqlite.transaction((): PageResult => {
       // 1. Find event by slug
       const event = sqlite
-        .prepare('SELECT id FROM events WHERE slug = ? LIMIT 1')
-        .get(eventSlug) as { id: number } | undefined;
+        .prepare('SELECT id, date FROM events WHERE slug = ? LIMIT 1')
+        .get(eventSlug) as { id: number; date: string } | undefined;
 
       if (!event) {
         return { ok: false, status: 404, error: 'Event not found.' };
+      }
+
+      if (isEventPast(event.date)) {
+        return { ok: false, status: 410, error: 'This event has already taken place. RSVPs are no longer accepted.' };
       }
 
       // 2. Phone-based deduplication
@@ -617,9 +659,10 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
       return;
     }
 
+    logger.info({ eventSlug, guestId: result.guestId, status }, 'public-page rsvp submitted');
     res.status(201).json({ ok: true });
   } catch (error) {
-    console.error('Public page RSVP error:', error);
+    logger.error({ err: error }, 'public-page rsvp error');
     res.status(500).json({ error: 'Failed to save RSVP. Please try again.' });
   }
 });

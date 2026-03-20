@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { and, desc, eq, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
 import { randomUUID, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
 // bcryptjs is used for password hashing support ($2b$ prefix detection).
@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { db, schema, sqlite } from '../db/index.js';
 import { requireAuth, recordLogout } from '../middleware/auth.js';
+import logger from '../lib/logger.js';
 import { loginRateLimit } from '../middleware/rateLimit.js';
 import {
   adminLoginSchema,
@@ -87,10 +88,11 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response): Promi
     secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000,
   });
+  logger.info({ username }, 'admin login');
   res.json({ ok: true });
 });
 
-router.post('/logout', (_req: Request, res: Response): void => {
+router.post('/logout', requireAuth, (_req: Request, res: Response): void => {
   recordLogout();
   res.clearCookie('token');
   res.json({ ok: true });
@@ -105,34 +107,46 @@ router.get('/me', requireAuth, (_req: Request, res: Response): void => {
 router.get('/events', requireAuth, async (_req: Request, res: Response): Promise<void> => {
   try {
     const eventRows = await db.select().from(schema.events);
-    const invRows = await db
-      .select({
-        eventId: schema.guestInvitations.eventId,
-        status: schema.guestInvitations.status,
-        guestCount: schema.guestInvitations.guestCount,
-        isOpen: schema.guestInvitations.isOpen,
-        claimedAt: schema.guestInvitations.claimedAt,
-      })
-      .from(schema.guestInvitations);
 
-    const statsMap = new Map<number, {
+    // Aggregate per-event stats in a single SQL GROUP BY query instead of
+    // loading the entire guest_invitations table into JS memory.
+    // Unclaimed open invitations (is_open=1, claimed_at IS NULL) are excluded
+    // from stats because they carry no confirmed RSVP status.
+    type StatRow = {
+      eventId: number;
+      status: string;
+      cnt: number;
+      headcount: number;
+    };
+    const statRows = sqlite
+      .prepare<[], StatRow>(`
+        SELECT
+          event_id         AS eventId,
+          status,
+          COUNT(*)         AS cnt,
+          SUM(guest_count) AS headcount
+        FROM guest_invitations
+        WHERE NOT (is_open = 1 AND claimed_at IS NULL)
+        GROUP BY event_id, status
+      `)
+      .all() as StatRow[];
+
+    type EventStats = {
       total: number; attending: number; declined: number;
       maybe: number; pending: number; totalHeadcount: number;
-    }>();
-
+    };
+    const statsMap = new Map<number, EventStats>();
     for (const e of eventRows) {
       statsMap.set(e.id, { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 });
     }
-    for (const inv of invRows) {
-      // Exclude unclaimed open invitations from stats (they have no confirmed status)
-      if (inv.isOpen && !inv.claimedAt) continue;
-      const s = statsMap.get(inv.eventId);
+    for (const row of statRows) {
+      const s = statsMap.get(row.eventId);
       if (!s) continue;
-      s.total++;
-      if (inv.status === 'attending') { s.attending++; s.totalHeadcount += inv.guestCount; }
-      else if (inv.status === 'declined') s.declined++;
-      else if (inv.status === 'maybe') s.maybe++;
-      else s.pending++;
+      s.total += row.cnt;
+      if (row.status === 'attending') { s.attending += row.cnt; s.totalHeadcount += row.headcount; }
+      else if (row.status === 'declined') s.declined += row.cnt;
+      else if (row.status === 'maybe') s.maybe += row.cnt;
+      else s.pending += row.cnt;
     }
 
     res.json(
@@ -150,17 +164,22 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
       }))
     );
   } catch (error) {
-    console.error('Admin events error:', error);
+    logger.error({ err: error }, 'admin events error');
     res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
 // ─── Guests (with their invitations) ────────────────────────────────────────
 
+const GUESTS_PAGE_LIMIT = 100; // max guests returned per page
+
 router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
   const status = req.query['status'] as string | undefined;
   const search = req.query['search'] as string | undefined;
+  const page   = Math.max(1, parseInt((req.query['page'] as string) ?? '1', 10) || 1);
+  const limit  = Math.min(GUESTS_PAGE_LIMIT, Math.max(1, parseInt((req.query['limit'] as string) ?? String(GUESTS_PAGE_LIMIT), 10) || GUESTS_PAGE_LIMIT));
+  const offset = (page - 1) * limit;
 
   try {
     // Resolve which guest IDs match the event/status filter
@@ -192,7 +211,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
           .map((r) => r.guestId)
           .filter((id): id is number => id !== null);
         if (matchingGuestIds.length === 0) {
-          res.json([]);
+          res.json({ guests: [], total: 0, page, limit });
           return;
         }
       }
@@ -214,15 +233,24 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
       guestConditions.push(inArray(schema.guests.id, matchingGuestIds));
     }
 
-    // Fetch guests
-    const guestRows = await db
-      .select()
-      .from(schema.guests)
-      .where(guestConditions.length > 0 ? and(...guestConditions) : undefined)
-      .orderBy(desc(schema.guests.createdAt));
+    const whereClause = guestConditions.length > 0 ? and(...guestConditions) : undefined;
+
+    // Run count + paginated fetch in parallel
+    const [totalRows, guestRows] = await Promise.all([
+      db.select({ value: count() }).from(schema.guests).where(whereClause),
+      db
+        .select()
+        .from(schema.guests)
+        .where(whereClause)
+        .orderBy(desc(schema.guests.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = totalRows[0]?.value ?? 0;
 
     if (guestRows.length === 0) {
-      res.json([]);
+      res.json({ guests: [], total, page, limit });
       return;
     }
 
@@ -291,9 +319,9 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
       })),
     }));
 
-    res.json(result);
+    res.json({ guests: result, total, page, limit });
   } catch (error) {
-    console.error('Guest list error:', error);
+    logger.error({ err: error }, 'guest list error');
     res.status(500).json({ error: 'Failed to fetch guests' });
   }
 });
@@ -348,9 +376,10 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
 
     const result = addTransaction();
 
+    logger.info({ guestId: result.guest.id, name: result.guest.name, invitationCount: result.invitations.length }, 'guest added');
     res.status(201).json({ guest: result.guest, invitations: result.invitations });
   } catch (error: unknown) {
-    console.error('Add guest error:', error);
+    logger.error({ err: error }, 'add guest error');
     if (isUniqueConstraintError(error)) {
       res.status(409).json({ error: 'Duplicate entry' });
       return;
@@ -393,7 +422,7 @@ async function handleUpdateGuest(req: Request, res: Response): Promise<void> {
 
     res.json(updated);
   } catch (error: unknown) {
-    console.error('Update guest error:', error);
+    logger.error({ err: error, guestId: id }, 'update guest error');
     if (isUniqueConstraintError(error)) {
       res.status(409).json({ error: 'Duplicate entry' });
       return;
@@ -426,7 +455,7 @@ router.delete('/guests/:id', requireAuth, async (req: Request, res: Response): P
 
     res.json({ ok: true });
   } catch (error) {
-    console.error('Delete guest error:', error);
+    logger.error({ err: error, guestId: id }, 'delete guest error');
     res.status(500).json({ error: 'Failed to delete guest' });
   }
 });
@@ -445,60 +474,72 @@ router.post('/invitations/open', requireAuth, async (req: Request, res: Response
   const { eventIds, isPublic } = parsed.data;
 
   try {
-    // Verify all event IDs exist
-    for (const eventId of eventIds) {
-      const exists = await db
-        .select({ id: schema.events.id })
-        .from(schema.events)
-        .where(eq(schema.events.id, eventId))
-        .limit(1);
-      if (exists.length === 0) {
-        res.status(404).json({ error: `Event ${eventId} not found` });
-        return;
-      }
+    // Validate all event IDs before touching the DB so we can return a clean
+    // 404 without leaving behind partially-created invitation rows.
+    const eventRows = sqlite
+      .prepare(
+        `SELECT id, slug, name FROM events WHERE id IN (${eventIds.map(() => '?').join(',')}) ORDER BY id`
+      )
+      .all(...eventIds) as { id: number; slug: string; name: string }[];
+
+    const foundIds = new Set(eventRows.map((e) => e.id));
+    const missingId = eventIds.find((id) => !foundIds.has(id));
+    if (missingId !== undefined) {
+      res.status(404).json({ error: `Event ${missingId} not found` });
+      return;
     }
 
-    // Create one open invitation per event (each with a unique token)
-    const createdInvitations = [];
-    for (const eventId of eventIds) {
-      const [inv] = await db
-        .insert(schema.guestInvitations)
-        .values({
-          guestId: null,
-          eventId,
-          token: randomUUID(),
-          status: 'pending',
-          guestCount: 1,
+    // Create all open invitations atomically — if any insert fails (e.g. a
+    // transient DB error mid-loop), the entire batch is rolled back so the
+    // admin never sees a partial set of links.
+    type InvRow = {
+      id: number; token: string; eventId: number; createdAt: string;
+    };
+
+    type OpenInvitationResult = {
+      id: number; token: string; isOpen: boolean; isPublic: boolean;
+      claimedAt: null; eventId: number; eventSlug: string | null;
+      eventName: string | null; url: string; createdAt: string;
+    };
+
+    const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
+
+    const createdInvitations = sqlite.transaction((): OpenInvitationResult[] => {
+      const result: OpenInvitationResult[] = [];
+
+      for (const eventId of eventIds) {
+        const token = randomUUID();
+        const inv = sqlite
+          .prepare(
+            `INSERT INTO guest_invitations
+               (guest_id, event_id, token, status, guest_count, is_open, is_public, claimed_at)
+             VALUES (NULL, ?, ?, 'pending', 1, 1, ?, NULL)
+             RETURNING id, token, event_id AS eventId, created_at AS createdAt`
+          )
+          .get(eventId, token, isPublic ? 1 : 0) as InvRow;
+
+        const eventRow = eventRows.find((e) => e.id === eventId)!;
+        result.push({
+          id: inv.id,
+          token: inv.token,
           isOpen: true,
           isPublic: isPublic ?? false,
           claimedAt: null,
-        })
-        .returning();
+          eventId: inv.eventId,
+          eventSlug: eventRow.slug,
+          eventName: eventRow.name,
+          url: `${baseUrl}/invite/${inv.token}`,
+          createdAt: inv.createdAt,
+        });
+      }
 
-      const eventRow = await db
-        .select({ slug: schema.events.slug, name: schema.events.name })
-        .from(schema.events)
-        .where(eq(schema.events.id, eventId))
-        .limit(1);
+      return result;
+    })();
 
-      const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
-      createdInvitations.push({
-        id: inv.id,
-        token: inv.token,
-        isOpen: true,
-        isPublic: isPublic ?? false,
-        claimedAt: null,
-        eventId: inv.eventId,
-        eventSlug: eventRow[0]?.slug ?? null,
-        eventName: eventRow[0]?.name ?? null,
-        url: `${baseUrl}/invite/${inv.token}`,
-        createdAt: inv.createdAt,
-      });
-    }
-
+    logger.info({ count: createdInvitations.length, isPublic: isPublic ?? false }, 'open invitations created');
     res.status(201).json(createdInvitations);
   } catch (error) {
-    console.error('Create open invitation error:', error);
+    logger.error({ err: error }, 'create open invitation error');
     res.status(500).json({ error: 'Failed to create open invitation' });
   }
 });
@@ -550,7 +591,7 @@ router.get('/invitations/open', requireAuth, async (_req: Request, res: Response
       }))
     );
   } catch (error) {
-    console.error('List open invitations error:', error);
+    logger.error({ err: error }, 'list open invitations error');
     res.status(500).json({ error: 'Failed to fetch open invitations' });
   }
 });
@@ -599,9 +640,10 @@ router.post('/invitations', requireAuth, async (req: Request, res: Response): Pr
       })
       .returning();
 
+    logger.info({ guestId, eventId, invitationId: inv.id }, 'invitation added');
     res.status(201).json(inv);
   } catch (error) {
-    console.error('Add invitation error:', error);
+    logger.error({ err: error, guestId, eventId }, 'add invitation error');
     // SQLite UNIQUE constraint on (guest_id, event_id) will throw here
     res.status(409).json({ error: 'This guest already has an invitation for this event' });
   }
@@ -650,7 +692,7 @@ async function handleUpdateInvitation(req: Request, res: Response): Promise<void
 
     res.json(updated);
   } catch (error) {
-    console.error('Update invitation error:', error);
+    logger.error({ err: error, invitationId: id }, 'update invitation error');
     res.status(500).json({ error: 'Failed to update invitation' });
   }
 }
@@ -679,7 +721,7 @@ router.delete('/invitations/:id', requireAuth, async (req: Request, res: Respons
 
     res.json({ ok: true });
   } catch (error) {
-    console.error('Delete invitation error:', error);
+    logger.error({ err: error, invitationId: id }, 'delete invitation error');
     res.status(500).json({ error: 'Failed to delete invitation' });
   }
 });
@@ -707,7 +749,7 @@ router.get('/invitations/:id/link', requireAuth, async (req: Request, res: Respo
     const baseUrl = process.env.BASE_URL ?? `http://localhost:5173`;
     res.json({ url: `${baseUrl}/invite/${rows[0].token}` });
   } catch (error) {
-    console.error('Get link error:', error);
+    logger.error({ err: error, invitationId: id }, 'get invite link error');
     res.status(500).json({ error: 'Failed to get invite link' });
   }
 });
@@ -755,7 +797,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);
   } catch (error) {
-    console.error('Export error:', error);
+    logger.error({ err: error, eventId }, 'export error');
     res.status(500).json({ error: 'Failed to export guest list' });
   }
 });
