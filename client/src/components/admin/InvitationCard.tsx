@@ -13,10 +13,10 @@ export type CardTheme = 'parchment' | 'noir' | 'blush' | 'sage';
 
 interface ThemeColors {
   bg:        string;
-  bgDeep:    string;
   bgGrad:    string;
   ink:       string;
   inkSub:    string;
+  inkFaint:  string;
   gold:      string;
   goldRule:  string;
   petalDeep: string;
@@ -28,55 +28,55 @@ interface ThemeColors {
 export const CARD_THEMES: Record<CardTheme, ThemeColors> = {
   parchment: {
     bg:        '#FAF5EC',
-    bgDeep:    '#F2E9D6',
-    bgGrad:    'linear-gradient(175deg, #EDE3CC 0%, #FAF5EC 16%, #FAF5EC 84%, #EDE3CC 100%)',
+    bgGrad:    'linear-gradient(170deg, #EDE3CC 0%, #FAF5EC 18%, #FAF5EC 82%, #EDE3CC 100%)',
     ink:       '#28180E',
-    inkSub:    'rgba(40,24,14,0.52)',
+    inkSub:    'rgba(40,24,14,0.54)',
+    inkFaint:  'rgba(40,24,14,0.28)',
     gold:      '#A8832E',
-    goldRule:  'rgba(168,131,46,0.38)',
+    goldRule:  'rgba(168,131,46,0.32)',
     petalDeep: '#C08892',
     petalLt:   '#DFBCC2',
-    stemClr:   '#7A9E7C',
-    leafClr:   '#96B898',
+    stemClr:   '#6A9470',
+    leafClr:   '#8AB490',
   },
   noir: {
     bg:        '#1C1408',
-    bgDeep:    '#251A0A',
-    bgGrad:    'linear-gradient(175deg, #0E0A04 0%, #1C1408 16%, #1C1408 84%, #0E0A04 100%)',
+    bgGrad:    'linear-gradient(170deg, #100C04 0%, #1C1408 18%, #1C1408 82%, #100C04 100%)',
     ink:       '#F0E6D2',
     inkSub:    'rgba(240,230,210,0.60)',
+    inkFaint:  'rgba(240,230,210,0.28)',
     gold:      '#D4AA50',
-    goldRule:  'rgba(212,170,80,0.35)',
+    goldRule:  'rgba(212,170,80,0.30)',
     petalDeep: '#EDD4DA',
     petalLt:   '#F5E4E8',
-    stemClr:   '#7AAA80',
-    leafClr:   '#96C098',
+    stemClr:   '#6A9E74',
+    leafClr:   '#88B890',
   },
   blush: {
     bg:        '#FDF0F2',
-    bgDeep:    '#F5D8DC',
-    bgGrad:    'linear-gradient(175deg, #F4D0D6 0%, #FDF0F2 16%, #FDF0F2 84%, #F4D0D6 100%)',
+    bgGrad:    'linear-gradient(170deg, #F4D0D6 0%, #FDF0F2 18%, #FDF0F2 82%, #F4D0D6 100%)',
     ink:       '#2A1418',
-    inkSub:    'rgba(42,20,24,0.52)',
+    inkSub:    'rgba(42,20,24,0.54)',
+    inkFaint:  'rgba(42,20,24,0.28)',
     gold:      '#B07046',
-    goldRule:  'rgba(176,112,70,0.35)',
+    goldRule:  'rgba(176,112,70,0.30)',
     petalDeep: '#D06878',
     petalLt:   '#E8A8B4',
-    stemClr:   '#6A9E7A',
-    leafClr:   '#88B898',
+    stemClr:   '#5A9068',
+    leafClr:   '#7AAE88',
   },
   sage: {
     bg:        '#F0F4EE',
-    bgDeep:    '#E0EAE0',
-    bgGrad:    'linear-gradient(175deg, #D8E8D8 0%, #F0F4EE 16%, #F0F4EE 84%, #D8E8D8 100%)',
+    bgGrad:    'linear-gradient(170deg, #D8E8D8 0%, #F0F4EE 18%, #F0F4EE 82%, #D8E8D8 100%)',
     ink:       '#162014',
-    inkSub:    'rgba(22,32,20,0.55)',
-    gold:      '#8A9840',
-    goldRule:  'rgba(138,152,64,0.38)',
-    petalDeep: '#C0A0A8',
-    petalLt:   '#D8BCC0',
-    stemClr:   '#5A8A60',
-    leafClr:   '#78AC80',
+    inkSub:    'rgba(22,32,20,0.56)',
+    inkFaint:  'rgba(22,32,20,0.28)',
+    gold:      '#7A9038',
+    goldRule:  'rgba(122,144,56,0.32)',
+    petalDeep: '#B8A0A8',
+    petalLt:   '#D0B8BC',
+    stemClr:   '#4A8054',
+    leafClr:   '#6AA074',
   },
 };
 
@@ -98,7 +98,7 @@ function Bloom({
 }: {
   cx: number; cy: number; r?: number; opacity?: number; c: ThemeColors;
 }) {
-  const pr = 4.6 * r;
+  const pr = 4.8 * r;
   const angles = [0, 60, 120, 180, 240, 300];
   return (
     <g opacity={opacity}>
@@ -116,135 +116,161 @@ function Bloom({
           />
         );
       })}
-      <circle cx={cx} cy={cy} r={pr * 0.30} fill={c.gold}  opacity={0.70} />
-      <circle cx={cx} cy={cy} r={pr * 0.14} fill={c.bg}    opacity={0.82} />
+      <circle cx={cx} cy={cy} r={pr * 0.28} fill={c.gold}  opacity={0.72} />
+      <circle cx={cx} cy={cy} r={pr * 0.13} fill={c.bg}    opacity={0.85} />
     </g>
   );
 }
 
-// ─── Top twin branches ────────────────────────────────────────────────────────
-function TopBranches({ c }: { c: ThemeColors }) {
+// ─── Arch Garland — sweeping twin arms from bottom corners to apex ────────────
+function ArchGarland({ c }: { c: ThemeColors }) {
   return (
-    <svg width="460" height="86" viewBox="0 0 460 86" fill="none" aria-hidden="true">
-      {/* Left main stem */}
-      <path d="M 30,82 C 58,62 92,40 124,22"
-        stroke={c.stemClr} strokeWidth="0.88" strokeLinecap="round" fill="none" opacity="0.55"/>
-      {/* Left sub-stem A */}
-      <path d="M 76,56 C 66,47 58,40 52,36"
-        stroke={c.stemClr} strokeWidth="0.65" strokeLinecap="round" fill="none" opacity="0.44"/>
-      {/* Left sub-stem B */}
-      <path d="M 102,38 C 94,30 87,24 83,20"
-        stroke={c.stemClr} strokeWidth="0.58" strokeLinecap="round" fill="none" opacity="0.40"/>
+    <svg width="540" height="208" viewBox="0 0 540 208" fill="none" aria-hidden="true">
 
-      {/* Left leaves */}
-      <ellipse cx="46"  cy="63" rx="10"  ry="3.2" fill={c.leafClr} opacity="0.46" transform="rotate(-58 46 63)"/>
-      <ellipse cx="57"  cy="65" rx="8.5" ry="2.8" fill={c.leafClr} opacity="0.40" transform="rotate(-44 57 65)"/>
-      <ellipse cx="75"  cy="48" rx="10"  ry="3.0" fill={c.leafClr} opacity="0.50" transform="rotate(-48 75 48)"/>
-      <ellipse cx="88"  cy="52" rx="8"   ry="2.6" fill={c.leafClr} opacity="0.42" transform="rotate(-36 88 52)"/>
-      <ellipse cx="105" cy="32" rx="9"   ry="2.8" fill={c.leafClr} opacity="0.47" transform="rotate(-32 105 32)"/>
-      <ellipse cx="50"  cy="35" rx="7"   ry="2.4" fill={c.leafClr} opacity="0.40" transform="rotate(-62 50 35)"/>
-      <ellipse cx="82"  cy="19" rx="7"   ry="2.4" fill={c.leafClr} opacity="0.36" transform="rotate(-22 82 19)"/>
+      {/* ── Main arms ──────────────────────────────────────────────────── */}
+      <path d="M 16,202 C 28,90 148,26 270,14"
+        stroke={c.stemClr} strokeWidth="1.05" strokeLinecap="round" fill="none" opacity="0.52"/>
+      <path d="M 524,202 C 512,90 392,26 270,14"
+        stroke={c.stemClr} strokeWidth="1.05" strokeLinecap="round" fill="none" opacity="0.52"/>
 
-      {/* Right main stem (mirror) */}
-      <path d="M 430,82 C 402,62 368,40 336,22"
-        stroke={c.stemClr} strokeWidth="0.88" strokeLinecap="round" fill="none" opacity="0.55"/>
-      {/* Right sub-stem A */}
-      <path d="M 384,56 C 394,47 402,40 408,36"
-        stroke={c.stemClr} strokeWidth="0.65" strokeLinecap="round" fill="none" opacity="0.44"/>
-      {/* Right sub-stem B */}
-      <path d="M 358,38 C 366,30 373,24 377,20"
-        stroke={c.stemClr} strokeWidth="0.58" strokeLinecap="round" fill="none" opacity="0.40"/>
+      {/* ── Left sub-branches ──────────────────────────────────────────── */}
+      <path d="M 62,138 C 44,126 22,120 8,122"
+        stroke={c.stemClr} strokeWidth="0.75" strokeLinecap="round" fill="none" opacity="0.45"/>
+      <path d="M 110,86 C 88,75 68,62 54,54"
+        stroke={c.stemClr} strokeWidth="0.68" strokeLinecap="round" fill="none" opacity="0.41"/>
+      <path d="M 160,50 C 144,37 132,24 124,15"
+        stroke={c.stemClr} strokeWidth="0.62" strokeLinecap="round" fill="none" opacity="0.37"/>
+      <path d="M 36,170 C 20,162 6,160 2,164"
+        stroke={c.stemClr} strokeWidth="0.55" strokeLinecap="round" fill="none" opacity="0.33"/>
 
-      {/* Right leaves */}
-      <ellipse cx="414" cy="63" rx="10"  ry="3.2" fill={c.leafClr} opacity="0.46" transform="rotate(58 414 63)"/>
-      <ellipse cx="403" cy="65" rx="8.5" ry="2.8" fill={c.leafClr} opacity="0.40" transform="rotate(44 403 65)"/>
-      <ellipse cx="385" cy="48" rx="10"  ry="3.0" fill={c.leafClr} opacity="0.50" transform="rotate(48 385 48)"/>
-      <ellipse cx="372" cy="52" rx="8"   ry="2.6" fill={c.leafClr} opacity="0.42" transform="rotate(36 372 52)"/>
-      <ellipse cx="355" cy="32" rx="9"   ry="2.8" fill={c.leafClr} opacity="0.47" transform="rotate(32 355 32)"/>
-      <ellipse cx="410" cy="35" rx="7"   ry="2.4" fill={c.leafClr} opacity="0.40" transform="rotate(62 410 35)"/>
-      <ellipse cx="378" cy="19" rx="7"   ry="2.4" fill={c.leafClr} opacity="0.36" transform="rotate(22 378 19)"/>
+      {/* ── Right sub-branches (mirror) ────────────────────────────────── */}
+      <path d="M 478,138 C 496,126 518,120 532,122"
+        stroke={c.stemClr} strokeWidth="0.75" strokeLinecap="round" fill="none" opacity="0.45"/>
+      <path d="M 430,86 C 452,75 472,62 486,54"
+        stroke={c.stemClr} strokeWidth="0.68" strokeLinecap="round" fill="none" opacity="0.41"/>
+      <path d="M 380,50 C 396,37 408,24 416,15"
+        stroke={c.stemClr} strokeWidth="0.62" strokeLinecap="round" fill="none" opacity="0.37"/>
+      <path d="M 504,170 C 520,162 534,160 538,164"
+        stroke={c.stemClr} strokeWidth="0.55" strokeLinecap="round" fill="none" opacity="0.33"/>
 
-      {/* Blooms — left side */}
-      <Bloom cx={52}  cy={36} r={0.80} opacity={0.68} c={c} />
-      <Bloom cx={83}  cy={20} r={0.70} opacity={0.62} c={c} />
-      <Bloom cx={124} cy={22} r={0.86} opacity={0.76} c={c} />
+      {/* ── Left leaves ────────────────────────────────────────────────── */}
+      <ellipse cx="46"  cy="168" rx="13" ry="4.2" fill={c.leafClr} opacity="0.44" transform="rotate(-55 46 168)"/>
+      <ellipse cx="64"  cy="162" rx="11" ry="3.5" fill={c.leafClr} opacity="0.38" transform="rotate(-42 64 162)"/>
+      <ellipse cx="4"   cy="120" rx="10" ry="3.0" fill={c.leafClr} opacity="0.36" transform="rotate(-68 4 120)"/>
+      <ellipse cx="68"  cy="130" rx="12" ry="4.0" fill={c.leafClr} opacity="0.46" transform="rotate(-54 68 130)"/>
+      <ellipse cx="88"  cy="134" rx="10" ry="3.2" fill={c.leafClr} opacity="0.40" transform="rotate(-40 88 134)"/>
+      <ellipse cx="96"  cy="82"  rx="12" ry="3.8" fill={c.leafClr} opacity="0.46" transform="rotate(-42 96 82)"/>
+      <ellipse cx="115" cy="86"  rx="10" ry="3.0" fill={c.leafClr} opacity="0.38" transform="rotate(-28 115 86)"/>
+      <ellipse cx="50"  cy="54"  rx="10" ry="3.2" fill={c.leafClr} opacity="0.40" transform="rotate(-62 50 54)"/>
+      <ellipse cx="66"  cy="48"  rx="8"  ry="2.6" fill={c.leafClr} opacity="0.34" transform="rotate(-48 66 48)"/>
+      <ellipse cx="148" cy="45"  rx="10" ry="3.2" fill={c.leafClr} opacity="0.43" transform="rotate(-34 148 45)"/>
+      <ellipse cx="162" cy="38"  rx="8"  ry="2.6" fill={c.leafClr} opacity="0.37" transform="rotate(-22 162 38)"/>
+      <ellipse cx="120" cy="17"  rx="8"  ry="2.6" fill={c.leafClr} opacity="0.35" transform="rotate(-16 120 17)"/>
+      <ellipse cx="194" cy="26"  rx="10" ry="3.0" fill={c.leafClr} opacity="0.42" transform="rotate(-10 194 26)"/>
+      <ellipse cx="210" cy="20"  rx="8"  ry="2.4" fill={c.leafClr} opacity="0.36" transform="rotate(-5  210 20)"/>
 
-      {/* Blooms — right side */}
-      <Bloom cx={408} cy={36} r={0.80} opacity={0.68} c={c} />
-      <Bloom cx={377} cy={20} r={0.70} opacity={0.62} c={c} />
-      <Bloom cx={336} cy={22} r={0.86} opacity={0.76} c={c} />
+      {/* ── Right leaves (mirror) ──────────────────────────────────────── */}
+      <ellipse cx="494" cy="168" rx="13" ry="4.2" fill={c.leafClr} opacity="0.44" transform="rotate( 55 494 168)"/>
+      <ellipse cx="476" cy="162" rx="11" ry="3.5" fill={c.leafClr} opacity="0.38" transform="rotate( 42 476 162)"/>
+      <ellipse cx="536" cy="120" rx="10" ry="3.0" fill={c.leafClr} opacity="0.36" transform="rotate( 68 536 120)"/>
+      <ellipse cx="472" cy="130" rx="12" ry="4.0" fill={c.leafClr} opacity="0.46" transform="rotate( 54 472 130)"/>
+      <ellipse cx="452" cy="134" rx="10" ry="3.2" fill={c.leafClr} opacity="0.40" transform="rotate( 40 452 134)"/>
+      <ellipse cx="444" cy="82"  rx="12" ry="3.8" fill={c.leafClr} opacity="0.46" transform="rotate( 42 444 82)"/>
+      <ellipse cx="425" cy="86"  rx="10" ry="3.0" fill={c.leafClr} opacity="0.38" transform="rotate( 28 425 86)"/>
+      <ellipse cx="490" cy="54"  rx="10" ry="3.2" fill={c.leafClr} opacity="0.40" transform="rotate( 62 490 54)"/>
+      <ellipse cx="474" cy="48"  rx="8"  ry="2.6" fill={c.leafClr} opacity="0.34" transform="rotate( 48 474 48)"/>
+      <ellipse cx="392" cy="45"  rx="10" ry="3.2" fill={c.leafClr} opacity="0.43" transform="rotate( 34 392 45)"/>
+      <ellipse cx="378" cy="38"  rx="8"  ry="2.6" fill={c.leafClr} opacity="0.37" transform="rotate( 22 378 38)"/>
+      <ellipse cx="420" cy="17"  rx="8"  ry="2.6" fill={c.leafClr} opacity="0.35" transform="rotate( 16 420 17)"/>
+      <ellipse cx="346" cy="26"  rx="10" ry="3.0" fill={c.leafClr} opacity="0.42" transform="rotate( 10 346 26)"/>
+      <ellipse cx="330" cy="20"  rx="8"  ry="2.4" fill={c.leafClr} opacity="0.36" transform="rotate(  5 330 20)"/>
 
-      {/* Central starburst diamond */}
-      <path d="M 230,2 L 240,14 L 230,26 L 220,14 Z" fill={c.gold} opacity="0.34"/>
-      <path d="M 230,6 L 237,14 L 230,22 L 223,14 Z" fill={c.gold} opacity="0.52"/>
-      <circle cx="230" cy="14" r="2.2" fill={c.bg} opacity="0.78"/>
+      {/* ── Blooms — largest at apex, progressively smaller outward ──── */}
+      <Bloom cx={270} cy={14}  r={1.18} opacity={0.88} c={c} />  {/* apex */}
+      <Bloom cx={193} cy={24}  r={0.92} opacity={0.76} c={c} />  {/* upper-left */}
+      <Bloom cx={347} cy={24}  r={0.92} opacity={0.76} c={c} />  {/* upper-right */}
+      <Bloom cx={122} cy={15}  r={0.84} opacity={0.71} c={c} />  {/* left tip */}
+      <Bloom cx={418} cy={15}  r={0.84} opacity={0.71} c={c} />  {/* right tip */}
+      <Bloom cx={52}  cy={52}  r={0.78} opacity={0.66} c={c} />  {/* left mid */}
+      <Bloom cx={488} cy={52}  r={0.78} opacity={0.66} c={c} />  {/* right mid */}
+      <Bloom cx={6}   cy={120} r={0.68} opacity={0.59} c={c} />  {/* left outer */}
+      <Bloom cx={534} cy={120} r={0.68} opacity={0.59} c={c} />  {/* right outer */}
 
-      {/* Horizontal accent lines flanking centre diamond */}
-      <line x1="178" y1="14" x2="218" y2="14"
-        stroke={c.gold} strokeWidth="0.50" strokeLinecap="round" opacity="0.28"/>
-      <line x1="242" y1="14" x2="282" y2="14"
-        stroke={c.gold} strokeWidth="0.50" strokeLinecap="round" opacity="0.28"/>
+      {/* ── Apex starburst ornament ─────────────────────────────────── */}
+      <path d="M270,4 L275,12 L270,20 L265,12 Z" fill={c.gold} opacity="0.38"/>
+      <path d="M270,8  L273,12 L270,16 L267,12 Z" fill={c.gold} opacity="0.56"/>
+      <circle cx="270" cy="12" r="2.2" fill={c.bg} opacity="0.84"/>
+
+      {/* ── Thin base rules flanking center ────────────────────────── */}
+      <line x1="50"  y1="200" x2="228" y2="200"
+        stroke={c.gold} strokeWidth="0.42" opacity="0.18" strokeLinecap="round"/>
+      <circle cx="270" cy="200" r="1.6" fill={c.gold} opacity="0.24"/>
+      <line x1="312" y1="200" x2="490" y2="200"
+        stroke={c.gold} strokeWidth="0.42" opacity="0.18" strokeLinecap="round"/>
     </svg>
   );
 }
 
-// ─── Bottom echo branches ─────────────────────────────────────────────────────
-function BottomBranches({ c }: { c: ThemeColors }) {
+// ─── Elaborate ornament divider ───────────────────────────────────────────────
+function ElaborateDivider({ c }: { c: ThemeColors }) {
   return (
-    <svg width="460" height="54" viewBox="0 0 460 54" fill="none" aria-hidden="true">
-      {/* Left mini branch */}
-      <path d="M 58,50 C 82,38 106,26 132,16"
-        stroke={c.stemClr} strokeWidth="0.80" strokeLinecap="round" fill="none" opacity="0.48"/>
-      {/* Right mini branch */}
-      <path d="M 402,50 C 378,38 354,26 328,16"
-        stroke={c.stemClr} strokeWidth="0.80" strokeLinecap="round" fill="none" opacity="0.48"/>
-
-      {/* Left leaves */}
-      <ellipse cx="80"  cy="41" rx="8.5" ry="2.8" fill={c.leafClr} opacity="0.42" transform="rotate(-48 80 41)"/>
-      <ellipse cx="108" cy="28" rx="7.5" ry="2.5" fill={c.leafClr} opacity="0.44" transform="rotate(-36 108 28)"/>
-
-      {/* Right leaves */}
-      <ellipse cx="380" cy="41" rx="8.5" ry="2.8" fill={c.leafClr} opacity="0.42" transform="rotate(48 380 41)"/>
-      <ellipse cx="352" cy="28" rx="7.5" ry="2.5" fill={c.leafClr} opacity="0.44" transform="rotate(36 352 28)"/>
-
-      {/* Three blooms */}
-      <Bloom cx={132} cy={16} r={0.72} opacity={0.66} c={c} />
-      <Bloom cx={230} cy={8}  r={0.78} opacity={0.70} c={c} />
-      <Bloom cx={328} cy={16} r={0.72} opacity={0.66} c={c} />
-
-      {/* Centre mini diamond */}
-      <path d="M 230,2 L 235,8 L 230,14 L 225,8 Z"  fill={c.gold} opacity="0.30"/>
-      <path d="M 230,5 L 233,8 L 230,11 L 227,8 Z"  fill={c.gold} opacity="0.46"/>
-    </svg>
-  );
-}
-
-// ─── Diamond ornament divider ─────────────────────────────────────────────────
-function DiamondRule({ width = 300, c }: { width?: number; c: ThemeColors }) {
-  const half = (width - 16) / 2;
-  const mid  = width / 2;
-  return (
-    <svg width={width} height={20} viewBox={`0 0 ${width} 20`} fill="none" aria-hidden="true">
-      <line x1={0}          y1={10} x2={half - 8}  y2={10} stroke={c.gold} strokeWidth="0.55" opacity="0.40"/>
-      <circle cx={half - 2} cy={10} r={1.8} fill={c.gold} opacity="0.44"/>
-      <path d={`M${mid} 3 L${mid + 8} 10 L${mid} 17 L${mid - 8} 10 Z`}
-        fill={c.petalDeep} opacity="0.34"/>
-      <path d={`M${mid} 7 L${mid + 3} 10 L${mid} 13 L${mid - 3} 10 Z`}
-        fill={c.gold} opacity="0.58"/>
-      <circle cx={half + 20} cy={10} r={1.8} fill={c.gold} opacity="0.44"/>
-      <line x1={half + 26}  y1={10} x2={width}     y2={10} stroke={c.gold} strokeWidth="0.55" opacity="0.40"/>
+    <svg width="360" height="22" viewBox="0 0 360 22" fill="none" aria-hidden="true">
+      <line x1="0"   y1="11" x2="152" y2="11"
+        stroke={c.gold} strokeWidth="0.50" opacity="0.36" strokeLinecap="round"/>
+      <circle cx="156" cy="11" r="1.6" fill={c.gold} opacity="0.44"/>
+      <circle cx="163" cy="11" r="1.0" fill={c.gold} opacity="0.32"/>
+      {/* Central diamond with petal fill */}
+      <path d="M180 2 L189 11 L180 20 L171 11 Z" fill={c.petalDeep} opacity="0.22"/>
+      <path d="M180 6 L185 11 L180 16 L175 11 Z" fill={c.gold} opacity="0.54"/>
+      <circle cx="180" cy="11" r="2.0" fill={c.bg} opacity="0.82"/>
+      <circle cx="197" cy="11" r="1.0" fill={c.gold} opacity="0.32"/>
+      <circle cx="204" cy="11" r="1.6" fill={c.gold} opacity="0.44"/>
+      <line x1="208" y1="11" x2="360" y2="11"
+        stroke={c.gold} strokeWidth="0.50" opacity="0.36" strokeLinecap="round"/>
     </svg>
   );
 }
 
 // ─── Slim dot rule ────────────────────────────────────────────────────────────
-function DotRule({ width = 120, c }: { width?: number; c: ThemeColors }) {
+function DotRule({ width = 110, c }: { width?: number; c: ThemeColors }) {
   const mid = width / 2;
   return (
     <svg width={width} height={10} viewBox={`0 0 ${width} 10`} fill="none" aria-hidden="true">
-      <line x1={0}       y1={5} x2={mid - 6} y2={5} stroke={c.gold} strokeWidth="0.48" opacity="0.30"/>
-      <circle cx={mid}   cy={5} r={2.0} fill={c.gold} opacity="0.36"/>
-      <line x1={mid + 6} y1={5} x2={width}   y2={5} stroke={c.gold} strokeWidth="0.48" opacity="0.30"/>
+      <line x1={0}       y1={5} x2={mid - 7} y2={5}
+        stroke={c.gold} strokeWidth="0.50" opacity="0.30" strokeLinecap="round"/>
+      <circle cx={mid - 3} cy={5} r={1.2} fill={c.gold} opacity="0.36"/>
+      <circle cx={mid}     cy={5} r={2.0} fill={c.gold} opacity="0.44"/>
+      <circle cx={mid + 3} cy={5} r={1.2} fill={c.gold} opacity="0.36"/>
+      <line x1={mid + 7} y1={5} x2={width} y2={5}
+        stroke={c.gold} strokeWidth="0.50" opacity="0.30" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// ─── Bottom garland echo — three blooms on a central branch ──────────────────
+function BottomGarland({ c }: { c: ThemeColors }) {
+  return (
+    <svg width="280" height="46" viewBox="0 0 280 46" fill="none" aria-hidden="true">
+      {/* Upward center stem */}
+      <path d="M 140,44 C 140,32 140,20 140,11"
+        stroke={c.stemClr} strokeWidth="0.78" strokeLinecap="round" fill="none" opacity="0.42"/>
+      {/* Left branch */}
+      <path d="M 140,28 C 115,22 94,18 70,13"
+        stroke={c.stemClr} strokeWidth="0.70" strokeLinecap="round" fill="none" opacity="0.40"/>
+      {/* Right branch */}
+      <path d="M 140,28 C 165,22 186,18 210,13"
+        stroke={c.stemClr} strokeWidth="0.70" strokeLinecap="round" fill="none" opacity="0.40"/>
+
+      {/* Leaves */}
+      <ellipse cx="94"  cy="20" rx="8.5" ry="2.8" fill={c.leafClr} opacity="0.40" transform="rotate(-26 94 20)"/>
+      <ellipse cx="112" cy="18" rx="7.5" ry="2.4" fill={c.leafClr} opacity="0.35" transform="rotate(-16 112 18)"/>
+      <ellipse cx="186" cy="20" rx="8.5" ry="2.8" fill={c.leafClr} opacity="0.40" transform="rotate( 26 186 20)"/>
+      <ellipse cx="168" cy="18" rx="7.5" ry="2.4" fill={c.leafClr} opacity="0.35" transform="rotate( 16 168 18)"/>
+
+      {/* Three blooms */}
+      <Bloom cx={70}  cy={13} r={0.74} opacity={0.65} c={c} />
+      <Bloom cx={140} cy={11} r={0.82} opacity={0.72} c={c} />
+      <Bloom cx={210} cy={13} r={0.74} opacity={0.65} c={c} />
     </svg>
   );
 }
@@ -276,7 +302,7 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
             'Yanvar','Fevral','Mart','Aprel','May','Iyun',
             'Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr',
           ];
-          return `${eventDateObj.getDate()} ${M[eventDateObj.getMonth()]}, ${eventDateObj.getFullYear()}`;
+          return `${eventDateObj.getDate()} ${M[eventDateObj.getMonth()]} ${eventDateObj.getFullYear()}`;
         }
         return eventDateObj.toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
           day: 'numeric', month: 'long', year: 'numeric',
@@ -288,11 +314,12 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
 
     const year = eventDateObj.getFullYear();
 
-    const cornerMarks = [
-      { top: 28,    left:  28 },
-      { top: 28,    right: 28 },
-      { bottom: 28, left:  28 },
-      { bottom: 28, right: 28 },
+    // Corner marks at inner inset border
+    const cornerPositions = [
+      { top: 20,    left:  20  },
+      { top: 20,    right: 20  },
+      { bottom: 20, left:  20  },
+      { bottom: 20, right: 20  },
     ] as const;
 
     return (
@@ -310,83 +337,87 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
           WebkitFontSmoothing: 'antialiased',
         }}
       >
-        {/* ── Outer inset border ──────────────────────────────────────── */}
+        {/* ── Subtle paper noise texture ──────────────────────────── */}
         <div style={{
           position:      'absolute',
-          inset:         14,
-          border:        `0.65px solid ${c.goldRule}`,
+          inset:         0,
+          opacity:       0.032,
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: '256px 256px',
+          pointerEvents: 'none',
+          zIndex:        1,
+        }} />
+
+        {/* ── Outer border ────────────────────────────────────────── */}
+        <div style={{
+          position:      'absolute',
+          inset:         12,
+          border:        `0.60px solid ${c.goldRule}`,
           pointerEvents: 'none',
           zIndex:        10,
         }} />
 
-        {/* ── Inner inset border ──────────────────────────────────────── */}
+        {/* ── Inner border ────────────────────────────────────────── */}
         <div style={{
           position:      'absolute',
-          inset:         21,
-          border:        `0.45px solid ${c.goldRule}`,
+          inset:         19,
+          border:        `0.38px solid ${c.goldRule}`,
+          opacity:       0.55,
           pointerEvents: 'none',
           zIndex:        10,
-          opacity:       0.60,
         }} />
 
-        {/* ── Corner diamond marks at inner border ────────────────────── */}
-        {cornerMarks.map((pos, i) => (
+        {/* ── Corner diamond marks ─────────────────────────────────── */}
+        {cornerPositions.map((pos, i) => (
           <svg
             key={i}
             width={10} height={10} viewBox="0 0 10 10"
             fill="none" aria-hidden="true"
-            style={{ position: 'absolute', zIndex: 10, ...pos }}
+            style={{ position: 'absolute', zIndex: 11, ...pos }}
           >
-            <path d="M5 0.5 L9.5 5 L5 9.5 L0.5 5 Z" fill={c.gold} opacity={0.46} />
-            <path d="M5 3.2 L6.8 5 L5 6.8 L3.2 5 Z" fill={c.gold} opacity={0.28} />
+            <path d="M5 0.5 L9.5 5 L5 9.5 L0.5 5 Z"
+              fill={c.gold} opacity={0.42} />
+            <circle cx="5" cy="5" r="1.4" fill={c.bg} opacity={0.80} />
           </svg>
         ))}
 
-        {/* ══ TOP PADDING ════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 1  — Botanical arch garland
+        ══════════════════════════════════════════════════════════ */}
         <div style={{ height: 30, flexShrink: 0 }} />
-
-        {/* ══ ZONE 1 — Botanical header ══════════════════════════════════ */}
-        <div style={{
-          display:       'flex',
-          flexDirection: 'column',
-          alignItems:    'center',
-          gap:           10,
-          flexShrink:    0,
-        }}>
-          <TopBranches c={c} />
-
-          {/* Overline: "WEDDING INVITATION" */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 38, height: 0.55, background: c.gold, opacity: 0.36 }} />
-            <span style={{
-              fontFamily:    SANS,
-              fontSize:      8.5,
-              fontWeight:    500,
-              letterSpacing: '0.44em',
-              color:         c.gold,
-              textTransform: 'uppercase',
-              lineHeight:    1,
-            }}>
-              {t.cardWeddingInvitation}
-            </span>
-            <div style={{ width: 38, height: 0.55, background: c.gold, opacity: 0.36 }} />
-          </div>
+        <div style={{ flexShrink: 0, position: 'relative', zIndex: 2 }}>
+          <ArchGarland c={c} />
         </div>
 
-        {/* ── Gap ─────────────────────────────────────────────────────── */}
-        <div style={{ height: 26, flexShrink: 0 }} />
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 2  — Overline
+        ══════════════════════════════════════════════════════════ */}
+        <div style={{ height: 8, flexShrink: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+          <div style={{ width: 44, height: 0.50, background: c.gold, opacity: 0.32 }} />
+          <span style={{
+            fontFamily:    SANS,
+            fontSize:      8.0,
+            fontWeight:    500,
+            letterSpacing: '0.42em',
+            color:         c.gold,
+            textTransform: 'uppercase',
+            lineHeight:    1,
+          }}>
+            {t.cardWeddingInvitation}
+          </span>
+          <div style={{ width: 44, height: 0.50, background: c.gold, opacity: 0.32 }} />
+        </div>
 
-        {/* ══ ZONE 2 — Couple names (hero) ═══════════════════════════════ */}
-        <div style={{
-          position:      'relative',
-          display:       'flex',
-          flexDirection: 'column',
-          alignItems:    'center',
-          flexShrink:    0,
-        }}>
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 3  — Couple names (hero)
+        ══════════════════════════════════════════════════════════ */}
+        <div style={{ height: 20, flexShrink: 0 }} />
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+
           <span style={{
             fontFamily: GLOSSILY,
-            fontSize:   88,
+            fontSize:   84,
             color:      c.ink,
             lineHeight: 0.88,
             whiteSpace: 'nowrap',
@@ -394,12 +425,12 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
             Berfin
           </span>
 
-          {/* Fixed-height gap — the "&" is absolutely centred inside this space */}
+          {/* Fixed-height gap — the "&" is absolutely centred in this gap */}
           <div style={{ height: 44 }} />
 
           <span style={{
             fontFamily: GLOSSILY,
-            fontSize:   88,
+            fontSize:   84,
             color:      c.ink,
             lineHeight: 0.88,
             whiteSpace: 'nowrap',
@@ -407,7 +438,7 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
             Shamsiddin
           </span>
 
-          {/* Absolutely centred ampersand */}
+          {/* Ampersand — absolutely centred between the two names */}
           <span style={{
             position:      'absolute',
             top:           '50%',
@@ -416,10 +447,10 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
             fontFamily:    CORMORANT,
             fontStyle:     'italic',
             fontWeight:    400,
-            fontSize:      28,
+            fontSize:      27,
             color:         c.gold,
             lineHeight:    1,
-            letterSpacing: '0.05em',
+            letterSpacing: '0.04em',
             whiteSpace:    'nowrap',
             zIndex:        1,
           }}>
@@ -427,243 +458,244 @@ const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
           </span>
         </div>
 
-        {/* ── Gap ─────────────────────────────────────────────────────── */}
-        <div style={{ height: 16, flexShrink: 0 }} />
-
-        {/* Diamond ornament rule */}
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 4  — Divider
+        ══════════════════════════════════════════════════════════ */}
+        <div style={{ height: 18, flexShrink: 0 }} />
         <div style={{ flexShrink: 0 }}>
-          <DiamondRule width={300} c={c} />
+          <ElaborateDivider c={c} />
         </div>
 
-        {/* ── Gap ─────────────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 5  — Personal address
+        ══════════════════════════════════════════════════════════ */}
         <div style={{ height: 22, flexShrink: 0 }} />
-
-        {/* ══ ZONE 3 — Personal address ══════════════════════════════════ */}
         <div style={{
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
           flexShrink:    0,
-          paddingLeft:   52,
-          paddingRight:  52,
+          paddingLeft:   56,
+          paddingRight:  56,
           width:         540,
           boxSizing:     'border-box',
+          gap:           8,
         }}>
           <span style={{
-            fontFamily:  CORMORANT,
-            fontStyle:   'italic',
-            fontSize:    19,
-            color:       c.inkSub,
-            textAlign:   'center',
-            lineHeight:  1.50,
+            fontFamily: CORMORANT,
+            fontStyle:  'italic',
+            fontSize:   17.5,
+            color:      c.inkSub,
+            textAlign:  'center',
+            lineHeight: 1.55,
           }}>
             {t.cardWeInviteYou}
           </span>
 
-          <div style={{ height: 12 }} />
-
-          {/* Guest name flanked by DotRules for an intimate, hand-picked feel */}
-          <div style={{
-            display:       'flex',
-            flexDirection: 'column',
-            alignItems:    'center',
-            gap:           7,
+          <div style={{ height: 4 }} />
+          <div style={{ flexShrink: 0 }}><DotRule width={110} c={c} /></div>
+          <span style={{
+            fontFamily:    CORMORANT,
+            fontWeight:    600,
+            fontSize:      30,
+            color:         c.ink,
+            textAlign:     'center',
+            letterSpacing: '0.02em',
+            lineHeight:    1.18,
           }}>
-            <div style={{ flexShrink: 0 }}>
-              <DotRule width={120} c={c} />
-            </div>
-            <span style={{
-              fontFamily:    CORMORANT,
-              fontWeight:    600,
-              fontSize:      27,
-              color:         c.ink,
-              textAlign:     'center',
-              letterSpacing: '0.02em',
-              lineHeight:    1.20,
-            }}>
-              {guestName}
-            </span>
-            <div style={{ flexShrink: 0 }}>
-              <DotRule width={120} c={c} />
-            </div>
-          </div>
+            {guestName}
+          </span>
+          <div style={{ flexShrink: 0 }}><DotRule width={110} c={c} /></div>
         </div>
 
-        {/* ── Gap ─────────────────────────────────────────────────────── */}
-        <div style={{ height: 18, flexShrink: 0 }} />
-
-        {/* ══ ZONE 4 — Event details panel ═══════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 6  — Event details (clean typography, no panel)
+        ══════════════════════════════════════════════════════════ */}
+        <div style={{ height: 26, flexShrink: 0 }} />
         <div style={{
-          width:         460,
-          flexShrink:    0,
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
-          gap:           7,
-          paddingTop:    18,
-          paddingBottom: 18,
-          paddingLeft:   32,
-          paddingRight:  32,
-          background:    c.bgDeep,
-          border:        `0.65px solid ${c.goldRule}`,
+          flexShrink:    0,
+          gap:           0,
+          paddingLeft:   48,
+          paddingRight:  48,
+          width:         540,
           boxSizing:     'border-box',
         }}>
+          {/* Thin gold top rule */}
+          <div style={{ width: 180, height: 0.50, background: c.gold, opacity: 0.28, marginBottom: 14 }} />
+
+          {/* Optional event/location label */}
           {eventName && (
             <>
               <span style={{
                 fontFamily:    SANS,
                 fontSize:      7.5,
                 fontWeight:    500,
-                letterSpacing: '0.38em',
+                letterSpacing: '0.40em',
                 color:         c.petalDeep,
                 textTransform: 'uppercase',
                 lineHeight:    1,
+                opacity:       0.85,
               }}>
                 {eventName}
               </span>
-              <div style={{ width: 22, height: 0.5, background: c.gold, opacity: 0.28 }} />
+              <div style={{ height: 10 }} />
             </>
           )}
 
+          {/* Date */}
           <span style={{
             fontFamily:    CORMORANT,
             fontWeight:    600,
-            fontSize:      22,
+            fontSize:      24,
             color:         c.ink,
             letterSpacing: '0.01em',
-            lineHeight:    1.20,
+            lineHeight:    1.18,
             textAlign:     'center',
           }}>
             {formattedDate}
           </span>
 
+          {/* Time · Venue */}
           {(eventTime ?? venueName) && (
-            <span style={{
-              fontFamily:  CORMORANT,
-              fontStyle:   'italic',
-              fontSize:    16.5,
-              color:       c.inkSub,
-              textAlign:   'center',
-              lineHeight:  1.35,
-            }}>
-              {[eventTime, venueName].filter(Boolean).join('  ·  ')}
-            </span>
-          )}
-
-          {tableNumber != null && (
-            <div style={{
-              marginTop:     4,
-              paddingLeft:   18,
-              paddingRight:  18,
-              paddingTop:    5,
-              paddingBottom: 5,
-              border:        `0.65px solid ${c.goldRule}`,
-              display:       'flex',
-              alignItems:    'center',
-              gap:           8,
-              background:    `${c.gold}14`,
-            }}>
-              <span style={{
-                fontFamily:    SANS,
-                fontSize:      7,
-                fontWeight:    500,
-                letterSpacing: '0.36em',
-                color:         c.gold,
-                textTransform: 'uppercase',
-                lineHeight:    1,
-              }}>
-                {t.cardTable}
-              </span>
+            <>
+              <div style={{ height: 7 }} />
               <span style={{
                 fontFamily: CORMORANT,
-                fontSize:   20,
-                fontWeight: 600,
-                color:      c.gold,
-                lineHeight: 1,
+                fontStyle:  'italic',
+                fontSize:   16,
+                color:      c.inkSub,
+                textAlign:  'center',
+                lineHeight: 1.40,
               }}>
-                {tableNumber}
+                {[eventTime, venueName].filter(Boolean).join('  ·  ')}
               </span>
-            </div>
+            </>
           )}
+
+          {/* Table assignment — only when set */}
+          {tableNumber != null && (
+            <>
+              <div style={{ height: 14 }} />
+              <div style={{
+                display:       'inline-flex',
+                alignItems:    'center',
+                gap:           10,
+                paddingLeft:   20,
+                paddingRight:  20,
+                paddingTop:    6,
+                paddingBottom: 6,
+                border:        `0.55px solid ${c.goldRule}`,
+              }}>
+                <span style={{
+                  fontFamily:    SANS,
+                  fontSize:      7,
+                  fontWeight:    500,
+                  letterSpacing: '0.38em',
+                  color:         c.gold,
+                  textTransform: 'uppercase',
+                  lineHeight:    1,
+                }}>
+                  {t.cardTable}
+                </span>
+                <div style={{ width: 0.50, height: 14, background: c.goldRule }} />
+                <span style={{
+                  fontFamily: CORMORANT,
+                  fontSize:   22,
+                  fontWeight: 600,
+                  color:      c.gold,
+                  lineHeight: 1,
+                }}>
+                  {tableNumber}
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* Thin bottom rule */}
+          <div style={{ height: 14 }} />
+          <div style={{ width: 180, height: 0.50, background: c.gold, opacity: 0.28 }} />
         </div>
 
-        {/* ── Flexible spacer: absorbs variance in content height ─────── */}
-        <div style={{ flex: 1, minHeight: 8 }} />
+        {/* ── Flexible spacer: pushes QR to lower third ───────────── */}
+        <div style={{ flex: 1, minHeight: 14 }} />
 
-        {/* ══ ZONE 5 — QR code ═══════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 7  — QR code with elegant frame
+        ══════════════════════════════════════════════════════════ */}
         <div style={{
           display:       'flex',
           flexDirection: 'column',
           alignItems:    'center',
-          gap:           10,
+          gap:           12,
           flexShrink:    0,
         }}>
-          {/* QR wrapped in L-bracket corner frame */}
-          <div style={{ position: 'relative', width: 104, height: 104, lineHeight: 0 }}>
-            <div style={{ position: 'absolute', top: 10, left: 10 }}>
-              <QRCodeSVG value={rsvpUrl} size={84} bgColor={c.bg} fgColor={c.ink} level="M" />
+          {/* QR inside thin border with corner L-marks */}
+          <div style={{ position: 'relative', width: 112, height: 112, lineHeight: 0 }}>
+            {/* QR code sits 8px inside the frame */}
+            <div style={{ position: 'absolute', top: 8, left: 8 }}>
+              <QRCodeSVG value={rsvpUrl} size={96} bgColor={c.bg} fgColor={c.ink} level="M" />
             </div>
+            {/* Thin border + corner marks */}
             <svg
-              width={104} height={104} viewBox="0 0 104 104"
+              width={112} height={112} viewBox="0 0 112 112"
               fill="none" aria-hidden="true"
               style={{ position: 'absolute', top: 0, left: 0 }}
             >
-              {/* Top-left */}
-              <path d="M 15,4 L 4,4 L 4,15"
-                stroke={c.gold} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.54"/>
-              {/* Top-right */}
-              <path d="M 89,4 L 100,4 L 100,15"
-                stroke={c.gold} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.54"/>
-              {/* Bottom-left */}
-              <path d="M 15,100 L 4,100 L 4,89"
-                stroke={c.gold} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.54"/>
-              {/* Bottom-right */}
-              <path d="M 89,100 L 100,100 L 100,89"
-                stroke={c.gold} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.54"/>
+              {/* Thin full rect */}
+              <rect x="1" y="1" width="110" height="110"
+                stroke={c.goldRule} strokeWidth="0.65" fill="none"/>
+              {/* Corner L-marks — slightly longer for elegance */}
+              <path d="M 18,2  L 2,2  L 2,18"
+                stroke={c.gold} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" opacity="0.52"/>
+              <path d="M 94,2  L 110,2  L 110,18"
+                stroke={c.gold} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" opacity="0.52"/>
+              <path d="M 18,110 L 2,110  L 2,94"
+                stroke={c.gold} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" opacity="0.52"/>
+              <path d="M 94,110 L 110,110 L 110,94"
+                stroke={c.gold} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" opacity="0.52"/>
             </svg>
           </div>
 
-          {/* "Scan to RSVP" */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 22, height: 0.55, background: c.gold, opacity: 0.34 }} />
+          {/* Scan label */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 24, height: 0.50, background: c.gold, opacity: 0.32 }} />
             <span style={{
               fontFamily:    SANS,
               fontSize:      7.5,
               fontWeight:    400,
-              letterSpacing: '0.36em',
+              letterSpacing: '0.38em',
               color:         c.inkSub,
               textTransform: 'uppercase',
               lineHeight:    1,
             }}>
               {t.cardScanRsvp}
             </span>
-            <div style={{ width: 22, height: 0.55, background: c.gold, opacity: 0.34 }} />
+            <div style={{ width: 24, height: 0.50, background: c.gold, opacity: 0.32 }} />
           </div>
-
-          {/* Year */}
-          <span style={{
-            fontFamily:    SANS,
-            fontSize:      7.5,
-            letterSpacing: '0.34em',
-            color:         c.inkSub,
-            opacity:       0.50,
-            textTransform: 'uppercase',
-            lineHeight:    1,
-          }}>
-            · {year} ·
-          </span>
         </div>
 
-        {/* ── Gap ─────────────────────────────────────────────────────── */}
-        <div style={{ height: 12, flexShrink: 0 }} />
-
-        {/* Bottom botanical echo */}
+        {/* ══════════════════════════════════════════════════════════
+            ZONE 8  — Bottom botanical echo + year
+        ══════════════════════════════════════════════════════════ */}
+        <div style={{ height: 20, flexShrink: 0 }} />
         <div style={{ flexShrink: 0 }}>
-          <BottomBranches c={c} />
+          <BottomGarland c={c} />
         </div>
-
-        {/* ══ BOTTOM PADDING ═════════════════════════════════════════════ */}
-        <div style={{ height: 26, flexShrink: 0 }} />
+        <div style={{ height: 8, flexShrink: 0 }} />
+        <span style={{
+          fontFamily:    SANS,
+          fontSize:      7.5,
+          letterSpacing: '0.36em',
+          color:         c.inkFaint,
+          textTransform: 'uppercase',
+          lineHeight:    1,
+        }}>
+          · {year} ·
+        </span>
+        <div style={{ height: 28, flexShrink: 0 }} />
       </div>
     );
   },
