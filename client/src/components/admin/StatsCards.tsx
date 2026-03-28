@@ -180,6 +180,7 @@ export default function StatsCards({ events, selectedEventId, isLoading }: Props
         <div
           className="flex-shrink-0 text-center pl-5 sm:pl-8 min-w-[60px]"
           style={{ borderLeft: `1px solid ${GOLD_DIM}` }}
+          title={at.headcountHint}
         >
           <p
             className="font-sans text-3xl font-bold tabular-nums leading-none"

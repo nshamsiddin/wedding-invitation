@@ -76,13 +76,9 @@ body {
   overflow-x: hidden;
 }
 
-/* Hide default cursor and show custom cursor only on pointer (mouse) devices */
+/* Hide default cursor on pointer (mouse) devices — custom cursor component handles visuals */
 @media (pointer: fine) {
   body { cursor: none; }
-  * { cursor: none !important; }
-  a, button, [role="button"], input, select, textarea, label[for] {
-    cursor: none !important;
-  }
 }
 
 /* Restore default cursor + light background for admin panel */
@@ -98,14 +94,14 @@ body {
 
 /* ─── Custom Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-warm);
-  border-radius: 2px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-gold);
@@ -160,7 +156,7 @@ body {
 .grain-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: 99;
   pointer-events: none;
   opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
@@ -177,7 +173,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  z-index: 9997;
+  z-index: 98;
   transform-origin: left;
   background: linear-gradient(90deg, var(--accent-gold), var(--accent-rose));
 }
@@ -569,6 +565,23 @@ body {
   --shadow-md:      0 8px 32px rgba(0,0,0,0.08);
   --shadow-lg:      0 24px 80px rgba(0,0,0,0.10);
   color-scheme: light;
+}
+
+/* ─── Landscape short-viewport — slides allowed to scroll past 100dvh ─ */
+/* On landscape mobile (e.g. iPhone in landscape, ~400px tall) the     */
+/* mandatory snap + fixed 100dvh causes content overflow and snap lock. */
+@media (max-height: 600px) and (orientation: landscape) {
+  .garden-wrap {
+    scroll-snap-type: y proximity;
+  }
+  .garden-slide {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .hero-inner {
+    padding-top:    2rem !important;
+    padding-bottom: 1rem !important;
+  }
 }
 
 /* ─── Hero slide — short-viewport guard (iPhone SE, small Androids) ─ */

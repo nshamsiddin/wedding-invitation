@@ -152,6 +152,10 @@ export default function LoginPage() {
                 'Sign In'
               )}
             </button>
+
+            <p className="text-center text-xs font-sans mt-3" style={{ color: 'rgba(42,31,26,0.38)' }}>
+              Forgot password? Contact administrator.
+            </p>
           </form>
         </div>
       </motion.div>

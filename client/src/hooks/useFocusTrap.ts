@@ -31,6 +31,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
+  initialFocusRef?: RefObject<HTMLElement | null>,
 ): void {
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
@@ -44,13 +45,18 @@ export function useFocusTrap(
     const container = containerRef.current;
     if (!container) return;
 
-    // Move focus to the first focusable element; fall back to the container
-    // itself (which should have tabIndex="-1" as a safety net).
-    const focusable = getFocusableElements(container);
-    if (focusable.length > 0) {
-      focusable[0].focus();
+    // Move focus to the initialFocusRef target if provided, otherwise the first
+    // focusable element; fall back to the container itself (tabIndex="-1").
+    const initialTarget = initialFocusRef?.current;
+    if (initialTarget) {
+      initialTarget.focus();
     } else {
-      container.focus();
+      const focusable = getFocusableElements(container);
+      if (focusable.length > 0) {
+        focusable[0].focus();
+      } else {
+        container.focus();
+      }
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {

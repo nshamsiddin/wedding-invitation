@@ -61,7 +61,7 @@ export default function CustomCursor() {
           opacity: visible ? 1 : 0,
         }}
         transition={{ scale: { type: 'spring', damping: 20, stiffness: 300 } }}
-        className="fixed top-0 left-0 z-[9999] pointer-events-none mix-blend-difference"
+        className="fixed top-0 left-0 z-[100] pointer-events-none mix-blend-difference"
         style={{
           width: 36,
           height: 36,
@@ -82,7 +82,7 @@ export default function CustomCursor() {
           opacity: visible ? 1 : 0,
         }}
         transition={{ scale: { type: 'spring', damping: 30, stiffness: 500 } }}
-        className="fixed top-0 left-0 z-[9999] pointer-events-none"
+        className="fixed top-0 left-0 z-[100] pointer-events-none"
         style={{
           width: 6,
           height: 6,
