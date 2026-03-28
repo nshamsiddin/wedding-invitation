@@ -6,6 +6,10 @@ dist/
 *.db-wal
 *.db-shm
 
+# Playwright artifacts
+playwright-report/
+test-results/
+
 # Personal photos — kept out of version control
 client/public/*.jpg
 client/public/*.jpeg
