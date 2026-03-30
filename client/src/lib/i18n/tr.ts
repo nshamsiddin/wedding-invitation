@@ -147,9 +147,4 @@ export const tr: Translations = {
   happyCoupleAlt: 'Mutlu çift',
   partnerDietaryLabel: 'Eşinizin Diyet Kısıtlamaları',
   addToCalendar: 'Takvime Ekle',
-  cardYoureInvited: 'DAVETLİSİNİZ',
-  cardWeInviteYou: 'Sizi aramızda görmekten onur duyarız,',
-  cardScanRsvp: 'RSVP için tarayın',
-  cardTable: 'MASA',
-  cardWeddingInvitation: 'Düğün Davetiyesi',
 };

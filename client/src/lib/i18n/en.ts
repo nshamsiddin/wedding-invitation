@@ -124,11 +124,6 @@ export type Translations = {
   partnerDietaryLabel: string;
   // Success screen — post-RSVP calendar CTA
   addToCalendar: string;
-  cardYoureInvited: string;
-  cardWeInviteYou: string;
-  cardScanRsvp: string;
-  cardTable: string;
-  cardWeddingInvitation: string;
 };
 
 export const en: Translations = {
@@ -279,10 +274,4 @@ export const en: Translations = {
   partnerDietaryLabel: "Partner's Dietary Restrictions",
   addToCalendar: 'Add to Calendar',
 
-  // Invitation card (downloadable image)
-  cardYoureInvited: "YOU'RE INVITED",
-  cardWeInviteYou: 'We joyfully invite you,',
-  cardScanRsvp: 'Scan to RSVP',
-  cardTable: 'TABLE',
-  cardWeddingInvitation: 'Wedding Invitation',
 };

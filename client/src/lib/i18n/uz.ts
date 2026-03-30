@@ -147,9 +147,4 @@ export const uz: Translations = {
   happyCoupleAlt: 'Baxtli juftlik',
   partnerDietaryLabel: 'Hamrohingizning Ovqatlanish Cheklovlari',
   addToCalendar: 'Taqvimga Qo\'shish',
-  cardYoureInvited: 'TAKLIFLANASIZ',
-  cardWeInviteYou: 'Sizi bayramimizda ko\'rishdan mamnun bo\'lamiz,',
-  cardScanRsvp: 'RSVP uchun skan qiling',
-  cardTable: 'STOL',
-  cardWeddingInvitation: 'To\'y Taklifi',
 };
