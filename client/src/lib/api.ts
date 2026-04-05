@@ -164,6 +164,42 @@ export const adminApi = {
   },
 };
 
+export interface AdminNotification {
+  id: number;
+  type: 'rsvp_new' | 'rsvp_updated';
+  guestName: string;
+  eventSlug: string;
+  eventName: string;
+  status: 'attending' | 'declined' | 'maybe' | 'pending';
+  guestCount: number;
+  message: string | null;
+  invitationId: number;
+  guestId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export const notificationsApi = {
+  list: async (params?: {
+    unread?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<{ notifications: AdminNotification[]; total: number; page: number; limit: number }> => {
+    const { data } = await api.get('/admin/notifications', { params });
+    return data;
+  },
+  getUnreadCount: async (): Promise<{ count: number }> => {
+    const { data } = await api.get<{ count: number }>('/admin/notifications/unread-count');
+    return data;
+  },
+  markRead: async (id: number): Promise<void> => {
+    await api.patch(`/admin/notifications/${id}/read`);
+  },
+  markAllRead: async (): Promise<void> => {
+    await api.patch('/admin/notifications/read-all');
+  },
+};
+
 export const configApi = {
   getConfig: async (): Promise<{ baseUrl: string }> => {
     const { data } = await api.get<{ baseUrl: string }>('/config');

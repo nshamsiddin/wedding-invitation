@@ -6,6 +6,7 @@ import { db, schema, sqlite } from '../db/index.js';
 import { rsvpSubmitSchema, claimInvitationSchema, publicRsvpSchema, publicPageRsvpSchema } from '@invitation/shared';
 import { rsvpRateLimit, claimRateLimit, tokenLookupRateLimit } from '../middleware/rateLimit.js';
 import logger from '../lib/logger.js';
+import { createNotification } from '../lib/notifications.js';
 
 const router = Router();
 
@@ -239,6 +240,32 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
       }
     }
 
+    // Fetch context for notification (guest name + event info)
+    const notifCtx = sqlite
+      .prepare(
+        `SELECT g.name AS guest_name, e.slug AS event_slug, e.name AS event_name
+         FROM guest_invitations gi
+         LEFT JOIN guests g ON g.id = gi.guest_id
+         LEFT JOIN events e ON e.id = gi.event_id
+         WHERE gi.id = ?
+         LIMIT 1`
+      )
+      .get(updated[0]?.id) as { guest_name: string; event_slug: string; event_name: string } | undefined;
+
+    if (notifCtx && updated[0]) {
+      createNotification(sqlite, {
+        type: 'rsvp_updated',
+        guestName: notifCtx.guest_name,
+        eventSlug: notifCtx.event_slug,
+        eventName: notifCtx.event_name,
+        status: data.status,
+        guestCount: data.status === 'attending' ? (data.guestCount ?? 1) : 1,
+        message: data.message ?? null,
+        invitationId: updated[0].id,
+        guestId: updated[0].guestId ?? null,
+      });
+    }
+
     logger.info({ token: data.token, status: data.status, guestCount: data.guestCount ?? 1 }, 'rsvp submitted');
     res.json({ invitation: updated[0], updated: true });
   } catch (error) {
@@ -406,6 +433,35 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
       return;
     }
 
+    // Emit one notification per claimed invitation
+    const claimedInvitations = result.invitations as Array<{
+      id: number; status: string; guestCount?: number; message?: string | null;
+    }>;
+    for (const inv of claimedInvitations) {
+      const ctx = sqlite
+        .prepare(
+          `SELECT e.slug AS event_slug, e.name AS event_name
+           FROM guest_invitations gi
+           LEFT JOIN events e ON e.id = gi.event_id
+           WHERE gi.id = ? LIMIT 1`
+        )
+        .get(inv.id) as { event_slug: string; event_name: string } | undefined;
+
+      if (ctx) {
+        createNotification(sqlite, {
+          type: 'rsvp_new',
+          guestName: result.guest.name,
+          eventSlug: ctx.event_slug,
+          eventName: ctx.event_name,
+          status: inv.status,
+          guestCount: inv.status === 'attending' ? (inv.guestCount ?? 1) : 1,
+          message: inv.message ?? null,
+          invitationId: inv.id,
+          guestId: result.guest.id,
+        });
+      }
+    }
+
     logger.info({ token, guestId: result.guest.id, name: result.guest.name }, 'invitation claimed');
     res.status(201).json({
       guest: result.guest,
@@ -541,6 +597,31 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
       return;
     }
 
+    // Resolve guest name + event info for the notification
+    const pubCtx = sqlite
+      .prepare(
+        `SELECT g.name AS guest_name, e.slug AS event_slug, e.name AS event_name
+         FROM guest_invitations gi
+         LEFT JOIN guests g ON g.id = gi.guest_id
+         LEFT JOIN events e ON e.id = gi.event_id
+         WHERE gi.id = ? LIMIT 1`
+      )
+      .get(result.invitationId) as { guest_name: string; event_slug: string; event_name: string } | undefined;
+
+    if (pubCtx) {
+      createNotification(sqlite, {
+        type: 'rsvp_new',
+        guestName: pubCtx.guest_name,
+        eventSlug: pubCtx.event_slug,
+        eventName: pubCtx.event_name,
+        status,
+        guestCount: status === 'attending' ? (guestCount ?? 1) : 1,
+        message: message ?? null,
+        invitationId: result.invitationId,
+        guestId: result.guestId,
+      });
+    }
+
     logger.info({ eventId, guestId: result.guestId, status }, 'public rsvp submitted');
     res.status(201).json({ ok: true });
   } catch (error) {
@@ -657,6 +738,30 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
     if (!result.ok) {
       res.status(result.status).json({ error: result.error });
       return;
+    }
+
+    const pageCtx = sqlite
+      .prepare(
+        `SELECT g.name AS guest_name, e.slug AS event_slug, e.name AS event_name
+         FROM guest_invitations gi
+         LEFT JOIN guests g ON g.id = gi.guest_id
+         LEFT JOIN events e ON e.id = gi.event_id
+         WHERE gi.id = ? LIMIT 1`
+      )
+      .get(result.invitationId) as { guest_name: string; event_slug: string; event_name: string } | undefined;
+
+    if (pageCtx) {
+      createNotification(sqlite, {
+        type: 'rsvp_new',
+        guestName: pageCtx.guest_name,
+        eventSlug: pageCtx.event_slug,
+        eventName: pageCtx.event_name,
+        status,
+        guestCount: status === 'attending' ? (guestCount ?? 1) : 1,
+        message: message ?? null,
+        invitationId: result.invitationId,
+        guestId: result.guestId,
+      });
     }
 
     logger.info({ eventSlug, guestId: result.guestId, status }, 'public-page rsvp submitted');

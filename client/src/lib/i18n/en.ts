@@ -28,6 +28,7 @@ export type Translations = {
   decliningOption: string;
   maybeOption: string;
   guestCountLabel: string;
+  guestCountHint: string;
   guestCountSingle: string;
   guestCountPlural: string;
   dietaryLabel: string;
@@ -131,10 +132,10 @@ export const en: Translations = {
 
   // Hero
   cordiallyInvited: 'You are cordially invited to the wedding of',
-  rsvpButton: 'RSVP',
-  scrollDown: 'Scroll to RSVP',
+  rsvpButton: 'Confirm Attendance',
+  scrollDown: 'Scroll down to confirm',
   scrollCta: 'Discover our story',
-  scrollToRsvp: 'RSVP below',
+  scrollToRsvp: 'Scroll down to confirm',
 
   // Event details section
   aboutEvent: 'The Celebration',
@@ -153,7 +154,7 @@ export const en: Translations = {
 
   // RSVP section
   kindlyReply: 'Kindly Reply',
-  rsvpHeading: 'RSVP',
+  rsvpHeading: 'Your Response',
   rsvpDeadlineNote: 'Please respond by',
 
   // RSVP form fields
@@ -165,7 +166,8 @@ export const en: Translations = {
   attendingOption: 'Attending',
   decliningOption: 'Declining',
   maybeOption: 'Maybe',
-  guestCountLabel: 'Number of guests (including yourself)',
+  guestCountLabel: 'Number of guests',
+  guestCountHint: 'Guest count includes the invitee',
   guestCountSingle: 'guest',
   guestCountPlural: 'guests',
   dietaryLabel: 'Dietary Restrictions',
@@ -176,12 +178,12 @@ export const en: Translations = {
   messageOptional: '(optional)',
 
   // RSVP form actions
-  sendRsvp: 'Send RSVP',
-  updateRsvp: 'Update RSVP',
+  sendRsvp: 'Send Response',
+  updateRsvp: 'Update Response',
   sending: 'Sending…',
 
   // Update banner
-  rsvpFoundTitle: 'We found your RSVP!',
+  rsvpFoundTitle: 'We found your response!',
   rsvpFoundSub: 'You can update your response below.',
 
   // Errors
@@ -189,22 +191,22 @@ export const en: Translations = {
   rsvpDeadlineHint: 'Please respond before the deadline.',
 
   // Success screen
-  rsvpConfirmed: 'RSVP Confirmed',
-  rsvpUpdated: 'RSVP Updated',
+  rsvpConfirmed: 'Confirmed!',
+  rsvpUpdated: 'Updated!',
   attendingHeadline: "We can't wait to celebrate with you!",
   attendingSub: (count: number) =>
     `You've confirmed attendance for ${count} ${count === 1 ? 'guest' : 'guests'}. We'll be in touch with more details.`,
   declinedHeadline: 'We will miss you!',
   declinedSub: "Thank you for letting us know. We'll miss having you there to celebrate.",
   maybeHeadline: 'We hope you can make it!',
-  maybeSub: "We've noted your tentative response. Please update your RSVP once you know for sure.",
-  defaultHeadline: 'RSVP Received!',
+  maybeSub: "We've noted your tentative response. Please update your response once you know for sure.",
+  defaultHeadline: 'Response Received!',
   defaultSub: 'Thank you for your response.',
   yourDetails: 'Your Details',
   detailName: 'Name',
   detailEvent: 'Event',
   detailDate: 'Date',
-  updateRsvpLink: 'Need to update your RSVP?',
+  updateRsvpLink: 'Need to update your response?',
 
   // Footer
   allRightsReserved: 'All rights reserved.',
@@ -221,7 +223,7 @@ export const en: Translations = {
   // EventPage — RSVP notice (no personal link)
   personalInviteRequired: 'Personal Invitation Required',
   personalInviteRequiredSub:
-    'To confirm your attendance, please use the personal link included in your invitation. Each guest receives a unique link to their own RSVP.',
+    'To confirm your attendance, please use the personal link included in your invitation. Each guest receives a unique personal link.',
   personalLinkHint: 'Your personal link was sent to you by SMS, WhatsApp, or printed card.',
 
   // HomePage
@@ -262,7 +264,7 @@ export const en: Translations = {
   chapter: 'Chapter',
   returnToHomepage: 'Return to homepage',
   needHelp: 'Need help? Contact us',
-  rsvpReceived: 'RSVP received!',
+  rsvpReceived: 'Response received!',
   submitFailed: 'Failed to submit. Please try again.',
   registrationComplete: 'Registration complete!',
   registerFailed: 'Failed to register. Please try again.',

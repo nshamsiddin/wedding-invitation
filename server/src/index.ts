@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import rsvpRouter from './routes/rsvp.js';
 import adminRouter from './routes/admin.js';
 import eventsRouter from './routes/events.js';
+import notificationsRouter from './routes/notifications.js';
 import { clearRateLimitStore } from './middleware/rateLimit.js';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -186,6 +187,27 @@ db.run(sql`
     UNIQUE(guest_id, event_id)
   )
 `);
+
+db.run(sql`
+  CREATE TABLE IF NOT EXISTS notifications (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    type          TEXT NOT NULL CHECK(type IN ('rsvp_new', 'rsvp_updated')),
+    guest_name    TEXT NOT NULL,
+    event_slug    TEXT NOT NULL,
+    event_name    TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    guest_count   INTEGER NOT NULL DEFAULT 1,
+    message       TEXT,
+    invitation_id INTEGER NOT NULL,
+    guest_id      INTEGER,
+    is_read       INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  )
+`);
+
+sqlite.prepare(
+  'CREATE INDEX IF NOT EXISTS notif_is_read_idx ON notifications (is_read)'
+).run();
 
 // ─── Schema migration (existing installs) ────────────────────────────────────
 
@@ -439,6 +461,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.use('/api/events', eventsRouter);
 app.use('/api/rsvp', rsvpRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin/notifications', notificationsRouter);
 
 // ─── Static files (production) ────────────────────────────────────────────────
 

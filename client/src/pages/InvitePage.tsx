@@ -79,23 +79,23 @@ function ScrollCue({ inView }: { inView: boolean }) {
       initial={{ opacity: 0 }}
       animate={inView ? { opacity: 1 } : { opacity: 0 }}
       transition={{ delay: 2.0 }}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginTop: 'clamp(1rem, 3vh, 2rem)' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', marginTop: 'clamp(1.25rem, 3.5vh, 2.5rem)' }}
       aria-hidden="true"
     >
+      <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.15rem', fontWeight: 500 }}>
+        {t.scrollToRsvp}
+      </span>
       {/* Two stacked chevrons, staggered fade — universally understood on both touch and mouse */}
       {[0, 1].map((i) => (
         <motion.svg
           key={i}
-          width="16" height="10" viewBox="0 0 16 10" fill="none"
-          animate={{ opacity: [0.2, 0.8, 0.2], y: [0, 4, 0] }}
-          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut', delay: i * 0.25 }}
+          width="26" height="16" viewBox="0 0 26 16" fill="none"
+          animate={{ opacity: [0.3, 1, 0.3], y: [0, 6, 0] }}
+          transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut', delay: i * 0.22 }}
         >
-          <path d="M1 1L8 8L15 1" stroke={ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 1L13 13L25 1" stroke={ROSE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </motion.svg>
       ))}
-      <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginTop: '0.1rem' }}>
-        {t.scrollToRsvp}
-      </span>
     </motion.div>
   );
 }
@@ -221,6 +221,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
           <GuestCountSelect
             id="pub-count"
             label={t.guestCountLabel}
+            hint={t.guestCountHint}
             singleLabel={t.guestCountSingle}
             pluralLabel={t.guestCountPlural}
             value={guestCount}
@@ -341,6 +342,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
                   <GuestCountSelect
                     id={`entry-count-${ev.id}`}
                     label={t.guestCountLabel}
+                    hint={t.guestCountHint}
                     singleLabel={t.guestCountSingle}
                     pluralLabel={t.guestCountPlural}
                     value={field.value ?? 1}

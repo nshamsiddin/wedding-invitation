@@ -187,13 +187,12 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
   }
 );
 
-// ─── AttendancePicker — 3-button radio ────────────────────────────────────────
+// ─── AttendancePicker — 2-button radio ────────────────────────────────────────
 
 type AttendanceValue = 'attending' | 'declined' | 'maybe';
 const ATTEND_OPTIONS: { value: AttendanceValue; symbol: string }[] = [
   { value: 'attending', symbol: '✓' },
   { value: 'declined',  symbol: '✕' },
-  { value: 'maybe',     symbol: '◎' },
 ];
 
 export function AttendancePicker({
@@ -205,7 +204,7 @@ export function AttendancePicker({
   name?: string;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       {ATTEND_OPTIONS.map(({ value: v, symbol }) => {
         const isSelected = value === v;
         return (
@@ -251,7 +250,7 @@ export function AttendancePicker({
 // ─── GuestCountSelect ─────────────────────────────────────────────────────────
 
 export function GuestCountSelect({
-  id, label, singleLabel, pluralLabel, value, onChange,
+  id, label, singleLabel, pluralLabel, value, onChange, hint,
 }: {
   id: string;
   label: string;
@@ -259,9 +258,10 @@ export function GuestCountSelect({
   pluralLabel: string;
   value: number;
   onChange: (n: number) => void;
+  hint?: string;
 }) {
   return (
-    <FormField label={label}>
+    <FormField label={label} hint={hint}>
       <FormSelect
         id={id}
         value={value}

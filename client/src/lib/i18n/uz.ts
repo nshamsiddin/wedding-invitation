@@ -5,10 +5,10 @@ export const uz: Translations = {
 
   // Hero
   cordiallyInvited: 'Sizi to\'yimizga taklif etishdan mamnunmiz',
-  rsvpButton: 'Tasdiqlash',
-  scrollDown: 'Pastga aylantiring',
+  rsvpButton: 'Ishtirokni Tasdiqlash',
+  scrollDown: 'Tasdiqlash uchun pastga aylantiring',
   scrollCta: 'Hikoyamizni kashf eting',
-  scrollToRsvp: 'Quyida javob bering',
+  scrollToRsvp: 'Tasdiqlash uchun pastga aylantiring',
 
   // Event details section
   aboutEvent: 'Bayram',
@@ -27,7 +27,7 @@ export const uz: Translations = {
 
   // RSVP section
   kindlyReply: 'Iltimos Javob Bering',
-  rsvpHeading: 'Ishtirokni Tasdiqlash',
+  rsvpHeading: 'Javobingiz',
   rsvpDeadlineNote: 'Iltimos shu sanagacha javob bering:',
 
   // RSVP form fields
@@ -39,7 +39,8 @@ export const uz: Translations = {
   attendingOption: 'Ha, kelaman',
   decliningOption: 'Kela olmayman',
   maybeOption: 'Balki',
-  guestCountLabel: 'Mehmonlar soni (o\'zingiz bilan)',
+  guestCountLabel: 'Mehmonlar soni',
+  guestCountHint: 'Taklif etilgan shaxs songa kiritilgan',
   guestCountSingle: 'mehmon',
   guestCountPlural: 'mehmon',
   dietaryLabel: 'Ovqatlanish cheklovlari',
@@ -50,12 +51,12 @@ export const uz: Translations = {
   messageOptional: '(ixtiyoriy)',
 
   // RSVP form actions
-  sendRsvp: 'RSVP Yuborish',
-  updateRsvp: 'RSVP\'ni Yangilash',
+  sendRsvp: 'Javob Yuborish',
+  updateRsvp: 'Javobni Yangilash',
   sending: 'Yuborilmoqda…',
 
   // Update banner
-  rsvpFoundTitle: 'RSVP\'ingizni topdik!',
+  rsvpFoundTitle: 'Javobingizni topdik!',
   rsvpFoundSub: 'Quyida javobingizni yangilashingiz mumkin.',
 
   // Errors
@@ -63,22 +64,22 @@ export const uz: Translations = {
   rsvpDeadlineHint: 'Iltimos, muddatgacha javob bering.',
 
   // Success screen
-  rsvpConfirmed: 'RSVP Tasdiqlandi',
-  rsvpUpdated: 'RSVP Yangilandi',
+  rsvpConfirmed: 'Tasdiqlandi!',
+  rsvpUpdated: 'Yangilandi!',
   attendingHeadline: 'Siz bilan nishonlashni sabrsizlik bilan kutamiz!',
   attendingSub: (count: number) =>
     `${count} mehmon uchun kelishingizni tasdiqladingiz. Ko'proq ma'lumot uchun siz bilan bog'lanamiz.`,
   declinedHeadline: 'Sizni sog\'inib qolamiz!',
   declinedSub: 'Xabar berganingiz uchun rahmat. Bayramda sizni ko\'rishni istardik.',
   maybeHeadline: 'Kela olishingizni umid qilamiz!',
-  maybeSub: 'Vaqtinchalik javobingizni qayd etdik. Aniq ma\'lum bo\'lganda RSVP\'ingizni yangilang.',
-  defaultHeadline: 'RSVP Qabul Qilindi!',
+  maybeSub: 'Vaqtinchalik javobingizni qayd etdik. Aniq ma\'lum bo\'lganda javobingizni yangilang.',
+  defaultHeadline: 'Javob Qabul Qilindi!',
   defaultSub: 'Javobingiz uchun rahmat.',
   yourDetails: 'Ma\'lumotlaringiz',
   detailName: 'Ism',
   detailEvent: 'Tadbir',
   detailDate: 'Sana',
-  updateRsvpLink: 'RSVP\'ingizni yangilamoqchimisiz?',
+  updateRsvpLink: 'Javobingizni yangilamoqchimisiz?',
 
   // Footer
   allRightsReserved: 'Barcha huquqlar himoyalangan.',
@@ -95,7 +96,7 @@ export const uz: Translations = {
   // EventPage — RSVP notice (no personal link)
   personalInviteRequired: 'Shaxsiy Taklif Talab Etiladi',
   personalInviteRequiredSub:
-    'Ishtirokingizni tasdiqlash uchun taklifnomangizda berilgan shaxsiy havoladan foydalaning. Har bir mehmon o\'z RSVP sahifasi uchun noyob havola oladi.',
+    'Ishtirokingizni tasdiqlash uchun taklifnomangizda berilgan shaxsiy havoladan foydalaning. Har bir mehmon o\'z shaxsiy havolasini oladi.',
   personalLinkHint: 'Shaxsiy havolangiz siz bilan SMS, WhatsApp yoki chop etilgan taklif orqali ulashildi.',
 
   // HomePage

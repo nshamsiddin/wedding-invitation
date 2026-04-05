@@ -274,6 +274,7 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
           <GuestCountSelect
             id="ppub-count"
             label={t.guestCountLabel}
+            hint={t.guestCountHint}
             singleLabel={t.guestCountSingle}
             pluralLabel={t.guestCountPlural}
             value={guestCount}

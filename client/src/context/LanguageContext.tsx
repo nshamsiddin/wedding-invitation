@@ -18,6 +18,11 @@ function getInitialLanguage(): Language {
   } catch {
     // localStorage unavailable
   }
+
+  // Detect from browser locale
+  const browserLang = (navigator.languages?.[0] ?? navigator.language ?? '').toLowerCase();
+  if (browserLang.startsWith('tr')) return 'tr';
+  if (browserLang.startsWith('uz')) return 'uz';
   return 'en';
 }
 

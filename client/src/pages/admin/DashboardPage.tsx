@@ -21,6 +21,7 @@ import GuestTable from '../../components/admin/GuestTable';
 import AddGuestModal from '../../components/admin/AddGuestModal';
 import EditGuestModal from '../../components/admin/EditGuestModal';
 import EditInvitationModal from '../../components/admin/EditInvitationModal';
+import NotificationBell from '../../components/admin/NotificationBell';
 
 // ─── Static shareable link cards ─────────────────────────────────────────────
 
@@ -522,6 +523,9 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Notification bell */}
+            <NotificationBell />
+
             {/* Language switcher */}
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD_DIM}` }}>
               {LANGUAGES.map((l) => (

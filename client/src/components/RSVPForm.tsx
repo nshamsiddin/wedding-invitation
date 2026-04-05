@@ -240,6 +240,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
               <GuestCountSelect
                 id="rsvp-guest-count"
                 label={t.guestCountLabel}
+                hint={t.guestCountHint}
                 singleLabel={t.guestCountSingle}
                 pluralLabel={t.guestCountPlural}
                 value={watchedCount}

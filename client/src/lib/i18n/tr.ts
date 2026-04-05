@@ -5,10 +5,10 @@ export const tr: Translations = {
 
   // Hero
   cordiallyInvited: 'Sizi düğünümüze davet etmekten onur duyuyoruz',
-  rsvpButton: 'Onayla',
-  scrollDown: 'Aşağı kaydırın',
+  rsvpButton: 'Katılımı Onayla',
+  scrollDown: 'Onaylamak için aşağı kaydırın',
   scrollCta: 'Hikayemizi keşfedin',
-  scrollToRsvp: 'Aşağıda yanıtlayın',
+  scrollToRsvp: 'Onaylamak için aşağı kaydırın',
 
   // Event details section
   aboutEvent: 'Kutlama',
@@ -27,7 +27,7 @@ export const tr: Translations = {
 
   // RSVP section
   kindlyReply: 'Lütfen Yanıt Verin',
-  rsvpHeading: 'Katılım Onayı',
+  rsvpHeading: 'Yanıtınız',
   rsvpDeadlineNote: 'Lütfen şu tarihe kadar yanıtlayın:',
 
   // RSVP form fields
@@ -39,7 +39,8 @@ export const tr: Translations = {
   attendingOption: 'Katılıyorum',
   decliningOption: 'Katılamıyorum',
   maybeOption: 'Belki',
-  guestCountLabel: 'Misafir sayısı (kendiniz dahil)',
+  guestCountLabel: 'Misafir sayısı',
+  guestCountHint: 'Davetli kişi sayıya dahildir',
   guestCountSingle: 'misafir',
   guestCountPlural: 'misafir',
   dietaryLabel: 'Diyet Kısıtlamaları',
@@ -50,12 +51,12 @@ export const tr: Translations = {
   messageOptional: '(isteğe bağlı)',
 
   // RSVP form actions
-  sendRsvp: 'RSVP Gönder',
-  updateRsvp: 'RSVP\'yi Güncelle',
+  sendRsvp: 'Yanıt Gönder',
+  updateRsvp: 'Yanıtı Güncelle',
   sending: 'Gönderiliyor…',
 
   // Update banner
-  rsvpFoundTitle: 'RSVP\'nizi bulduk!',
+  rsvpFoundTitle: 'Yanıtınızı bulduk!',
   rsvpFoundSub: 'Aşağıdan yanıtınızı güncelleyebilirsiniz.',
 
   // Errors
@@ -63,22 +64,22 @@ export const tr: Translations = {
   rsvpDeadlineHint: 'Lütfen son tarihe kadar yanıt verin.',
 
   // Success screen
-  rsvpConfirmed: 'RSVP Onaylandı',
-  rsvpUpdated: 'RSVP Güncellendi',
+  rsvpConfirmed: 'Onaylandı!',
+  rsvpUpdated: 'Güncellendi!',
   attendingHeadline: 'Sizinle kutlamayı sabırsızlıkla bekliyoruz!',
   attendingSub: (count: number) =>
     `${count} kişilik katılımınızı onayladınız. Daha fazla ayrıntı için sizinle iletişime geçeceğiz.`,
   declinedHeadline: 'Sizi özleyeceğiz!',
   declinedSub: 'Bize bildirdiğiniz için teşekkür ederiz. Kutlamada yanımızda olmanızı çok isterdik.',
   maybeHeadline: 'Umarız katılabilirsiniz!',
-  maybeSub: 'Geçici yanıtınızı not ettik. Kesin olarak öğrendiğinizde lütfen RSVP\'nizi güncelleyin.',
-  defaultHeadline: 'RSVP Alındı!',
+  maybeSub: 'Geçici yanıtınızı not ettik. Kesin olarak öğrendiğinizde lütfen yanıtınızı güncelleyin.',
+  defaultHeadline: 'Yanıt Alındı!',
   defaultSub: 'Yanıtınız için teşekkür ederiz.',
   yourDetails: 'Bilgileriniz',
   detailName: 'Ad',
   detailEvent: 'Etkinlik',
   detailDate: 'Tarih',
-  updateRsvpLink: 'RSVP\'nizi güncellemek mi istiyorsunuz?',
+  updateRsvpLink: 'Yanıtınızı güncellemek mi istiyorsunuz?',
 
   // Footer
   allRightsReserved: 'Tüm hakları saklıdır.',
@@ -95,7 +96,7 @@ export const tr: Translations = {
   // EventPage — RSVP notice (no personal link)
   personalInviteRequired: 'Kişisel Davetiye Gerekli',
   personalInviteRequiredSub:
-    'Katılımınızı onaylamak için davetiyenizde yer alan kişisel bağlantıyı kullanın. Her misafir kendi RSVP sayfası için benzersiz bir bağlantı alır.',
+    'Katılımınızı onaylamak için davetiyenizde yer alan kişisel bağlantıyı kullanın. Her misafir kendine özel bir kişisel bağlantı alır.',
   personalLinkHint: 'Kişisel bağlantınız size SMS, WhatsApp veya basılı davetiye ile gönderildi.',
 
   // HomePage
