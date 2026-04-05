@@ -589,7 +589,7 @@ body {
 /* visible inside the 100dvh garden-slide on short screens.            */
 @media (max-height: 700px) {
   .hero-inner {
-    padding-top:    clamp(3rem, 7vh, 4.5rem) !important;
+    padding-top:    clamp(5rem, 11vh, 6rem) !important;
     padding-bottom: clamp(0.5rem, 2vh, 1.5rem) !important;
   }
   /* Table assignment badge is moved to the RSVP slide context on short screens */

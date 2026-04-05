@@ -24,7 +24,7 @@ export const PUBLIC_EVENT_CONFIGS = {
     slug: 'ankara' as const,
     city: { en: 'Ankara', tr: 'Ankara', uz: 'Ankara' },
     date: '2026-05-19',
-    time: '18:00',
+    time: '18:30',
     venueName: "Park L'Amore",
     venueAddress: 'İncek, Turgut Özal Blv. No:48, 06830 Gölbaşı/Ankara, Türkiye',
     displayDate: {
@@ -37,7 +37,7 @@ export const PUBLIC_EVENT_CONFIGS = {
       tr: 'Resmi Kıyafet',
       uz: 'Rasmiy Kiyim',
     },
-    targetDateTime: '2026-05-19T18:00:00',
+    targetDateTime: '2026-05-19T18:30:00',
   },
 } as const;
 

@@ -4,7 +4,7 @@ export const uz: Translations = {
   lang: 'UZ',
 
   // Hero
-  cordiallyInvited: 'Sizi to'yimizga taklif etishdan mamnunmiz',
+  cordiallyInvited: "Sizi to'yimizga taklif etishdan mamnunmiz",
   rsvpButton: 'Ishtirokni Tasdiqlash',
   scrollDown: 'Tasdiqlash uchun pastga aylantiring',
   scrollCta: 'Hikoyamiz bilan tanishing',
@@ -33,27 +33,27 @@ export const uz: Translations = {
   // RSVP form fields
   emailLabel: 'Elektron pochta',
   emailPlaceholder: 'sizning@email.com',
-  nameLabel: 'To'liq ism',
+  nameLabel: "To'liq ism",
   namePlaceholder: 'Ismingiz va familiyangiz',
   attendanceLabel: 'Kelasizmi?',
   attendingOption: 'Ha, kelaman',
   decliningOption: 'Kela olmayman',
   maybeOption: 'Balki',
   guestCountLabel: 'Mehmonlar soni',
-  guestCountHint: 'Sizning o'zingiz ham songa kiritilgansiz',
+  guestCountHint: "Sizning o'zingiz ham songa kiritilgansiz",
   guestCountSingle: 'mehmon',
   guestCountPlural: 'mehmon',
   dietaryLabel: 'Ovqatlanish cheklovlari',
-  dietaryPlaceholder: 'Masalan: Vegetarian, Glutensiz, Yong'oq allergiyasi',
+  dietaryPlaceholder: "Masalan: Vegetarian, Glutensiz, Yong'oq allergiyasi",
   dietaryOptional: '(ixtiyoriy)',
-  messageLabel: 'Juftlikka tabrik so'zingiz',
-  messagePlaceholder: 'Tabriklaringizni yoki shaxsiy xabaringizni yozing…',
+  messageLabel: "Juftlikka tabrik so'zingiz",
+  messagePlaceholder: 'Tabriklaringizni yoki shaxsiy xabaringizni yozing\u2026',
   messageOptional: '(ixtiyoriy)',
 
   // RSVP form actions
   sendRsvp: 'Javob Yuborish',
   updateRsvp: 'Javobni Yangilash',
-  sending: 'Yuborilmoqda…',
+  sending: 'Yuborilmoqda\u2026',
 
   // Update banner
   rsvpFoundTitle: 'Javobingizni topdik!',
@@ -69,7 +69,7 @@ export const uz: Translations = {
   attendingHeadline: 'Siz bilan nishonlashni sabrsizlik bilan kutamiz!',
   attendingSub: (count: number) =>
     `${count} mehmon uchun kelishingizni tasdiqladingiz. Sizi ko'rishni sabrsizlik bilan kutamiz!`,
-  declinedHeadline: 'Sizni sog'inib qolamiz!',
+  declinedHeadline: "Sizni sog'inib qolamiz!",
   declinedSub: "Xabar berganingiz uchun rahmat. Bayramda sizni ko'rishni istardik.",
   maybeHeadline: 'Kela olishingizni umid qilamiz!',
   maybeSub: "Vaqtinchalik javobingizni qayd etdik. Aniq ma'lum bo'lganda javobingizni yangilang.",
@@ -85,7 +85,7 @@ export const uz: Translations = {
   allRightsReserved: 'Barcha huquqlar himoyalangan.',
 
   // Loading / error states
-  loadingInvitation: 'Taklif yuklanmoqda…',
+  loadingInvitation: 'Taklif yuklanmoqda\u2026',
   invitationNotFound: 'Taklif Topilmadi',
   invitationNotFoundSub: 'Bu tadbir sahifasi yuklanmadi.',
   invitationExpired: "Bu taklif havolasi muddati o'tgan yoki noto'g'ri bo'lishi mumkin.",
@@ -100,14 +100,14 @@ export const uz: Translations = {
   personalLinkHint: 'Shaxsiy havolangiz siz bilan SMS, WhatsApp yoki chop etilgan taklif orqali ulashildi.',
 
   // HomePage
-  chooseCity: 'To'y tantanangizni tanlang',
-  viewInvitation: 'Taklifni Ko'rish',
+  chooseCity: "To'y tantanangizni tanlang",
+  viewInvitation: "Taklifni Ko'rish",
 
   // CountdownTimer completion
   celebrationBegun: 'Bayram boshlandi!',
 
   // Footer
-  madeWithLove: 'Berfin & Shamsiddin uchun ♡ bilan yaratildi',
+  madeWithLove: 'Berfin & Shamsiddin uchun \u2661 bilan yaratildi',
 
   // EventPage / InvitePage — garden additions
   countingDown: 'Orqaga hisoblash',
@@ -122,12 +122,12 @@ export const uz: Translations = {
   lockName: 'Qulflash',
 
   writtenInBlooms: 'Gullar Bilan Yozilgan',
-  coupleQuote: '"Ikki jon, bir muhabbat, abadiy birgalikda gullaydi."',
+  coupleQuote: '\u201cIkki jon, bir muhabbat, abadiy birgalikda gullaydi.\u201d',
   joinUsInGarden: "Bog'imizga Taklif Etamiz",
-  foreverAndAlways: 'Abadiyatgacha · 2026',
+  foreverAndAlways: 'Abadiyatgacha \u00b7 2026',
 
   whosComing: 'Kimlar Keladi',
-  aNoteToUs: 'Bizga bir so'z',
+  aNoteToUs: "Bizga bir so'z",
   partnerNameLabel: 'Hamrohingiz Ismi',
   partnerNamePlaceholder: "Hamrohingizning to'liq ismi",
   guestsShortLabel: 'Mehmonlar',
@@ -142,7 +142,7 @@ export const uz: Translations = {
   registrationComplete: "Ro'yxatdan o'tish yakunlandi!",
   registerFailed: "Ro'yxatdan o'tib bo'lmadi. Iltimos, qayta urinib ko'ring.",
   confirmRegistration: "Ro'yxatdan O'tishni Tasdiqlash",
-  registering: "Ro'yxatdan o'tilmoqda…",
+  registering: "Ro'yxatdan o'tilmoqda\u2026",
   youreRegistered: "Ro'yxatdan o'tdingiz!",
   thankYouRegistering: "Ro'yxatdan o'tganingiz uchun rahmat. Siz bilan birga nishonlashni sabrsizlik bilan kutamiz.",
   happyCoupleAlt: 'Baxtli juftlik',

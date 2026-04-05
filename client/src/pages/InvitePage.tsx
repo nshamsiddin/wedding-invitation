@@ -582,8 +582,8 @@ function HeroSlide({
         style={{
           position: 'relative', zIndex: 10, width: '100%', maxWidth: '68rem', textAlign: 'center',
           padding: hasEventDetails
-            ? 'clamp(4.5rem, 9vh, 7rem) clamp(1.5rem, 6vw, 4rem) clamp(2rem, 5vh, 4rem)'
-            : 'clamp(5rem, 10vh, 8rem) clamp(1.5rem, 6vw, 4rem) clamp(3rem, 7vh, 5rem)',
+            ? 'clamp(5.5rem, 10vh, 8rem) clamp(1.5rem, 6vw, 4rem) clamp(2rem, 5vh, 4rem)'
+            : 'clamp(5.5rem, 10vh, 8rem) clamp(1.5rem, 6vw, 4rem) clamp(3rem, 7vh, 5rem)',
         }}
       >
         {/* Overline */}
@@ -761,7 +761,7 @@ function RSVPSlide({
         margin: '0 auto',
         width: '100%',
         /* top: space below fixed nav bar; bottom: safe area + a little extra so iPhone home bar never overlaps */
-        paddingTop: 'clamp(3.5rem, 6vh, 5rem)',
+        paddingTop: 'clamp(5rem, 9vh, 7rem)',
         paddingLeft: 'clamp(1rem, 4vw, 1.5rem)',
         paddingRight: 'clamp(1rem, 4vw, 1.5rem)',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + clamp(1rem, 3vh, 2rem))',
