@@ -76,6 +76,8 @@ export interface AdminTranslations {
   statusDeclined: string;
   statusMaybe: string;
   statusPending: string;
+  /** Shown when an invitation still has legacy “maybe” in the DB — pick a new status */
+  legacyMaybeStatusHint: string;
 
   // Stats
   headcountHint: string;
@@ -162,6 +164,7 @@ const adminEn: AdminTranslations = {
   statusDeclined: 'Declined',
   statusMaybe: 'Maybe',
   statusPending: 'Pending',
+  legacyMaybeStatusHint: 'Legacy “maybe” response — choose attending, declined, or no response below.',
 
   headcountHint: 'Total people attending, including partners (sum of guest counts).',
   addToEvent: 'Not yet invited to',
@@ -241,6 +244,7 @@ const adminTr: AdminTranslations = {
   statusDeclined: 'Katılmıyor',
   statusMaybe: 'Belki',
   statusPending: 'Bekliyor',
+  legacyMaybeStatusHint: 'Eski “belki” yanıtı — aşağıdan katılıyor, katılmıyor veya yanıt yok seçin.',
 
   headcountHint: 'Katılımcılar dahil toplam kişi sayısı (misafir sayılarının toplamı).',
   addToEvent: 'Henüz davet edilmedi',
@@ -320,6 +324,7 @@ const adminUz: AdminTranslations = {
   statusDeclined: 'Rad etdi',
   statusMaybe: 'Balki',
   statusPending: 'Kutmoqda',
+  legacyMaybeStatusHint: 'Eski “balki” holati — quyida qatnashadi, rad yoki javob kutilmoqda tanlang.',
 
   headcountHint: "Hamkorlar bilan birga qatnashuvchi jami kishi soni (mehmon sonlari yig'indisi).",
   addToEvent: 'Hali taklif qilinmagan',

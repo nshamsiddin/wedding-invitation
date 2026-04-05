@@ -21,13 +21,6 @@ const STATUS_META = [
     activeBorder:'#C0615A',
   },
   {
-    value: 'maybe',
-    dotColor:    '#C4924A',
-    textColor:   '#7A5520',
-    activeBg:    'rgba(196,146,74,0.10)',
-    activeBorder:'#C4924A',
-  },
-  {
     value: 'pending',
     dotColor:    '#B0A9A4',
     textColor:   'rgba(42,31,26,0.55)',
@@ -42,12 +35,17 @@ export default function StatusPicker({ value, onChange }: StatusPickerProps) {
   const labels: Record<string, string> = {
     attending: at.statusAttending,
     declined:  at.statusDeclined,
-    maybe:     at.statusMaybe,
     pending:   at.statusPending,
   };
 
   return (
-    <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label={at.statusLabel}>
+    <div className="space-y-2">
+      {value === 'maybe' && (
+        <p className="text-[10px] font-sans leading-snug rounded-md px-2 py-1.5" style={{ background: 'rgba(196,146,74,0.12)', color: '#7A5520', border: '1px solid rgba(196,146,74,0.35)' }}>
+          {at.legacyMaybeStatusHint}
+        </p>
+      )}
+      <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={at.statusLabel}>
       {STATUS_META.map((opt) => {
         const isSelected = value === opt.value;
         return (
@@ -83,6 +81,7 @@ export default function StatusPicker({ value, onChange }: StatusPickerProps) {
           </button>
         );
       })}
+      </div>
     </div>
   );
 }

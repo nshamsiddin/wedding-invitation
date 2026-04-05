@@ -4,10 +4,10 @@ export const uz: Translations = {
   lang: 'UZ',
 
   // Hero
-  cordiallyInvited: 'Sizi to\'yimizga taklif etishdan mamnunmiz',
+  cordiallyInvited: 'Sizi to'yimizga taklif etishdan mamnunmiz',
   rsvpButton: 'Ishtirokni Tasdiqlash',
   scrollDown: 'Tasdiqlash uchun pastga aylantiring',
-  scrollCta: 'Hikoyamizni kashf eting',
+  scrollCta: 'Hikoyamiz bilan tanishing',
   scrollToRsvp: 'Tasdiqlash uchun pastga aylantiring',
 
   // Event details section
@@ -16,7 +16,7 @@ export const uz: Translations = {
   venue: 'Manzil',
   date: 'Sana',
   time: 'Vaqt',
-  dressCode: 'Kiyim Kodi',
+  dressCode: 'Kiyinish tartibi',
   rsvpDeadline: 'Javob Muddati',
 
   // Countdown
@@ -33,20 +33,20 @@ export const uz: Translations = {
   // RSVP form fields
   emailLabel: 'Elektron pochta',
   emailPlaceholder: 'sizning@email.com',
-  nameLabel: 'To\'liq ism',
+  nameLabel: 'To'liq ism',
   namePlaceholder: 'Ismingiz va familiyangiz',
   attendanceLabel: 'Kelasizmi?',
   attendingOption: 'Ha, kelaman',
   decliningOption: 'Kela olmayman',
   maybeOption: 'Balki',
   guestCountLabel: 'Mehmonlar soni',
-  guestCountHint: 'Taklif etilgan shaxs songa kiritilgan',
+  guestCountHint: 'Sizning o'zingiz ham songa kiritilgansiz',
   guestCountSingle: 'mehmon',
   guestCountPlural: 'mehmon',
   dietaryLabel: 'Ovqatlanish cheklovlari',
-  dietaryPlaceholder: 'Masalan: Vegetarian, Glutensiz, Yong\'oq allergiyasi',
+  dietaryPlaceholder: 'Masalan: Vegetarian, Glutensiz, Yong'oq allergiyasi',
   dietaryOptional: '(ixtiyoriy)',
-  messageLabel: 'Juftlikka xabar',
+  messageLabel: 'Juftlikka tabrik so'zingiz',
   messagePlaceholder: 'Tabriklaringizni yoki shaxsiy xabaringizni yozing…',
   messageOptional: '(ixtiyoriy)',
 
@@ -60,7 +60,7 @@ export const uz: Translations = {
   rsvpFoundSub: 'Quyida javobingizni yangilashingiz mumkin.',
 
   // Errors
-  errorGeneric: 'Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.',
+  errorGeneric: "Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.",
   rsvpDeadlineHint: 'Iltimos, muddatgacha javob bering.',
 
   // Success screen
@@ -68,14 +68,14 @@ export const uz: Translations = {
   rsvpUpdated: 'Yangilandi!',
   attendingHeadline: 'Siz bilan nishonlashni sabrsizlik bilan kutamiz!',
   attendingSub: (count: number) =>
-    `${count} mehmon uchun kelishingizni tasdiqladingiz. Ko'proq ma'lumot uchun siz bilan bog'lanamiz.`,
-  declinedHeadline: 'Sizni sog\'inib qolamiz!',
-  declinedSub: 'Xabar berganingiz uchun rahmat. Bayramda sizni ko\'rishni istardik.',
+    `${count} mehmon uchun kelishingizni tasdiqladingiz. Sizi ko'rishni sabrsizlik bilan kutamiz!`,
+  declinedHeadline: 'Sizni sog'inib qolamiz!',
+  declinedSub: "Xabar berganingiz uchun rahmat. Bayramda sizni ko'rishni istardik.",
   maybeHeadline: 'Kela olishingizni umid qilamiz!',
-  maybeSub: 'Vaqtinchalik javobingizni qayd etdik. Aniq ma\'lum bo\'lganda javobingizni yangilang.',
+  maybeSub: "Vaqtinchalik javobingizni qayd etdik. Aniq ma'lum bo'lganda javobingizni yangilang.",
   defaultHeadline: 'Javob Qabul Qilindi!',
   defaultSub: 'Javobingiz uchun rahmat.',
-  yourDetails: 'Ma\'lumotlaringiz',
+  yourDetails: "Ma'lumotlaringiz",
   detailName: 'Ism',
   detailEvent: 'Tadbir',
   detailDate: 'Sana',
@@ -88,7 +88,7 @@ export const uz: Translations = {
   loadingInvitation: 'Taklif yuklanmoqda…',
   invitationNotFound: 'Taklif Topilmadi',
   invitationNotFoundSub: 'Bu tadbir sahifasi yuklanmadi.',
-  invitationExpired: 'Bu taklif havolasi muddati o\'tgan yoki noto\'g\'ri bo\'lishi mumkin.',
+  invitationExpired: "Bu taklif havolasi muddati o'tgan yoki noto'g'ri bo'lishi mumkin.",
 
   // EventPage — public page CTA
   learnMore: 'Tadbir Tafsilotlari',
@@ -96,12 +96,12 @@ export const uz: Translations = {
   // EventPage — RSVP notice (no personal link)
   personalInviteRequired: 'Shaxsiy Taklif Talab Etiladi',
   personalInviteRequiredSub:
-    'Ishtirokingizni tasdiqlash uchun taklifnomangizda berilgan shaxsiy havoladan foydalaning. Har bir mehmon o\'z shaxsiy havolasini oladi.',
+    "Ishtirokingizni tasdiqlash uchun taklifnomangizda berilgan shaxsiy havoladan foydalaning. Har bir mehmon o'z shaxsiy havolasini oladi.",
   personalLinkHint: 'Shaxsiy havolangiz siz bilan SMS, WhatsApp yoki chop etilgan taklif orqali ulashildi.',
 
   // HomePage
-  chooseCity: 'To\'y tantanangizni tanlang',
-  viewInvitation: 'Taklifni Ko\'rish',
+  chooseCity: 'To'y tantanangizni tanlang',
+  viewInvitation: 'Taklifni Ko'rish',
 
   // CountdownTimer completion
   celebrationBegun: 'Bayram boshlandi!',
@@ -116,7 +116,7 @@ export const uz: Translations = {
   youveBeenInvited: 'Siz taklif etilgansiz',
   pleaseRegister: "Iltimos, Ro'yxatdan O'ting",
   invitationAlreadyClaimed: 'Bu taklif allaqachon ishlatilgan',
-  invitationAlreadyClaimedSub: "Bu havola avval ishlatilgan. Xato deb hisoblasangiz, juftlik bilan bog'laning.",
+  invitationAlreadyClaimedSub: "Bu havola avval ishlatilgan. Iltimos, o'zingizning shaxsiy havolangizdan foydalanayotganingizni tekshiring.",
 
   editName: "O'zgartirish",
   lockName: 'Qulflash',
@@ -127,25 +127,25 @@ export const uz: Translations = {
   foreverAndAlways: 'Abadiyatgacha · 2026',
 
   whosComing: 'Kimlar Keladi',
-  aNoteToUs: 'Bizga Xabar',
+  aNoteToUs: 'Bizga bir so'z',
   partnerNameLabel: 'Hamrohingiz Ismi',
-  partnerNamePlaceholder: 'Hamrohingizning to\'liq ismi',
+  partnerNamePlaceholder: "Hamrohingizning to'liq ismi",
   guestsShortLabel: 'Mehmonlar',
   attendanceShortLabel: 'Ishtirok',
   phoneLabel: 'Telefon',
-  phoneHint: "Yangiliklar uchun siz bilan bog'lanishimiz uchun",
+  phoneHint: "To'y kunida zarur bo'lsa foydalaniladigan shaxsiy raqamingiz",
   chapter: 'Bob',
   returnToHomepage: 'Bosh sahifaga qaytish',
-  needHelp: 'Yordam kerakmi? Biz bilan bog\'laning',
+  needHelp: "Muammo bormi? O'zingizning shaxsiy havolangizdan foydalanayotganingizni tekshiring.",
   rsvpReceived: 'Ishtirok tasdiqlandi!',
-  submitFailed: 'Yuborib bo\'lmadi. Iltimos, qayta urinib ko\'ring.',
-  registrationComplete: 'Ro\'yxatdan o\'tish yakunlandi!',
-  registerFailed: 'Ro\'yxatdan o\'tib bo\'lmadi. Iltimos, qayta urinib ko\'ring.',
-  confirmRegistration: 'Ro\'yxatdan O\'tishni Tasdiqlash',
-  registering: 'Ro\'yxatdan o\'tilmoqda…',
-  youreRegistered: 'Ro\'yxatdan o\'tdingiz!',
-  thankYouRegistering: 'Ro\'yxatdan o\'tganingiz uchun rahmat. Siz bilan birga nishonlashni sabrsizlik bilan kutamiz.',
+  submitFailed: "Yuborib bo'lmadi. Iltimos, qayta urinib ko'ring.",
+  registrationComplete: "Ro'yxatdan o'tish yakunlandi!",
+  registerFailed: "Ro'yxatdan o'tib bo'lmadi. Iltimos, qayta urinib ko'ring.",
+  confirmRegistration: "Ro'yxatdan O'tishni Tasdiqlash",
+  registering: "Ro'yxatdan o'tilmoqda…",
+  youreRegistered: "Ro'yxatdan o'tdingiz!",
+  thankYouRegistering: "Ro'yxatdan o'tganingiz uchun rahmat. Siz bilan birga nishonlashni sabrsizlik bilan kutamiz.",
   happyCoupleAlt: 'Baxtli juftlik',
   partnerDietaryLabel: 'Hamrohingizning Ovqatlanish Cheklovlari',
-  addToCalendar: 'Taqvimga Qo\'shish',
+  addToCalendar: "Taqvimga Qo'shish",
 };

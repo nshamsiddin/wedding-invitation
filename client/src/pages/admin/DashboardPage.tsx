@@ -201,7 +201,6 @@ function StatusPills({ selected, onChange }: StatusPillsProps) {
   const OPTIONS = [
     { value: 'attending', label: at.statsAttending },
     { value: 'declined',  label: at.statsDeclined },
-    { value: 'maybe',     label: at.statsMaybe },
     { value: 'pending',   label: at.noResponse },
   ];
 
