@@ -117,6 +117,119 @@ function CopyLinkButton({ invitation, baseUrl }: { invitation: AdminInvitation; 
   );
 }
 
+// ─── Message modal ─────────────────────────────────────────────────────────────
+function MessageModal({
+  guest,
+  events,
+  onClose,
+}: {
+  guest: AdminGuest;
+  events: AdminEvent[];
+  onClose: () => void;
+}) {
+  const messages = guest.invitations
+    .filter((inv) => inv.message && inv.message.trim().length > 0)
+    .map((inv) => ({
+      eventName: inv.eventName ?? events.find((e) => e.id === inv.eventId)?.name ?? inv.eventSlug ?? 'Event',
+      message: inv.message!,
+    }));
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="msg-backdrop"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+        aria-hidden="true"
+      />
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="msg-modal-title"
+      >
+        <motion.div
+          key="msg-panel"
+          initial={{ opacity: 0, scale: 0.97, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.97, y: 8 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-xl w-full max-w-md shadow-lg"
+          style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${GOLD_DIM}` }}>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}` }}
+                aria-hidden="true"
+              >
+                <svg className="w-4 h-4" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <div>
+                <h3 id="msg-modal-title" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
+                  {guest.name}
+                </h3>
+                <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
+                  {messages.length === 1 ? '1 message' : `${messages.length} messages`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ color: ESPRESSO_DIM }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              aria-label="Close"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {messages.map(({ eventName, message }, i) => (
+              <div key={i}>
+                {messages.length > 1 && (
+                  <p className="text-[10px] font-sans font-semibold uppercase tracking-wider mb-1.5" style={{ color: GOLD }}>
+                    {eventName}
+                  </p>
+                )}
+                <p
+                  className="text-sm font-sans leading-relaxed whitespace-pre-wrap rounded-lg px-4 py-3"
+                  style={{ background: CREAM, color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
+                >
+                  {message}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-5 py-3 flex justify-end" style={{ borderTop: `1px solid ${GOLD_DIM}` }}>
+            <button
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: GOLD, color: ESPRESSO }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#A07840'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = GOLD; }}
+            >
+              Done
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
 export default function GuestTable({
   guests,
   events,
@@ -129,6 +242,7 @@ export default function GuestTable({
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [viewingMessages, setViewingMessages] = useState<AdminGuest | null>(null);
   const at = useAdminTranslation();
 
   const baseUrl = window.location.origin;
@@ -147,7 +261,7 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const totalColSpan = 2 + events.length + 1 + (showTableColumn ? 1 : 0);
+  const totalColSpan = 2 + events.length + 1 + 1 + (showTableColumn ? 1 : 0);
 
   const columns: Array<{ key: SortKey; label: string }> = [
     { key: 'name',      label: at.colName },
@@ -198,6 +312,14 @@ export default function GuestTable({
                 {at.colTable}
               </th>
             )}
+
+            {/* Message column header */}
+            <th scope="col" className="px-3 py-3 text-center font-medium" style={{ color: ESPRESSO_DIM }}>
+              <span className="sr-only">Message</span>
+              <svg className="w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </th>
 
             <th scope="col" className="px-4 py-3 text-right font-medium" style={{ color: ESPRESSO_DIM }}>
               {at.colActions}
@@ -326,6 +448,32 @@ export default function GuestTable({
                   </td>
                 )}
 
+                {/* Message cell */}
+                <td className="px-3 py-3 text-center">
+                  {(() => {
+                    const hasMessage = guest.invitations.some(
+                      (inv) => inv.message && inv.message.trim().length > 0,
+                    );
+                    return hasMessage ? (
+                      <button
+                        onClick={() => setViewingMessages(guest)}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                        style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: GOLD }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.25)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.12)'; }}
+                        aria-label={`Read message from ${guest.name}`}
+                        title={`Message from ${guest.name}`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                        </svg>
+                      </button>
+                    ) : (
+                      <span style={{ color: GOLD_DIM, fontSize: '0.75rem' }} aria-hidden="true">—</span>
+                    );
+                  })()}
+                </td>
+
                 {/* Row actions — persistent at reduced opacity, full on hover/focus */}
                 <td className="px-4 py-3">
                   <div
@@ -363,6 +511,13 @@ export default function GuestTable({
           </AnimatePresence>
         </tbody>
       </table>
+      {viewingMessages && (
+        <MessageModal
+          guest={viewingMessages}
+          events={events}
+          onClose={() => setViewingMessages(null)}
+        />
+      )}
     </div>
   );
 }
