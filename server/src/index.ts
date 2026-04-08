@@ -409,7 +409,7 @@ db.run(sql`
      'Ofarin Restaurant', 'Toshkent, O''zbekiston',
      'Rasmiy Kiyim',
      'https://maps.google.com/maps?q=Ofarin+Restaurant+Tashkent+Uzbekistan&output=embed'),
-    ('ankara', 'Berfin & Shamsiddin — Ankara', '2026-05-19', '18:00',
+    ('ankara', 'Berfin & Shamsiddin — Ankara', '2026-05-19', '18:30',
      'Park L''Amore', 'İncek, Turgut Özal Blv. No:48, 06830 Gölbaşı/Ankara, Türkiye',
      'Resmi Kıyafet',
      'https://maps.google.com/maps?q=Turgut+Ozal+Bulvari+No+48+Incek+Golbasi+Ankara+Turkey&output=embed')
