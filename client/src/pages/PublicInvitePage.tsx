@@ -173,10 +173,6 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
   const status     = watch('status') ?? 'attending';
   const guestCount = watch('guestCount') ?? 1;
 
-  useEffect(() => {
-    if (guestCount <= 1) setValue('partnerDietary', '');
-  }, [guestCount, setValue]);
-
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublicPage,
     onSuccess: (_data, variables) => {
@@ -282,16 +278,6 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
           />
         )}
 
-        {status === 'attending' && guestCount > 1 && (
-          <FormField htmlFor="ppub-dietary" label={t.dietaryLabel} optional={t.dietaryOptional} error={errors.dietary?.message}>
-            <FormInput
-              id="ppub-dietary"
-              type="text"
-              {...register('dietary')}
-              placeholder={t.dietaryPlaceholder}
-            />
-          </FormField>
-        )}
       </FormCard>
 
       {/* A NOTE TO US */}

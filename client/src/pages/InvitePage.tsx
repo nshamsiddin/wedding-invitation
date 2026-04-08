@@ -352,10 +352,6 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
               />
             )}
 
-            <FormField htmlFor={`entry-dietary-${ev.id}`} label={t.dietaryLabel} optional={t.dietaryOptional}>
-              <FormInput id={`entry-dietary-${ev.id}`} type="text" {...register(`rsvpEntries.${idx}.dietary`)} placeholder={t.dietaryOptional} />
-            </FormField>
-
             <FormField htmlFor={`entry-message-${ev.id}`} label={t.messageLabel} optional={t.messageOptional}>
               <FormTextarea id={`entry-message-${ev.id}`} rows={2} {...register(`rsvpEntries.${idx}.message`)} placeholder={t.messagePlaceholder} />
             </FormField>

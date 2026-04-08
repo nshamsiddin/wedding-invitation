@@ -227,7 +227,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
           {errors.status && <p style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--accent-rose)' }} role="alert">{errors.status.message}</p>}
         </fieldset>
 
-        {/* Guest count + dietary (only when attending) */}
+        {/* Guest count (only when attending) */}
         <AnimatePresence>
           {watchedStatus === 'attending' && (
             <motion.div
@@ -235,7 +235,6 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
             >
               <GuestCountSelect
                 id="rsvp-guest-count"
@@ -246,34 +245,6 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                 value={watchedCount}
                 onChange={(n) => setValue('guestCount', n)}
               />
-              <FormField
-                htmlFor="rsvp-dietary"
-                label={t.dietaryLabel}
-                optional={t.dietaryOptional}
-                error={errors.dietary?.message}
-              >
-                <FormInput
-                  id="rsvp-dietary"
-                  type="text"
-                  {...register('dietary')}
-                  placeholder={t.dietaryPlaceholder}
-                />
-              </FormField>
-              {(watchedCount > 1 || (partnerName !== null && partnerName !== undefined)) && (
-                <FormField
-                  htmlFor="rsvp-partner-dietary"
-                  label={t.partnerDietaryLabel}
-                  optional={t.dietaryOptional}
-                  error={errors.partnerDietary?.message}
-                >
-                  <FormInput
-                    id="rsvp-partner-dietary"
-                    type="text"
-                    {...register('partnerDietary')}
-                    placeholder={t.dietaryPlaceholder}
-                  />
-                </FormField>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
