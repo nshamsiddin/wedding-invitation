@@ -105,6 +105,8 @@ export type Translations = {
   attendanceShortLabel: string;
   phoneLabel: string;
   phoneHint: string;
+  // Guest honorific — shown before the guest name on personal invitations
+  honorific: string;
   // Navigation
   chapter: string;
   returnToHomepage: string;
@@ -261,6 +263,7 @@ export const en: Translations = {
   attendanceShortLabel: 'Attendance',
   phoneLabel: 'Phone',
   phoneHint: "Kept private — only used if something comes up on the day",
+  honorific: 'Dear',
   chapter: 'Chapter',
   returnToHomepage: 'Return to homepage',
   needHelp: "Having trouble? Make sure you're using your own personal link.",
