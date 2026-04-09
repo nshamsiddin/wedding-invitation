@@ -603,20 +603,34 @@ function HeroSlide({
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.45 }}
-              style={{ marginBottom: 'clamp(0.6rem, 1.5vh, 1rem)' }}
+              transition={{ duration: 0.8, delay: 0.42 }}
+              style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}
             >
-              <span style={{ fontFamily: sans, fontSize: 'clamp(1.1rem, 3.5vw, 1.6rem)', letterSpacing: '0.06em', color: ESPRESSO_DIM, display: 'block', fontWeight: 300 }}>
-                <span style={{ color: ROSE, fontWeight: 400 }}>{t.honorific}</span>
-                {' '}{guestName}
+              {/* Honorific label — small caps, rose */}
+              <span style={{ fontFamily: sans, fontSize: '0.68rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+                {t.honorific}
               </span>
+
+              {/* Guest name — display/script font, prominent */}
+              <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2rem, 6vw, 3.2rem)', color: ESPRESSO, display: 'block', fontWeight: 400, lineHeight: 1.2, letterSpacing: '0.01em' }}>
+                {guestName}
+              </span>
+
+              {/* Gold accent underline */}
+              <motion.div
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.55, delay: 0.72, ease: [0.22, 1, 0.36, 1] }}
+                style={{ height: 1.5, width: '55%', maxWidth: '12rem', background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`, borderRadius: 2, transformOrigin: 'center' }}
+                aria-hidden="true"
+              />
             </motion.div>
 
             {/* Separator between guest name and couple names */}
             <motion.div
               initial={{ scaleX: 0, opacity: 0 }}
               animate={{ scaleX: 1, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: 'clamp(0.6rem, 1.5vh, 1rem)' }}
               aria-hidden="true"
             >
