@@ -607,7 +607,7 @@ function HeroSlide({
               style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}
             >
               {/* Honorific label — small caps, rose */}
-              <span style={{ fontFamily: sans, fontSize: '0.68rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+              <span style={{ fontFamily: sans, fontSize: '0.9rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
                 {t.honorific}
               </span>
 
