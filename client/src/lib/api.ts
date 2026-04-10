@@ -18,6 +18,8 @@ import type {
   CreateOpenInvitationValues,
   PublicRsvpValues,
   PublicPageRsvpValues,
+  BulkAddGuestsValues,
+  BulkAddGuestsResult,
 } from '@invitation/shared';
 
 export type {
@@ -30,6 +32,7 @@ export type {
   TokenLookupResponse,
   RSVPSubmitResponse,
   ClaimInvitationResponse,
+  BulkAddGuestsResult,
 };
 
 export interface RSVPSubmitBody {
@@ -156,6 +159,10 @@ export const adminApi = {
   },
   getOpenInvitations: async (): Promise<OpenInvitation[]> => {
     const { data } = await api.get<OpenInvitation[]>('/admin/invitations/open');
+    return data;
+  },
+  bulkAddGuests: async (values: BulkAddGuestsValues): Promise<BulkAddGuestsResult> => {
+    const { data } = await api.post<BulkAddGuestsResult>('/admin/guests/bulk', values);
     return data;
   },
   exportCSV: (eventId?: number): void => {

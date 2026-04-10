@@ -19,6 +19,7 @@ import { getEventDisplayName } from '../../components/admin/adminTokens';
 import StatsCards from '../../components/admin/StatsCards';
 import GuestTable from '../../components/admin/GuestTable';
 import AddGuestModal from '../../components/admin/AddGuestModal';
+import BulkAddGuestsModal from '../../components/admin/BulkAddGuestsModal';
 import EditGuestModal from '../../components/admin/EditGuestModal';
 import EditInvitationModal from '../../components/admin/EditInvitationModal';
 import NotificationBell from '../../components/admin/NotificationBell';
@@ -278,6 +279,7 @@ export default function DashboardPage() {
 
   // ── Modal state ─────────────────────────────────────────────────────────────
   const [showAddModal, setShowAddModal]           = useState(false);
+  const [showBulkModal, setShowBulkModal]         = useState(false);
   const [editingGuest, setEditingGuest]           = useState<AdminGuest | null>(null);
   const [editingInvitation, setEditingInvitation] = useState<{ inv: AdminInvitation; guest: AdminGuest } | null>(null);
   const [deletingGuest, setDeletingGuest]         = useState<AdminGuest | null>(null);
@@ -742,6 +744,21 @@ export default function DashboardPage() {
                   {at.addGuest}
                 </button>
 
+                {/* Bulk Import */}
+                <button
+                  onClick={() => setShowBulkModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 font-sans font-medium text-xs rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] whitespace-nowrap"
+                  style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+                  aria-label="Bulk import guests"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Bulk Import
+                </button>
+
                 {/* Mobile CSV */}
                 <button
                   onClick={handleExportCSV}
@@ -805,6 +822,13 @@ export default function DashboardPage() {
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddGuest}
         isPending={addMutation.isPending}
+        events={events}
+        defaultEventId={selectedEventId ?? undefined}
+      />
+
+      <BulkAddGuestsModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
         events={events}
         defaultEventId={selectedEventId ?? undefined}
       />

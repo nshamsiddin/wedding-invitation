@@ -13,6 +13,7 @@ import { loginRateLimit } from '../middleware/rateLimit.js';
 import {
   adminLoginSchema,
   addGuestSchema,
+  bulkAddGuestsSchema,
   updateGuestContactSchema,
   updateInvitationSchema,
   addInvitationSchema,
@@ -385,6 +386,76 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
       return;
     }
     res.status(500).json({ error: 'Failed to add guest' });
+  }
+});
+
+// POST /guests/bulk — create multiple guests from a plain list of names,
+// skipping any names that already exist in the database (case-insensitive).
+// Supports dryRun=true to preview duplicates without writing any rows.
+router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const parsed = bulkAddGuestsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+
+  const { names, eventIds, language, guestCount, dryRun } = parsed.data;
+
+  // Normalize: trim + collapse inner whitespace, then drop entries that are too short
+  const normalizedNames = names
+    .map((n) => n.trim().replace(/\s+/g, ' '))
+    .filter((n) => n.length >= 2);
+
+  if (normalizedNames.length === 0) {
+    res.status(400).json({ error: 'No valid names provided' });
+    return;
+  }
+
+  try {
+    const lowerNames = normalizedNames.map((n) => n.toLowerCase());
+    const placeholders = lowerNames.map(() => '?').join(', ');
+
+    // Identify which names already have a guest record (case-insensitive match)
+    const existing = sqlite
+      .prepare(`SELECT name FROM guests WHERE LOWER(name) IN (${placeholders})`)
+      .all(...lowerNames) as { name: string }[];
+
+    const existingLower = new Set(existing.map((g) => g.name.toLowerCase()));
+
+    const newNames = normalizedNames.filter((n) => !existingLower.has(n.toLowerCase()));
+    const duplicateNames = normalizedNames.filter((n) => existingLower.has(n.toLowerCase()));
+
+    if (dryRun) {
+      res.json({ dryRun: true, newNames, duplicateNames, created: 0 });
+      return;
+    }
+
+    // Insert new guests + one invitation row per event in a single transaction
+    let created = 0;
+    sqlite.transaction(() => {
+      for (const name of newNames) {
+        const guest = sqlite
+          .prepare('INSERT INTO guests (name) VALUES (?) RETURNING *')
+          .get(name) as typeof schema.guests.$inferSelect;
+
+        for (const eventId of eventIds) {
+          sqlite
+            .prepare(
+              `INSERT INTO guest_invitations
+                 (guest_id, event_id, token, status, guest_count, language)
+               VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .run(guest.id, eventId, randomUUID(), 'pending', guestCount ?? 1, language ?? 'en');
+        }
+        created++;
+      }
+    })();
+
+    logger.info({ created, skipped: duplicateNames.length }, 'bulk guests added');
+    res.status(201).json({ dryRun: false, newNames, duplicateNames, created });
+  } catch (error: unknown) {
+    logger.error({ err: error }, 'bulk add guests error');
+    res.status(500).json({ error: 'Failed to bulk add guests' });
   }
 });
 

@@ -302,6 +302,28 @@ export const createOpenInvitationSchema = z.object({
 
 export type CreateOpenInvitationValues = z.infer<typeof createOpenInvitationSchema>;
 
+// Bulk guest import — admin uploads a plain-text list of names (one per line)
+export const bulkAddGuestsSchema = z.object({
+  names: z
+    .array(z.string().min(2, 'Each name must be at least 2 characters').max(100).trim())
+    .min(1, 'At least one name is required'),
+  eventIds: z.array(z.number().int().positive()).min(1, 'Select at least one event'),
+  language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
+  guestCount: z.number().int().min(1).max(10).optional().default(1),
+  // When true, perform a dry-run: check duplicates and return what would be created/skipped
+  // without actually writing any rows to the database.
+  dryRun: z.boolean().optional().default(false),
+});
+
+export type BulkAddGuestsValues = z.infer<typeof bulkAddGuestsSchema>;
+
+export interface BulkAddGuestsResult {
+  dryRun: boolean;
+  newNames: string[];
+  duplicateNames: string[];
+  created: number;
+}
+
 // ─── API response interfaces ─────────────────────────────────────────────────
 
 export interface ApiError {
