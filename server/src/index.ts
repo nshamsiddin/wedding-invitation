@@ -22,6 +22,7 @@ import notificationsRouter from './routes/notifications.js';
 import { clearRateLimitStore } from './middleware/rateLimit.js';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -465,14 +466,102 @@ app.use('/api/admin/notifications', notificationsRouter);
 
 // ─── Static files (production) ────────────────────────────────────────────────
 
+// Escapes special HTML characters for safe injection into attribute values.
+function escAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 if (!isDev) {
   const clientDist = resolve(process.cwd(), 'client/dist');
+
+  // Read and cache index.html once at startup for OG-tag injection.
+  let indexHtml = '';
+  try {
+    indexHtml = readFileSync(resolve(clientDist, 'index.html'), 'utf8');
+  } catch (err) {
+    logger.warn({ err }, '[startup] Could not read client/dist/index.html — OG tag injection disabled');
+  }
+
   // Browsers request /favicon.ico directly. Redirect to the SVG favicon so they
   // don't hit a 404 — the SVG is served as a static asset from the client dist.
   app.get('/favicon.ico', (_req, res) => {
     res.redirect(301, '/favicon.svg');
   });
+
   app.use(express.static(clientDist));
+
+  // ── Dynamic OG meta injection for /invite/:token ──────────────────────────
+  // WhatsApp and other link-preview bots fetch the page HTML before the
+  // JavaScript runs. We intercept these routes server-side, look up the guest
+  // name, and inject personalised og:title / og:description so that each
+  // shared invite link shows the recipient's name in the preview card.
+  app.get('/invite/:token', (req: Request, res: Response) => {
+    const token = req.params['token'] ?? '';
+
+    // Basic sanity check — real tokens are UUIDs (36 chars). Reject anything
+    // obviously malformed without hitting the database.
+    if (!token || token.length > 128) {
+      res.sendFile(resolve(clientDist, 'index.html'));
+      return;
+    }
+
+    if (!indexHtml) {
+      res.sendFile(resolve(clientDist, 'index.html'));
+      return;
+    }
+
+    // Synchronous prepared-statement lookup is intentional here: this is a
+    // single indexed key-value read on SQLite, and keeping it sync avoids
+    // turning the catch-all route into an async handler which would require
+    // more careful error propagation.
+    type GuestRow = { guestName: string | null };
+    const row = sqlite.prepare(`
+      SELECT g.name AS guestName
+      FROM   guest_invitations gi
+      LEFT JOIN guests g ON g.id = gi.guest_id
+      WHERE  gi.token = ?
+      LIMIT  1
+    `).get(token) as GuestRow | undefined;
+
+    const baseUrl    = process.env['BASE_URL'] ?? '';
+    const guestName  = row?.guestName ?? null;
+
+    const title = guestName
+      ? `Sayın ${guestName}`
+      : 'Berfin & Shamsiddin — Wedding Invitation';
+    const description = guestName
+      ? 'Berfin & Shamsiddin düğününe kişisel davetiyeniz.'
+      : 'You are cordially invited to our wedding celebration';
+
+    const ogTags = [
+      `<meta property="og:title" content="${escAttr(title)}" />`,
+      `<meta property="og:description" content="${escAttr(description)}" />`,
+      `<meta property="og:type" content="website" />`,
+      `<meta property="og:url" content="${escAttr(`${baseUrl}/invite/${token}`)}" />`,
+      `<meta name="twitter:card" content="summary" />`,
+      `<meta name="twitter:title" content="${escAttr(title)}" />`,
+      `<meta name="twitter:description" content="${escAttr(description)}" />`,
+    ].join('\n    ');
+
+    const html = indexHtml
+      // Update the <title> tag
+      .replace(/<title>[^<]*<\/title>/, `<title>${escAttr(title)}</title>`)
+      // Update the static description meta
+      .replace(
+        /<meta name="description"[^>]*>/,
+        `<meta name="description" content="${escAttr(description)}" />`,
+      )
+      // Inject OG tags just before </head>
+      .replace('</head>', `    ${ogTags}\n  </head>`);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  });
+
   app.get('*', (_req, res) => {
     res.sendFile(resolve(clientDist, 'index.html'));
   });

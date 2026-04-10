@@ -611,8 +611,8 @@ function HeroSlide({
                 {t.honorific}
               </span>
 
-              {/* Guest name — display/script font, prominent */}
-              <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2rem, 6vw, 3.2rem)', color: ESPRESSO, display: 'block', fontWeight: 400, lineHeight: 1.2, letterSpacing: '0.01em' }}>
+              {/* Guest name — Cormorant Garamond for full Turkish/extended character support */}
+              <span style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(2rem, 6vw, 3.2rem)', color: ESPRESSO, display: 'block', fontWeight: 400, lineHeight: 1.2, letterSpacing: '0.01em' }}>
                 {guestName}
               </span>
 
