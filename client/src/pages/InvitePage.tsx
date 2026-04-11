@@ -998,7 +998,7 @@ export default function InvitePage() {
       if (wrapRef.current && wrapRef.current.scrollTop < 50) {
         setNudgeShown(true);
       }
-    }, 3000);
+    }, 5000);
 
     // Cancel if the guest scrolls manually before 3 s
     wrap?.addEventListener('scroll', cancel, { once: true, passive: true });
