@@ -149,6 +149,6 @@ export const tr: Translations = {
   happyCoupleAlt: 'Mutlu çift',
   partnerDietaryLabel: 'Eşinizin Diyet Kısıtlamaları',
   addToCalendar: 'Takvime Ekle',
-  seatingPreferenceNote: 'Düğün salonundaki oturum düzeni için lütfen katılım tercihinizi belirtmenizi önemle rica ederiz!',
+  seatingPreferenceNote: 'Düğün salonundaki oturum düzeni için katılım tercihinizi belirtmenizi önemle rica ederiz.',
   nudgeSubtext: 'Aşağıda seçenekleri bulabilirsiniz.',
 };

@@ -282,7 +282,7 @@ export const en: Translations = {
   happyCoupleAlt: 'The happy couple',
   partnerDietaryLabel: "Partner's Dietary Restrictions",
   addToCalendar: 'Add to Calendar',
-  seatingPreferenceNote: 'We kindly request that you indicate attendance preference for the seating order in the wedding hall!',
+  seatingPreferenceNote: 'We kindly request that you indicate attendance preference for the seating order in the wedding hall.',
   nudgeSubtext: 'You can find the options below.',
 
 };
