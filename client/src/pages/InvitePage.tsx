@@ -71,72 +71,114 @@ function buildMonogram(firstName: string, secondName: string | null): string {
   return firstName.length > 0 ? `${firstName[0]} · 2026` : '· 2026';
 }
 
-// ─── Persistent bottom scroll hint ───────────────────────────────────────────
-// A quiet, ghost-style pill fixed at the bottom of the screen while the hero
-// is active. Visually subordinate to the gold CTA so there is no confusion
-// about which element to interact with. Uses directional language ("scroll
-// down") rather than duplicating the action label ("confirm attendance").
-// Disappears as soon as the guest reaches the RSVP slide.
-function RsvpBottomPrompt({ visible, onClick }: { visible: boolean; onClick: () => void }) {
+// ─── Nudge overlay — shown 3 s after landing on the hero slide ───────────────
+// Blurs the invitation behind a centred card explaining WHY attendance must be
+// confirmed (seating layout). One rose button scrolls straight to the form and
+// dismisses the overlay. The overlay never re-appears once dismissed.
+// The 3-second timer is cancelled if the guest scrolls before it fires.
+function NudgeOverlay({ onConfirm }: { onConfirm: () => void }) {
   const t = useTranslation();
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          key="rsvp-prompt"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.5, delay: 2.5, ease: [0.22, 1, 0.36, 1] }}
+    <motion.div
+      key="nudge-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 600,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1.5rem',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        background: 'rgba(42,31,26,0.35)',
+      }}
+      // Clicking the backdrop also confirms & scrolls, reducing accidental traps
+      onClick={onConfirm}
+    >
+      <motion.div
+        key="nudge-card"
+        initial={{ opacity: 0, scale: 0.92, y: 24 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.seatingPreferenceNote}
+        style={{
+          background: PARCHMENT,
+          border: `1.5px solid ${GOLD_DIM}`,
+          borderRadius: '1.25rem',
+          padding: 'clamp(1.5rem, 5vw, 2rem)',
+          maxWidth: '22rem',
+          width: '100%',
+          boxShadow: '0 24px 80px rgba(42,31,26,0.22), 0 4px 16px rgba(42,31,26,0.1)',
+          textAlign: 'center',
+        }}
+      >
+        {/* Rose ring icon */}
+        <div
+          aria-hidden="true"
           style={{
-            position: 'fixed',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 450,
+            width: 52, height: 52, borderRadius: '50%',
+            background: 'rgba(196,132,140,0.12)',
+            border: `1.5px solid rgba(196,132,140,0.35)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 1.1rem',
           }}
         >
-          <motion.button
-            onClick={onClick}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            animate={{ y: [0, -6, 0] }}
-            transition={{ y: { repeat: Infinity, duration: 2.6, ease: 'easeInOut', repeatDelay: 1.5 } }}
-            aria-label={t.scrollToRsvp}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.65rem 1.4rem',
-              borderRadius: '999px',
-              background: 'rgba(253,250,245,0.82)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              color: ROSE,
-              fontFamily: sans,
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              border: `1.5px solid rgba(196,132,140,0.45)`,
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t.scrollToRsvp}
-            <motion.svg
-              width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round"
-              animate={{ y: [0, 3, 0] }}
-              transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-              aria-hidden="true"
-            >
-              <path d="M19 9l-7 7-7-7" />
-            </motion.svg>
-          </motion.button>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ROSE} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+
+        {/* Message */}
+        <p style={{
+          fontFamily: sans, fontSize: '1rem', lineHeight: 1.65,
+          color: ESPRESSO, fontWeight: 500, marginBottom: '0.6rem',
+        }}>
+          {t.seatingPreferenceNote}
+        </p>
+        <p style={{
+          fontFamily: sans, fontSize: '0.88rem', lineHeight: 1.55,
+          color: ESPRESSO_DIM, marginBottom: '1.5rem',
+        }}>
+          {t.nudgeSubtext}
+        </p>
+
+        {/* CTA */}
+        <motion.button
+          onClick={onConfirm}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            width: '100%',
+            padding: '0.9rem 1.5rem',
+            borderRadius: '999px',
+            background: ROSE,
+            color: '#FAF7F2',
+            fontFamily: sans,
+            fontSize: '0.88rem',
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(196,132,140,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+          }}
+        >
+          {t.rsvpButton}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 9l-7 7-7-7"/>
+          </svg>
+        </motion.button>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -939,6 +981,38 @@ export default function InvitePage() {
   // Must be declared before early returns to satisfy React's Rules of Hooks
   const [showForm, setShowForm] = useState(false);
 
+  // Nudge overlay — shown 3 s after landing on the hero slide, cancelled if the
+  // guest scrolls to the RSVP form on their own before the timer fires.
+  const [nudgeShown, setNudgeShown] = useState(false);
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    let fired = false;
+
+    const cancel = () => {
+      if (!fired) clearTimeout(timerId);
+    };
+
+    const timerId = setTimeout(() => {
+      fired = true;
+      // Only show if the guest is still on the hero slide
+      if (wrapRef.current && wrapRef.current.scrollTop < 50) {
+        setNudgeShown(true);
+      }
+    }, 3000);
+
+    // Cancel if the guest scrolls manually before 3 s
+    wrap?.addEventListener('scroll', cancel, { once: true, passive: true });
+    wrap?.addEventListener('touchstart', cancel, { once: true, passive: true });
+
+    return () => {
+      clearTimeout(timerId);
+      wrap?.removeEventListener('scroll', cancel);
+      wrap?.removeEventListener('touchstart', cancel);
+    };
+  // Run once on mount — wrapRef is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Detect short-viewport devices (iPhone SE, small Androids) so the hero
   // can compress the countdown and hide the table badge to keep the CTA visible.
   const [isShortScreen, setIsShortScreen] = useState(false);
@@ -1078,7 +1152,9 @@ export default function InvitePage() {
         <SideVinesFirefly wrapRef={wrapRef} />
         <InviteNav monogram={openMonogram} scrolled={scrolled} />
         <InviteDotNav current={current} onDotClick={scrollToSlide} />
-        <RsvpBottomPrompt visible={current === 0} onClick={scrollToRSVP} />
+        <AnimatePresence>
+          {nudgeShown && <NudgeOverlay onConfirm={() => { setNudgeShown(false); scrollToRSVP(); }} />}
+        </AnimatePresence>
 
         {/* ════════ HERO ════════ */}
         <HeroSlide
@@ -1162,7 +1238,9 @@ export default function InvitePage() {
       <SideVinesFirefly wrapRef={wrapRef} />
       <InviteNav monogram={monogram} scrolled={scrolled} />
       <InviteDotNav current={current} onDotClick={scrollToSlide} />
-      <RsvpBottomPrompt visible={current === 0} onClick={scrollToRSVP} />
+      <AnimatePresence>
+        {nudgeShown && <NudgeOverlay onConfirm={() => { setNudgeShown(false); scrollToRSVP(); }} />}
+      </AnimatePresence>
 
       {/* ════════ HERO ════════ */}
       <HeroSlide

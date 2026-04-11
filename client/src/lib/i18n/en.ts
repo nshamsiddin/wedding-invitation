@@ -129,6 +129,8 @@ export type Translations = {
   addToCalendar: string;
   // RSVP slide — seating preference note
   seatingPreferenceNote: string;
+  // Nudge overlay — second sentence shown below the seating note
+  nudgeSubtext: string;
 };
 
 export const en: Translations = {
@@ -281,5 +283,6 @@ export const en: Translations = {
   partnerDietaryLabel: "Partner's Dietary Restrictions",
   addToCalendar: 'Add to Calendar',
   seatingPreferenceNote: 'We kindly request that you indicate your seating preference for the wedding hall.',
+  nudgeSubtext: 'You can find the options below.',
 
 };

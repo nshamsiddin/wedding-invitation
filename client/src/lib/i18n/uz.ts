@@ -150,4 +150,5 @@ export const uz: Translations = {
   partnerDietaryLabel: 'Hamrohingizning Ovqatlanish Cheklovlari',
   addToCalendar: "Taqvimga Qo'shish",
   seatingPreferenceNote: "To'y zalida o'tirish joyingizni belgilashingizni iltifot bilan so'rab qolamiz.",
+  nudgeSubtext: "Quyida tanlovlarni topishingiz mumkin.",
 };

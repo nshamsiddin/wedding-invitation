@@ -150,4 +150,5 @@ export const tr: Translations = {
   partnerDietaryLabel: 'Eşinizin Diyet Kısıtlamaları',
   addToCalendar: 'Takvime Ekle',
   seatingPreferenceNote: 'Düğün salonundaki oturum düzeni için lütfen katılım tercihinizi belirtmenizi önemle rica ederiz.',
+  nudgeSubtext: 'Aşağıda seçenekleri bulabilirsiniz.',
 };
