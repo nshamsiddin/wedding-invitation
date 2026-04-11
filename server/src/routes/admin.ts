@@ -221,14 +221,27 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
     // Build guest WHERE conditions
     const guestConditions = [];
     if (search && search.trim().length > 0) {
-      // Escape SQLite LIKE wildcards (% and _) in the search term so that
-      // a search for e.g. "%" does not accidentally match all guests.
-      const rawTerm = search.trim();
-      const escapedTerm = rawTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      const term = `%${escapedTerm}%`;
-      guestConditions.push(
-        sql`${schema.guests.name} LIKE ${term} ESCAPE '\\'`,
-      );
+      // Split query into whitespace-separated tokens so that e.g. "ali şilkım"
+      // matches a guest whose name contains both "ali" and "şilkım" in any order.
+      // Each token is matched against the guest name OR the partner name so that
+      // searching a partner's name surfaces the correct row.
+      // SQLite LIKE is already case-insensitive for ASCII characters; for
+      // non-ASCII (Turkish extended chars) the user should type the correct case.
+      const tokens = search.trim().split(/\s+/).filter(Boolean);
+      const tokenClauses = tokens.map((tok) => {
+        const escaped = tok.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+        const term = `%${escaped}%`;
+        return sql`(
+          ${schema.guests.name} LIKE ${term} ESCAPE '\\'
+          OR COALESCE(${schema.guests.partnerName}, '') LIKE ${term} ESCAPE '\\'
+        )`;
+      });
+      // All tokens must match (AND across tokens, OR within each token across fields)
+      if (tokenClauses.length === 1) {
+        guestConditions.push(tokenClauses[0]);
+      } else {
+        guestConditions.push(and(...tokenClauses)!);
+      }
     }
     if (matchingGuestIds !== null) {
       guestConditions.push(inArray(schema.guests.id, matchingGuestIds));

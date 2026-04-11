@@ -591,7 +591,7 @@ function HeroSlide({
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: guestName ? '0.5rem' : '1rem' }}
         >
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
-          <span style={{ fontFamily: sans, fontSize: '0.72rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+          <span style={{ fontFamily: sans, fontSize: '0.85rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ROSE, fontWeight: 600 }}>
             {overline}
           </span>
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
@@ -607,7 +607,7 @@ function HeroSlide({
               style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}
             >
               {/* Honorific label — small caps, rose */}
-              <span style={{ fontFamily: sans, fontSize: '0.9rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
+              <span style={{ fontFamily: sans, fontSize: '1.25rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: ROSE, fontWeight: 600 }}>
                 {t.honorific}
               </span>
 
