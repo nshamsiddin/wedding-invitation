@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import CountdownTimer from '../components/CountdownTimer';
@@ -71,32 +71,97 @@ function buildMonogram(firstName: string, secondName: string | null): string {
   return firstName.length > 0 ? `${firstName[0]} · 2026` : '· 2026';
 }
 
-// ─── Scroll cue — bouncing chevron (works on both touch and mouse) ────────────
-function ScrollCue({ inView }: { inView: boolean }) {
+// ─── Scroll cue — tappable bouncing arrow ────────────────────────────────────
+function ScrollCue({ onScroll }: { onScroll: () => void }) {
   const t = useTranslation();
   return (
-    <motion.div
+    <motion.button
       initial={{ opacity: 0 }}
-      animate={inView ? { opacity: 1 } : { opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ delay: 2.0 }}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', marginTop: 'clamp(1.25rem, 3.5vh, 2.5rem)' }}
-      aria-hidden="true"
+      onClick={onScroll}
+      aria-label={t.scrollToRsvp}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem',
+        marginTop: 'clamp(1.25rem, 3.5vh, 2.5rem)',
+        padding: '0.5rem 1.5rem',
+        borderRadius: '2rem',
+      }}
     >
-      <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.15rem', fontWeight: 500 }}>
+      <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.1rem', fontWeight: 500 }}>
         {t.scrollToRsvp}
       </span>
-      {/* Two stacked chevrons, staggered fade — universally understood on both touch and mouse */}
       {[0, 1].map((i) => (
         <motion.svg
           key={i}
-          width="26" height="16" viewBox="0 0 26 16" fill="none"
-          animate={{ opacity: [0.3, 1, 0.3], y: [0, 6, 0] }}
+          width="34" height="22" viewBox="0 0 34 22" fill="none"
+          animate={{ opacity: [0.35, 1, 0.35], y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut', delay: i * 0.22 }}
+          aria-hidden="true"
         >
-          <path d="M1 1L13 13L25 1" stroke={ROSE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M2 2L17 19L32 2" stroke={ROSE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         </motion.svg>
       ))}
-    </motion.div>
+    </motion.button>
+  );
+}
+
+// ─── Persistent bottom RSVP prompt ───────────────────────────────────────────
+// Fixed pill visible while the hero slide is active. Gives older or less
+// tech-savvy guests an unmistakable tap target without auto-scrolling, which
+// is disorienting. Gently bobs to draw the eye without being intrusive.
+function RsvpBottomPrompt({ visible, onClick }: { visible: boolean; onClick: () => void }) {
+  const t = useTranslation();
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="rsvp-prompt"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.55, delay: 2.8, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            position: 'fixed',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 450,
+          }}
+        >
+          <motion.button
+            onClick={onClick}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
+            animate={{ y: [0, -5, 0] }}
+            transition={{ y: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', repeatDelay: 1.2 } }}
+            aria-label={t.scrollToRsvp}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.55rem',
+              padding: '0.8rem 1.8rem',
+              borderRadius: '999px',
+              background: ROSE,
+              color: '#FAF7F2',
+              fontFamily: sans,
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 6px 28px rgba(196,132,140,0.45), 0 1px 6px rgba(196,132,140,0.22)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t.rsvpButton}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M19 9l-7 7-7-7" />
+            </svg>
+          </motion.button>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -759,7 +824,7 @@ function HeroSlide({
           </MagneticButton>
         </motion.div>
 
-        <ScrollCue inView={true} />
+        <ScrollCue onScroll={onCtaClick} />
       </div>
     </section>
   );
@@ -1019,6 +1084,7 @@ export default function InvitePage() {
         <SideVinesFirefly wrapRef={wrapRef} />
         <InviteNav monogram={openMonogram} scrolled={scrolled} />
         <InviteDotNav current={current} onDotClick={scrollToSlide} />
+        <RsvpBottomPrompt visible={current === 0} onClick={scrollToRSVP} />
 
         {/* ════════ HERO ════════ */}
         <HeroSlide
@@ -1102,6 +1168,7 @@ export default function InvitePage() {
       <SideVinesFirefly wrapRef={wrapRef} />
       <InviteNav monogram={monogram} scrolled={scrolled} />
       <InviteDotNav current={current} onDotClick={scrollToSlide} />
+      <RsvpBottomPrompt visible={current === 0} onClick={scrollToRSVP} />
 
       {/* ════════ HERO ════════ */}
       <HeroSlide
