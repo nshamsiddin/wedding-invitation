@@ -71,46 +71,12 @@ function buildMonogram(firstName: string, secondName: string | null): string {
   return firstName.length > 0 ? `${firstName[0]} · 2026` : '· 2026';
 }
 
-// ─── Scroll cue — tappable bouncing arrow ────────────────────────────────────
-function ScrollCue({ onScroll }: { onScroll: () => void }) {
-  const t = useTranslation();
-  return (
-    <motion.button
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 2.0 }}
-      onClick={onScroll}
-      aria-label={t.scrollToRsvp}
-      style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem',
-        marginTop: 'clamp(1.25rem, 3.5vh, 2.5rem)',
-        padding: '0.5rem 1.5rem',
-        borderRadius: '2rem',
-      }}
-    >
-      <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginBottom: '0.1rem', fontWeight: 500 }}>
-        {t.scrollToRsvp}
-      </span>
-      {[0, 1].map((i) => (
-        <motion.svg
-          key={i}
-          width="34" height="22" viewBox="0 0 34 22" fill="none"
-          animate={{ opacity: [0.35, 1, 0.35], y: [0, 8, 0] }}
-          transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut', delay: i * 0.22 }}
-          aria-hidden="true"
-        >
-          <path d="M2 2L17 19L32 2" stroke={ROSE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        </motion.svg>
-      ))}
-    </motion.button>
-  );
-}
-
-// ─── Persistent bottom RSVP prompt ───────────────────────────────────────────
-// Fixed pill visible while the hero slide is active. Gives older or less
-// tech-savvy guests an unmistakable tap target without auto-scrolling, which
-// is disorienting. Gently bobs to draw the eye without being intrusive.
+// ─── Persistent bottom scroll hint ───────────────────────────────────────────
+// A quiet, ghost-style pill fixed at the bottom of the screen while the hero
+// is active. Visually subordinate to the gold CTA so there is no confusion
+// about which element to interact with. Uses directional language ("scroll
+// down") rather than duplicating the action label ("confirm attendance").
+// Disappears as soon as the guest reaches the RSVP slide.
 function RsvpBottomPrompt({ visible, onClick }: { visible: boolean; onClick: () => void }) {
   const t = useTranslation();
   return (
@@ -118,10 +84,10 @@ function RsvpBottomPrompt({ visible, onClick }: { visible: boolean; onClick: () 
       {visible && (
         <motion.div
           key="rsvp-prompt"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.55, delay: 2.8, ease: [0.22, 1, 0.36, 1] }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ duration: 0.5, delay: 2.5, ease: [0.22, 1, 0.36, 1] }}
           style={{
             position: 'fixed',
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)',
@@ -132,32 +98,41 @@ function RsvpBottomPrompt({ visible, onClick }: { visible: boolean; onClick: () 
         >
           <motion.button
             onClick={onClick}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
-            animate={{ y: [0, -5, 0] }}
-            transition={{ y: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', repeatDelay: 1.2 } }}
+            animate={{ y: [0, -6, 0] }}
+            transition={{ y: { repeat: Infinity, duration: 2.6, ease: 'easeInOut', repeatDelay: 1.5 } }}
             aria-label={t.scrollToRsvp}
             style={{
-              display: 'flex', alignItems: 'center', gap: '0.55rem',
-              padding: '0.8rem 1.8rem',
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.65rem 1.4rem',
               borderRadius: '999px',
-              background: ROSE,
-              color: '#FAF7F2',
+              background: 'rgba(253,250,245,0.82)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              color: ROSE,
               fontFamily: sans,
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              letterSpacing: '0.12em',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              letterSpacing: '0.14em',
               textTransform: 'uppercase',
-              border: 'none',
+              border: `1.5px solid rgba(196,132,140,0.45)`,
               cursor: 'pointer',
-              boxShadow: '0 6px 28px rgba(196,132,140,0.45), 0 1px 6px rgba(196,132,140,0.22)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
               whiteSpace: 'nowrap',
             }}
           >
-            {t.rsvpButton}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {t.scrollToRsvp}
+            <motion.svg
+              width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round"
+              animate={{ y: [0, 3, 0] }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+              aria-hidden="true"
+            >
               <path d="M19 9l-7 7-7-7" />
-            </svg>
+            </motion.svg>
           </motion.button>
         </motion.div>
       )}
@@ -824,7 +799,6 @@ function HeroSlide({
           </MagneticButton>
         </motion.div>
 
-        <ScrollCue onScroll={onCtaClick} />
       </div>
     </section>
   );
