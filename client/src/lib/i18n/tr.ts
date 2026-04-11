@@ -5,10 +5,10 @@ export const tr: Translations = {
 
   // Hero
   cordiallyInvited: 'Sizi düğünümüze davet etmekten onur duyuyoruz',
-  rsvpButton: 'Katılımı Onayla',
-  scrollDown: 'Onaylamak için aşağı kaydırın',
+  rsvpButton: 'Katılım Durumunuz',
+  scrollDown: 'Katılım durumunuzu belirtmek için aşağı kaydırın',
   scrollCta: 'Hikayemizi keşfedin',
-  scrollToRsvp: 'Onaylamak için aşağı kaydırın',
+  scrollToRsvp: 'Katılım durumunuzu belirtmek için aşağı kaydırın',
 
   // Event details section
   aboutEvent: 'Kutlama',
@@ -52,7 +52,7 @@ export const tr: Translations = {
 
   // RSVP form actions
   sendRsvp: 'Yanıt Gönder',
-  updateRsvp: 'Yanıtı Güncelle',
+  updateRsvp: 'Seçimi Onayla',
   sending: 'Gönderiliyor…',
 
   // Update banner
