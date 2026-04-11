@@ -127,6 +127,8 @@ export type Translations = {
   partnerDietaryLabel: string;
   // Success screen — post-RSVP calendar CTA
   addToCalendar: string;
+  // RSVP slide — seating preference note
+  seatingPreferenceNote: string;
 };
 
 export const en: Translations = {
@@ -278,5 +280,6 @@ export const en: Translations = {
   happyCoupleAlt: 'The happy couple',
   partnerDietaryLabel: "Partner's Dietary Restrictions",
   addToCalendar: 'Add to Calendar',
+  seatingPreferenceNote: 'We kindly request that you indicate your seating preference for the wedding hall.',
 
 };

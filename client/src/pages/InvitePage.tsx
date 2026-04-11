@@ -877,6 +877,26 @@ function RSVPSlide({
           <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to left, transparent, ${ROSE})` }} aria-hidden="true" />
         </motion.div>
 
+        {/* Seating preference note */}
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.08 }}
+          style={{
+            fontFamily: sans,
+            fontSize: '0.8rem',
+            lineHeight: 1.6,
+            letterSpacing: '0.02em',
+            color: ESPRESSO_DIM,
+            textAlign: 'center',
+            marginBottom: '1.25rem',
+            fontStyle: 'italic',
+          }}
+        >
+          {t.seatingPreferenceNote}
+        </motion.p>
+
         {/* Form */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

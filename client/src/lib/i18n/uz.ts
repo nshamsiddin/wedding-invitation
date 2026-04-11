@@ -149,4 +149,5 @@ export const uz: Translations = {
   happyCoupleAlt: 'Baxtli juftlik',
   partnerDietaryLabel: 'Hamrohingizning Ovqatlanish Cheklovlari',
   addToCalendar: "Taqvimga Qo'shish",
+  seatingPreferenceNote: "To'y zalida o'tirish joyingizni belgilashingizni iltifot bilan so'rab qolamiz.",
 };
