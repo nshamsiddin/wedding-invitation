@@ -981,9 +981,14 @@ export default function InvitePage() {
   // Must be declared before early returns to satisfy React's Rules of Hooks
   const [showForm, setShowForm] = useState(false);
 
-  // Nudge overlay — shown 3 s after landing on the hero slide, cancelled if the
-  // guest scrolls to the RSVP form on their own before the timer fires.
+  // Nudge overlay — shown 5 s after landing on the hero slide, but only if the
+  // guest has not yet responded (status === 'pending' for personal invites, or
+  // any open/public invite that has no prior response).
+  // A ref lets the timer callback read the latest query result without being
+  // added to the dependency array (which would restart the timer on every fetch).
   const [nudgeShown, setNudgeShown] = useState(false);
+  const nudgeDataRef = useRef<typeof data>(undefined);
+
   useEffect(() => {
     const wrap = wrapRef.current;
     let fired = false;
@@ -994,13 +999,18 @@ export default function InvitePage() {
 
     const timerId = setTimeout(() => {
       fired = true;
+      const d = nudgeDataRef.current;
+      // Skip if data hasn't loaded yet
+      if (!d) return;
+      // Skip for personal invites where the guest already has a non-pending response
+      if (d.type === 'personal' && d.invitation.status !== 'pending') return;
       // Only show if the guest is still on the hero slide
       if (wrapRef.current && wrapRef.current.scrollTop < 50) {
         setNudgeShown(true);
       }
     }, 5000);
 
-    // Cancel if the guest scrolls manually before 3 s
+    // Cancel if the guest scrolls manually before the timer fires
     wrap?.addEventListener('scroll', cancel, { once: true, passive: true });
     wrap?.addEventListener('touchstart', cancel, { once: true, passive: true });
 
@@ -1009,7 +1019,7 @@ export default function InvitePage() {
       wrap?.removeEventListener('scroll', cancel);
       wrap?.removeEventListener('touchstart', cancel);
     };
-  // Run once on mount — wrapRef is stable
+  // Run once on mount — wrapRef and nudgeDataRef are stable refs
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1043,6 +1053,9 @@ export default function InvitePage() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  // Keep nudgeDataRef in sync so the timer callback can read the latest data.
+  useEffect(() => { nudgeDataRef.current = data; }, [data]);
 
   // Apply the invitation's predefined language the first time the data loads.
   // The guest can still switch language afterward via the LanguageSwitcher.
