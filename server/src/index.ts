@@ -531,11 +531,9 @@ if (!isDev) {
     const guestName  = row?.guestName ?? null;
 
     const title = guestName
-      ? `Sayın ${guestName}`
+      ? `${guestName} — Berfin & Shamsiddin`
       : 'Berfin & Shamsiddin — Wedding Invitation';
-    const description = guestName
-      ? 'Berfin & Shamsiddin düğününe kişisel davetiyeniz.'
-      : 'You are cordially invited to our wedding celebration';
+    const description = 'You are cordially invited to the wedding of Berfin & Shamsiddin.';
 
     const ogTags = [
       `<meta property="og:title" content="${escAttr(title)}" />`,
