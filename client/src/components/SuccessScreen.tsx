@@ -153,8 +153,8 @@ export default function SuccessScreen({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.6 }}
         style={{
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'var(--font-display-style)' as 'normal' | 'italic',
+          fontFamily: '"Cormorant Garamond", Georgia, serif',
+          fontStyle: 'italic',
           fontSize: 'clamp(4rem, 16vw, 6rem)',
           fontWeight: 400,
           lineHeight: 1.1,
