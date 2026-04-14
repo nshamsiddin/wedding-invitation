@@ -511,24 +511,24 @@ export default function GuestTable({
                   );
                 })}
 
-                {/* Table number cell (Tashkent only) */}
+                {/* Table number cell */}
                 {showTableColumn && (
                   <td className="px-4 py-3 whitespace-nowrap">
                     {(() => {
-                      const tashkentInv = guest.invitations.find((i) => i.eventSlug === 'tashkent');
-                      if (!tashkentInv) return <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>;
+                      const inv = guest.invitations.find((i) => i.tableNumber != null) ?? guest.invitations[0];
+                      if (!inv) return <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>;
                       return onUpdateTableNumber ? (
                         <TableNumberCell
-                          invitationId={tashkentInv.id}
-                          tableNumber={tashkentInv.tableNumber}
+                          invitationId={inv.id}
+                          tableNumber={inv.tableNumber}
                           onUpdate={onUpdateTableNumber}
                         />
-                      ) : tashkentInv.tableNumber != null ? (
+                      ) : inv.tableNumber != null ? (
                         <span
                           className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold font-sans"
                           style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.4)' }}
                         >
-                          #{tashkentInv.tableNumber}
+                          #{inv.tableNumber}
                         </span>
                       ) : (
                         <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>
