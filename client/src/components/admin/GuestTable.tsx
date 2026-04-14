@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
@@ -59,7 +59,89 @@ interface Props {
   onEditInvitation: (invitation: AdminInvitation, guest: AdminGuest) => void;
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
+  onUpdateTableNumber?: (invitationId: number, tableNumber: number | null) => void;
   showTableColumn?: boolean;
+}
+
+// ─── Inline table-number editor ───────────────────────────────────────────────
+
+function TableNumberCell({
+  invitationId,
+  tableNumber,
+  onUpdate,
+}: {
+  invitationId: number;
+  tableNumber: number | null | undefined;
+  onUpdate: (invitationId: number, value: number | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(tableNumber != null ? String(tableNumber) : '');
+      requestAnimationFrame(() => inputRef.current?.select());
+    }
+  }, [editing, tableNumber]);
+
+  const commit = () => {
+    const raw = draft.trim();
+    const parsed = raw === '' ? null : parseInt(raw, 10);
+    const next = parsed !== null && !isNaN(parsed) && parsed >= 1 && parsed <= 500 ? parsed : null;
+    if (next !== (tableNumber ?? null)) {
+      onUpdate(invitationId, next);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="number"
+        min={1}
+        max={500}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          if (e.key === 'Escape') { setEditing(false); }
+        }}
+        className="w-16 px-2 py-0.5 rounded-md text-xs font-semibold font-sans text-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+        style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.6)' }}
+        aria-label="Table number"
+      />
+    );
+  }
+
+  return tableNumber != null ? (
+    <button
+      onClick={() => setEditing(true)}
+      title="Click to edit table number"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold font-sans transition-colors group/tn focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+      style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.4)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(184,146,74,0.7)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(184,146,74,0.4)'; }}
+    >
+      #{tableNumber}
+      <svg className="w-2.5 h-2.5 opacity-0 group-hover/tn:opacity-60 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+    </button>
+  ) : (
+    <button
+      onClick={() => setEditing(true)}
+      title="Click to set table number"
+      className="text-xs transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.4)] rounded px-1"
+      style={{ color: 'rgba(42,31,26,0.3)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(42,31,26,0.3)'; }}
+    >
+      + add
+    </button>
+  );
 }
 
 type SortKey = 'name' | 'createdAt';
@@ -238,6 +320,7 @@ export default function GuestTable({
   onEditInvitation,
   onDeleteGuest,
   onDeleteInvitation,
+  onUpdateTableNumber,
   showTableColumn = false,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
@@ -433,13 +516,19 @@ export default function GuestTable({
                   <td className="px-4 py-3 whitespace-nowrap">
                     {(() => {
                       const tashkentInv = guest.invitations.find((i) => i.eventSlug === 'tashkent');
-                      const tn = tashkentInv?.tableNumber;
-                      return tn != null ? (
+                      if (!tashkentInv) return <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>;
+                      return onUpdateTableNumber ? (
+                        <TableNumberCell
+                          invitationId={tashkentInv.id}
+                          tableNumber={tashkentInv.tableNumber}
+                          onUpdate={onUpdateTableNumber}
+                        />
+                      ) : tashkentInv.tableNumber != null ? (
                         <span
                           className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold font-sans"
                           style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.4)' }}
                         >
-                          #{tn}
+                          #{tashkentInv.tableNumber}
                         </span>
                       ) : (
                         <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>
