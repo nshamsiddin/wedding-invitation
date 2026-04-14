@@ -347,7 +347,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, phone, partnerName, eventIds, status, guestCount, dietary, message, tableNumber, language } = parsed.data;
+  const { name, phone, partnerName, eventIds, status, eventStatuses, guestCount, dietary, message, tableNumber, language } = parsed.data;
 
   try {
     // Wrap guest + invitation creation in a single transaction so a partial failure
@@ -375,7 +375,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
             guest.id,
             eventId,
             randomUUID(),
-            status ?? 'pending',
+            (eventStatuses?.[String(eventId)] ?? status) ?? 'pending',
             guestCount ?? 1,
             dietary ?? null,
             message ?? null,

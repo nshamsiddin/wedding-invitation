@@ -200,6 +200,8 @@ export const addGuestSchema = z.object({
     .array(z.number().int().positive())
     .min(1, 'Select at least one event'),
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional().default('pending'),
+  // Per-event status overrides; keys are event IDs (as strings). Takes precedence over `status`.
+  eventStatuses: z.record(z.string(), z.enum(['attending', 'declined', 'maybe', 'pending'])).optional(),
   // Admin-facing schemas allow up to 10 (vs 5 on the public RSVP form)
   guestCount: z.number().int().min(1).max(10).optional().default(1),
   dietary: z.string().max(500).trim().optional().default(''),
