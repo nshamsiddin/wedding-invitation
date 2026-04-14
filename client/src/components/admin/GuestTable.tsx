@@ -60,7 +60,6 @@ interface Props {
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
   onUpdateTableNumber?: (invitationId: number, tableNumber: number | null) => void;
-  showTableColumn?: boolean;
 }
 
 // ─── Inline table-number editor ───────────────────────────────────────────────
@@ -321,7 +320,6 @@ export default function GuestTable({
   onDeleteGuest,
   onDeleteInvitation,
   onUpdateTableNumber,
-  showTableColumn = false,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -344,7 +342,7 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const totalColSpan = 2 + events.length + 1 + 1 + (showTableColumn ? 1 : 0);
+  const totalColSpan = 2 + events.length + 1 + 1;
 
   const columns: Array<{ key: SortKey; label: string }> = [
     { key: 'name',      label: at.colName },
@@ -389,12 +387,6 @@ export default function GuestTable({
                 {getEventDisplayName(ev)}
               </th>
             ))}
-
-            {showTableColumn && (
-              <th scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
-                {at.colTable}
-              </th>
-            )}
 
             {/* Message column header */}
             <th scope="col" className="px-3 py-3 text-center font-medium" style={{ color: ESPRESSO_DIM }}>
@@ -474,6 +466,15 @@ export default function GuestTable({
                             {config.label}
                           </span>
 
+                          {/* Inline table number */}
+                          {onUpdateTableNumber && (
+                            <TableNumberCell
+                              invitationId={inv.id}
+                              tableNumber={inv.tableNumber}
+                              onUpdate={onUpdateTableNumber}
+                            />
+                          )}
+
                           {/* Per-invitation actions */}
                           <div className="flex items-center gap-1 flex-wrap">
                             <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
@@ -510,32 +511,6 @@ export default function GuestTable({
                     </td>
                   );
                 })}
-
-                {/* Table number cell */}
-                {showTableColumn && (
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {(() => {
-                      const inv = guest.invitations.find((i) => i.tableNumber != null) ?? guest.invitations[0];
-                      if (!inv) return <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>;
-                      return onUpdateTableNumber ? (
-                        <TableNumberCell
-                          invitationId={inv.id}
-                          tableNumber={inv.tableNumber}
-                          onUpdate={onUpdateTableNumber}
-                        />
-                      ) : inv.tableNumber != null ? (
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold font-sans"
-                          style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.4)' }}
-                        >
-                          #{inv.tableNumber}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'rgba(42,31,26,0.3)', fontSize: '0.75rem' }}>—</span>
-                      );
-                    })()}
-                  </td>
-                )}
 
                 {/* Message cell */}
                 <td className="px-3 py-3 text-center">

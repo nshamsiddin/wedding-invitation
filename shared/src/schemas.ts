@@ -206,8 +206,8 @@ export const addGuestSchema = z.object({
   guestCount: z.number().int().min(1).max(10).optional().default(1),
   dietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
-  // Assigned seating table for Tashkent event — ignored for other events
-  tableNumber: z.number().int().min(1).max(500).nullable().optional(),
+  // Per-event assigned table numbers; keys are event IDs (as strings)
+  tableNumbers: z.record(z.string(), z.number().int().min(1).max(500).nullable()).optional(),
   // Language the invitation page should default to when the guest opens their link
   language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
 });

@@ -799,7 +799,6 @@ export default function DashboardPage() {
             onUpdateTableNumber={(invId, tableNumber) =>
               updateTableNumberMutation.mutate({ id: invId, tableNumber })
             }
-            showTableColumn
           />
 
           {totalPages > 1 && (

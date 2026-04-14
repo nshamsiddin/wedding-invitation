@@ -347,7 +347,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, phone, partnerName, eventIds, status, eventStatuses, guestCount, dietary, message, tableNumber, language } = parsed.data;
+  const { name, phone, partnerName, eventIds, status, eventStatuses, guestCount, dietary, message, tableNumbers, language } = parsed.data;
 
   try {
     // Wrap guest + invitation creation in a single transaction so a partial failure
@@ -379,7 +379,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
             guestCount ?? 1,
             dietary ?? null,
             message ?? null,
-            tableNumber ?? null,
+            tableNumbers?.[String(eventId)] ?? null,
             language ?? 'en',
           ) as typeof schema.guestInvitations.$inferSelect;
         invitations.push(inv);

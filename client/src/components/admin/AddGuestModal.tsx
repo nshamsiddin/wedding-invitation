@@ -1,5 +1,5 @@
-import { useContext, useEffect, useRef } from 'react';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useContext, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addGuestSchema, type AddGuestValues } from '@invitation/shared';
 import type { AdminEvent } from '../../lib/api';
@@ -71,9 +71,8 @@ export default function AddGuestModal({
     },
   });
 
-  const selectedEventIds = useWatch({ control, name: 'eventIds' });
-  const eventStatuses = watch('eventStatuses') ?? {};
-  const showTableNumber = tashkentEvent !== undefined && selectedEventIds.includes(tashkentEvent.id);
+  const eventStatuses  = watch('eventStatuses')  ?? {};
+  const tableNumbers   = watch('tableNumbers')   ?? {};
 
   useEffect(() => {
     if (isOpen) {
@@ -81,6 +80,7 @@ export default function AddGuestModal({
       reset({
         status: isTashkentDefault ? 'attending' : 'pending',
         eventStatuses: buildInitialStatuses(ids),
+        tableNumbers: {},
         guestCount: 1,
         dietary: '',
         message: '',
@@ -91,14 +91,6 @@ export default function AddGuestModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, reset, defaultEventId, isTashkentDefault, currentLanguage]);
-
-  const prevShowTableNumber = useRef(showTableNumber);
-  useEffect(() => {
-    if (showTableNumber && !prevShowTableNumber.current && tashkentEvent) {
-      setValue(`eventStatuses.${tashkentEvent.id}`, 'attending');
-    }
-    prevShowTableNumber.current = showTableNumber;
-  }, [showTableNumber, setValue, tashkentEvent]);
 
   return (
     <AdminModal
@@ -192,9 +184,12 @@ export default function AddGuestModal({
                               setValue('eventStatuses', { ...eventStatuses, [String(ev.id)]: defaultStatus });
                             } else {
                               field.onChange(field.value.filter((id) => id !== ev.id));
-                              const next = { ...eventStatuses };
-                              delete next[String(ev.id)];
-                              setValue('eventStatuses', next);
+                              const nextStatuses = { ...eventStatuses };
+                              delete nextStatuses[String(ev.id)];
+                              setValue('eventStatuses', nextStatuses);
+                              const nextTables = { ...tableNumbers };
+                              delete nextTables[String(ev.id)];
+                              setValue('tableNumbers', nextTables);
                             }
                           }}
                         />
@@ -216,18 +211,40 @@ export default function AddGuestModal({
                         </div>
                       </label>
 
-                      {/* Per-event status picker — shown only when event is selected */}
+                      {/* Per-event status + table number — shown only when event is selected */}
                       {checked && (
-                        <div className="px-3 pb-3">
-                          <p className="text-[10px] font-sans font-semibold uppercase tracking-widest mb-1.5" style={{ color: 'rgba(42,31,26,0.45)' }}>
-                            {at.statusLabel}
-                          </p>
-                          <StatusPicker
-                            value={eventStatuses[String(ev.id)] ?? 'pending'}
-                            onChange={(val) =>
-                              setValue('eventStatuses', { ...eventStatuses, [String(ev.id)]: val as 'attending' | 'declined' | 'maybe' | 'pending' })
-                            }
-                          />
+                        <div className="px-3 pb-3 space-y-3">
+                          <div>
+                            <p className="text-[10px] font-sans font-semibold uppercase tracking-widest mb-1.5" style={{ color: 'rgba(42,31,26,0.45)' }}>
+                              {at.statusLabel}
+                            </p>
+                            <StatusPicker
+                              value={eventStatuses[String(ev.id)] ?? 'pending'}
+                              onChange={(val) =>
+                                setValue('eventStatuses', { ...eventStatuses, [String(ev.id)]: val as 'attending' | 'declined' | 'maybe' | 'pending' })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor={`add-table-${ev.id}`} className={ADMIN_LABEL_CLASS}>
+                              {at.tableNumberLabel}
+                            </label>
+                            <input
+                              id={`add-table-${ev.id}`}
+                              type="number"
+                              min={1}
+                              max={500}
+                              value={tableNumbers[String(ev.id)] ?? ''}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                const parsed = raw === '' ? null : parseInt(raw, 10);
+                                const val = parsed !== null && !isNaN(parsed) ? parsed : null;
+                                setValue('tableNumbers', { ...tableNumbers, [String(ev.id)]: val });
+                              }}
+                              className={ADMIN_INPUT_CLASS}
+                              placeholder="e.g. 12 (optional)"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -270,32 +287,6 @@ export default function AddGuestModal({
             ))}
           </select>
         </div>
-
-        {/* Table Number — Tashkent only */}
-        {showTableNumber && (
-          <div>
-            <label htmlFor="add-table-number" className={ADMIN_LABEL_CLASS}>
-              {at.tableNumberLabel}{' '}
-              <span className="normal-case tracking-normal font-normal text-[rgba(42,31,26,0.5)]">(Tashkent)</span>
-            </label>
-            <input
-              id="add-table-number"
-              type="number"
-              min={1}
-              max={500}
-              {...register('tableNumber', {
-                setValueAs: (v) => (v === '' || v == null || isNaN(Number(v)) ? null : Number(v)),
-              })}
-              className={ADMIN_INPUT_CLASS}
-              placeholder="e.g. 12 (optional)"
-            />
-            {errors.tableNumber && (
-              <p className="mt-1 text-xs text-red-600 font-sans" role="alert">
-                {errors.tableNumber.message}
-              </p>
-            )}
-          </div>
-        )}
 
         {/* Dietary */}
         <div>
