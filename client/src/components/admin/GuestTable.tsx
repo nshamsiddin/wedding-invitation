@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
@@ -77,68 +77,154 @@ function TableNumberCell({
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editing) {
-      setDraft(tableNumber != null ? String(tableNumber) : '');
-      requestAnimationFrame(() => inputRef.current?.select());
-    }
-  }, [editing, tableNumber]);
+  const startEdit = () => {
+    setDraft(tableNumber != null ? String(tableNumber) : '');
+    setEditing(true);
+    requestAnimationFrame(() => { inputRef.current?.focus(); inputRef.current?.select(); });
+  };
 
   const commit = () => {
     const raw = draft.trim();
     const parsed = raw === '' ? null : parseInt(raw, 10);
     const next = parsed !== null && !isNaN(parsed) && parsed >= 1 && parsed <= 500 ? parsed : null;
-    if (next !== (tableNumber ?? null)) {
-      onUpdate(invitationId, next);
-    }
+    if (next !== (tableNumber ?? null)) onUpdate(invitationId, next);
     setEditing(false);
   };
 
+  const cancel = () => setEditing(false);
+
+  // ── Edit mode ──────────────────────────────────────────────────────────────
   if (editing) {
     return (
-      <input
-        ref={inputRef}
-        type="number"
-        min={1}
-        max={500}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') { e.preventDefault(); commit(); }
-          if (e.key === 'Escape') { setEditing(false); }
-        }}
-        className="w-16 px-2 py-0.5 rounded-md text-xs font-semibold font-sans text-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
-        style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.6)' }}
-        aria-label="Table number"
-      />
+      <div className="flex items-center gap-1" style={{ width: 'fit-content' }}>
+        <input
+          ref={inputRef}
+          type="number"
+          min={1}
+          max={500}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') cancel();
+          }}
+          placeholder="–"
+          aria-label="Table number"
+          style={{
+            width: '3.25rem',
+            padding: '0.25rem 0.4rem',
+            borderRadius: '0.375rem',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            textAlign: 'center',
+            background: '#FDFAF5',
+            border: '1.5px solid rgba(184,146,74,0.7)',
+            color: '#2A1F1A',
+            outline: 'none',
+            boxShadow: '0 0 0 3px rgba(184,146,74,0.12)',
+          }}
+        />
+        {/* Confirm */}
+        <button
+          onClick={commit}
+          type="button"
+          aria-label="Save table number"
+          style={{
+            width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(74,158,120,0.14)', border: '1px solid rgba(74,158,120,0.45)',
+            color: '#2D6B50', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </button>
+        {/* Cancel */}
+        <button
+          onClick={cancel}
+          type="button"
+          aria-label="Cancel"
+          style={{
+            width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(42,31,26,0.05)', border: '1px solid rgba(42,31,26,0.12)',
+            color: 'rgba(42,31,26,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
     );
   }
 
-  return tableNumber != null ? (
+  // ── Filled display ─────────────────────────────────────────────────────────
+  if (tableNumber != null) {
+    return (
+      <button
+        onClick={startEdit}
+        title="Edit table number"
+        className="group/tn inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+        style={{
+          padding: '0.22rem 0.55rem',
+          borderRadius: '0.375rem',
+          background: 'rgba(184,146,74,0.11)',
+          border: '1px solid rgba(184,146,74,0.32)',
+          color: '#7A4F10',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          fontFamily: '"DM Sans", system-ui, sans-serif',
+          letterSpacing: '0.02em',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          transition: 'background 0.15s, border-color 0.15s',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.2)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.55)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.11)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.32)'; }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.6 }}>
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Table {tableNumber}
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="opacity-0 group-hover/tn:opacity-50 transition-opacity">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+    );
+  }
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  return (
     <button
-      onClick={() => setEditing(true)}
-      title="Click to edit table number"
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold font-sans transition-colors group/tn focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
-      style={{ background: 'rgba(184,146,74,0.14)', color: '#2A1F1A', border: '1px solid rgba(184,146,74,0.4)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(184,146,74,0.7)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(184,146,74,0.4)'; }}
+      onClick={startEdit}
+      title="Assign table"
+      className="inline-flex items-center gap-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.4)]"
+      style={{
+        padding: '0.2rem 0.45rem',
+        borderRadius: '0.375rem',
+        border: '1px dashed rgba(184,146,74,0.3)',
+        color: 'rgba(184,146,74,0.45)',
+        fontSize: '0.68rem',
+        fontWeight: 600,
+        fontFamily: '"DM Sans", system-ui, sans-serif',
+        letterSpacing: '0.03em',
+        cursor: 'pointer',
+        background: 'transparent',
+        whiteSpace: 'nowrap',
+        transition: 'color 0.15s, border-color 0.15s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.borderColor = GOLD; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(184,146,74,0.45)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.3)'; }}
     >
-      #{tableNumber}
-      <svg className="w-2.5 h-2.5 opacity-0 group-hover/tn:opacity-60 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
       </svg>
-    </button>
-  ) : (
-    <button
-      onClick={() => setEditing(true)}
-      title="Click to set table number"
-      className="text-xs transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.4)] rounded px-1"
-      style={{ color: 'rgba(42,31,26,0.3)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(42,31,26,0.3)'; }}
-    >
-      + add
+      Set table
     </button>
   );
 }
