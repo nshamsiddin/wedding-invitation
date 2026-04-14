@@ -11,7 +11,7 @@ import { EVENT_CONFIG } from '../config/event';
 const events = [
   {
     slug: 'tashkent',
-    city: 'Toshkent',
+    city: { en: 'Tashkent', tr: 'Taşkent', uz: 'Toshkent' },
     country: { en: 'Uzbekistan', tr: 'Özbekistan', uz: "O'zbekiston" },
     date: { en: '12 September 2026', tr: '12 Eylül 2026', uz: '12 Sentyabr 2026' },
     venue: 'Yulduzli Saroy',
@@ -144,7 +144,7 @@ export default function HomePage() {
                 <Link
                   to={`/${ev.slug}`}
                   style={{ display: 'block', textDecoration: 'none' }}
-                  aria-label={`View invitation for ${ev.city} celebration`}
+                  aria-label={`View invitation for ${typeof ev.city === 'string' ? ev.city : ev.city[lang] ?? ev.city.en} celebration`}
                 >
                   <motion.div
                     whileHover={{ y: -4, scale: 1.01 }}
@@ -181,7 +181,7 @@ export default function HomePage() {
                         letterSpacing: '-0.01em',
                       }}
                     >
-                      {ev.city}
+                      {typeof ev.city === 'string' ? ev.city : ev.city[lang] ?? ev.city.en}
                     </h2>
 
                     {/* Country */}

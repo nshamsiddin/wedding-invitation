@@ -33,7 +33,7 @@ const LANG_META: Record<string, { label: string; flag: string }> = {
 };
 
 const VENUE_META: Record<string, { displayName: string; city: string }> = {
-  tashkent: { displayName: 'Toshkent', city: 'Ofarin Restaurant' },
+  tashkent: { displayName: 'Tashkent', city: 'Ofarin Restaurant' },
   ankara:   { displayName: 'Ankara',   city: "Park L'Amore" },
 };
 

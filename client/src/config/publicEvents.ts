@@ -3,7 +3,7 @@ import type { Language } from '../lib/i18n';
 export const PUBLIC_EVENT_CONFIGS = {
   tashkent: {
     slug: 'tashkent' as const,
-    city: { en: 'Toshkent', tr: 'Taşkent', uz: 'Toshkent' },
+    city: { en: 'Tashkent', tr: 'Taşkent', uz: 'Toshkent' },
     date: '2026-04-24',
     time: '18:00',
     venueName: 'Ofarin Restaurant',
