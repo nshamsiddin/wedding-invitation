@@ -377,6 +377,16 @@ export default function DashboardPage() {
     },
   });
 
+  const updateTableNumberMutation = useMutation({
+    mutationFn: ({ id, tableNumber }: { id: number; tableNumber: number | null }) =>
+      adminApi.updateInvitation(id, { tableNumber }),
+    onError: () => toast.error('Failed to update table number'),
+    onSuccess: (_data, { tableNumber }) => {
+      toast.success(tableNumber != null ? `Table set to #${tableNumber}` : 'Table number cleared');
+      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+    },
+  });
+
   const addInvitationMutation = useMutation({
     mutationFn: adminApi.addInvitation,
     onError: () => toast.error('Failed to add to event'),
@@ -786,6 +796,9 @@ export default function DashboardPage() {
             onEditInvitation={(inv, guest) => setEditingInvitation({ inv, guest })}
             onDeleteGuest={setDeletingGuest}
             onDeleteInvitation={setDeletingInvitation}
+            onUpdateTableNumber={(invId, tableNumber) =>
+              updateTableNumberMutation.mutate({ id: invId, tableNumber })
+            }
             showTableColumn={selectedEvent?.slug === 'tashkent'}
           />
 
