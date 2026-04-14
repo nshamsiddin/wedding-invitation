@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -277,6 +277,9 @@ export default function DashboardPage() {
   // Multi-select status filter — replaces the previous single <select>
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
 
+  // Table number filter — client-side, applied after the API response
+  const [tableFilter, setTableFilter] = useState<number | null>(null);
+
   // ── Modal state ─────────────────────────────────────────────────────────────
   const [showAddModal, setShowAddModal]           = useState(false);
   const [showBulkModal, setShowBulkModal]         = useState(false);
@@ -317,6 +320,31 @@ export default function DashboardPage() {
   const guestTotal = guestsData?.total ?? 0;
   const guestLimit = guestsData?.limit ?? 100;
   const totalPages = Math.ceil(guestTotal / guestLimit);
+
+  // Collect all unique table numbers from the loaded guests (sorted)
+  const availableTables = useMemo(() => {
+    const nums = new Set<number>();
+    guests.forEach((g) => g.invitations.forEach((i) => {
+      if (i.tableNumber != null) nums.add(i.tableNumber);
+    }));
+    return Array.from(nums).sort((a, b) => a - b);
+  }, [guests]);
+
+  // Client-side table filter
+  const filteredGuests = useMemo(() =>
+    tableFilter != null
+      ? guests.filter((g) => g.invitations.some((i) => i.tableNumber === tableFilter))
+      : guests,
+  [guests, tableFilter]);
+
+  // Headcount for the selected table (sum of guestCount for attending invitations at that table)
+  const tableHeadcount = useMemo(() => {
+    if (tableFilter == null) return null;
+    return filteredGuests.reduce((sum, g) => {
+      const inv = g.invitations.find((i) => i.tableNumber === tableFilter && i.status === 'attending');
+      return sum + (inv?.guestCount ?? 0);
+    }, 0);
+  }, [filteredGuests, tableFilter]);
 
   const { data: config } = useQuery({
     queryKey: ['config'],
@@ -506,6 +534,7 @@ export default function DashboardPage() {
     setSelectedEventId(id);
     setStatusFilters([]);
     setSearchInput('');
+    setTableFilter(null);
   };
 
   // Is any filter active? — show indicator
@@ -783,13 +812,48 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {/* Row 2: multi-select status pills */}
-              <StatusPills selected={statusFilters} onChange={setStatusFilters} />
+              {/* Row 2: status pills + table filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPills selected={statusFilters} onChange={setStatusFilters} />
+
+                {/* Table number filter */}
+                {availableTables.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={tableFilter ?? ''}
+                      onChange={(e) => setTableFilter(e.target.value === '' ? null : Number(e.target.value))}
+                      className="px-2.5 py-1 rounded-full text-xs font-sans font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                      style={{
+                        background: tableFilter != null ? GOLD : PARCHMENT,
+                        color: tableFilter != null ? ESPRESSO : ESPRESSO_DIM,
+                        border: `1px solid ${tableFilter != null ? GOLD : GOLD_DIM}`,
+                        appearance: 'none',
+                        paddingRight: '1.25rem',
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Filter by table number"
+                    >
+                      <option value="">Table #</option>
+                      {availableTables.map((n) => (
+                        <option key={n} value={n}>Table {n}</option>
+                      ))}
+                    </select>
+                    {tableFilter != null && tableHeadcount != null && (
+                      <span
+                        className="px-2.5 py-1 rounded-full text-xs font-sans font-medium"
+                        style={{ background: 'rgba(184,146,74,0.12)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
+                      >
+                        {tableHeadcount} {tableHeadcount === 1 ? 'guest' : 'guests'} attending
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <GuestTable
-            guests={guests}
+            guests={filteredGuests}
             events={events}
             isLoading={guestsLoading}
             onEditGuest={setEditingGuest}
