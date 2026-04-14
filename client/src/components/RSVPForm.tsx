@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -66,8 +66,18 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
       : { guestCount: 1, dietary: '', partnerDietary: '', partnerName: '', message: '' },
   });
 
-  const watchedStatus  = watch('status');
-  const watchedCount   = watch('guestCount') ?? 1;
+  const watchedStatus      = watch('status');
+  const watchedCount       = watch('guestCount') ?? 1;
+  const watchedPartnerName = watch('partnerName');
+
+  // When a partner name is typed, bump guest count to 2; when cleared, drop back to 1
+  useEffect(() => {
+    if (watchedPartnerName?.trim()) {
+      if (watchedCount < 2) setValue('guestCount', 2);
+    } else {
+      if (watchedCount <= 2) setValue('guestCount', 1);
+    }
+  }, [watchedPartnerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submitMutation = useMutation({
     mutationFn: (values: RSVPFormValues) =>

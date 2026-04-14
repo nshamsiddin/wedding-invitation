@@ -221,12 +221,18 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
     defaultValues: { token, eventId, name: '', partnerName: '', phone: '', status: 'attending', guestCount: 1, message: '' },
   });
 
-  const status    = watch('status') ?? 'attending';
-  const guestCount = watch('guestCount') ?? 1;
+  const status          = watch('status') ?? 'attending';
+  const guestCount      = watch('guestCount') ?? 1;
+  const watchedPartner  = watch('partnerName');
 
+  // Auto-sync guest count with partner name: typing a name → 2, clearing it → 1
   useEffect(() => {
-    if (guestCount <= 1) setValue('partnerName', '');
-  }, [guestCount, setValue]);
+    if (watchedPartner?.trim()) {
+      if (guestCount < 2) setValue('guestCount', 2);
+    } else {
+      if (guestCount <= 2) setValue('guestCount', 1);
+    }
+  }, [watchedPartner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublic,
@@ -276,11 +282,9 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
           <FormInput id="pub-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
         </FormField>
 
-        {guestCount > 1 && (
-          <FormField htmlFor="pub-partner" label={t.partnerNameLabel} optional={t.dietaryOptional}>
-            <FormInput id="pub-partner" type="text" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
-          </FormField>
-        )}
+        <FormField htmlFor="pub-partner" label={t.partnerNameLabel} optional={t.dietaryOptional}>
+          <FormInput id="pub-partner" type="text" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
+        </FormField>
 
         <FormField htmlFor="pub-phone" label={t.phoneLabel} required error={errors.phone?.message} hint={t.phoneHint}>
           <FormInput id="pub-phone" type="tel" autoComplete="tel" {...register('phone')} placeholder="+1 555 000 0000" />
