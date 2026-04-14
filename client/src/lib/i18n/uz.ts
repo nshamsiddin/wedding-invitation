@@ -112,7 +112,7 @@ export const uz: Translations = {
   // EventPage / InvitePage — garden additions
   countingDown: 'Orqaga hisoblash',
   untilTheDay: 'Birgalikda Nishonlaguncha',
-  personalInvitationFor: 'Shaxsiy Taklifnoma',
+  personalInvitationFor: 'Taklifnoma',
   youveBeenInvited: 'Siz taklif etilgansiz',
   pleaseRegister: "Iltimos, Ro'yxatdan O'ting",
   invitationAlreadyClaimed: 'Bu taklif allaqachon ishlatilgan',
@@ -149,6 +149,6 @@ export const uz: Translations = {
   happyCoupleAlt: 'Baxtli juftlik',
   partnerDietaryLabel: 'Hamrohingizning Ovqatlanish Cheklovlari',
   addToCalendar: "Taqvimga Qo'shish",
-  seatingPreferenceNote: "To'y zalida o'tirish joyingizni belgilashingizni iltifot bilan so'rab qolamiz.",
+  seatingPreferenceNote: "To'yga tashrif buyurishingizni tasdiqlashtingizni iltifot bilan so'rab qolamiz.",
   nudgeSubtext: "Quyida tanlovlarni topishingiz mumkin.",
 };
