@@ -10,7 +10,6 @@ import CountdownTimer from '../components/CountdownTimer';
 import RSVPForm from '../components/RSVPForm';
 import SuccessScreen from '../components/SuccessScreen';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import MagneticButton from '../components/ui/MagneticButton';
 import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
 import { LanguageContext } from '../context/LanguageContext';
@@ -637,14 +636,12 @@ interface HeroSlideProps {
   tableNumber?: number | null;
   /** Compact layout for short-viewport devices (< 700 px tall) */
   isShortScreen?: boolean;
-  ctaLabel: string;
-  onCtaClick: () => void;
 }
 
 function HeroSlide({
   heroRef, overline, guestName, firstName, secondName, cityPart,
   date, time, venueName, venueMapUrl, targetDateTime, tableNumber,
-  isShortScreen, ctaLabel, onCtaClick,
+  isShortScreen,
 }: HeroSlideProps) {
   const t = useTranslation();
   const hasEventDetails = !!(date && time && venueName);
@@ -831,19 +828,6 @@ function HeroSlide({
           </motion.div>
         )}
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: hasEventDetails ? 1.8 : 1.3 }}
-        >
-          <MagneticButton onClick={onCtaClick} className="btn-primary" aria-label={ctaLabel}>
-            {ctaLabel}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M19 9l-7 7-7-7"/>
-            </svg>
-          </MagneticButton>
-        </motion.div>
 
       </div>
     </section>
@@ -1186,8 +1170,6 @@ export default function InvitePage() {
           venueMapUrl={openEvent?.venueName ? `https://maps.google.com/?q=${encodeURIComponent(openEvent.venueName)}` : null}
           targetDateTime={openTargetDT}
           isShortScreen={isShortScreen}
-          ctaLabel={t.pleaseRegister}
-          onCtaClick={scrollToRSVP}
         />
 
         {/* ════════ RSVP ════════ */}
@@ -1274,8 +1256,6 @@ export default function InvitePage() {
         targetDateTime={targetDateTime}
         tableNumber={tableNumber}
         isShortScreen={isShortScreen}
-        ctaLabel={isPreConfirmed && !showForm ? t.rsvpConfirmed : t.rsvpButton}
-        onCtaClick={scrollToRSVP}
       />
 
       {/* ════════ RSVP / Confirmation ════════ */}
