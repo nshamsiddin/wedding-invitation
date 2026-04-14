@@ -466,8 +466,8 @@ export default function GuestTable({
                             {config.label}
                           </span>
 
-                          {/* Inline table number */}
-                          {onUpdateTableNumber && (
+                          {/* Inline table number — only relevant when attending */}
+                          {onUpdateTableNumber && inv.status === 'attending' && (
                             <TableNumberCell
                               invitationId={inv.id}
                               tableNumber={inv.tableNumber}
