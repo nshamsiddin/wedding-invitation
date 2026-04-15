@@ -518,20 +518,28 @@ if (!isDev) {
     // single indexed key-value read on SQLite, and keeping it sync avoids
     // turning the catch-all route into an async handler which would require
     // more careful error propagation.
-    type GuestRow = { guestName: string | null };
+    type GuestRow = { guestName: string | null; language: string | null };
     const row = sqlite.prepare(`
-      SELECT g.name AS guestName
+      SELECT g.name AS guestName, gi.language
       FROM   guest_invitations gi
       LEFT JOIN guests g ON g.id = gi.guest_id
       WHERE  gi.token = ?
       LIMIT  1
     `).get(token) as GuestRow | undefined;
 
-    const baseUrl    = process.env['BASE_URL'] ?? '';
-    const guestName  = row?.guestName ?? null;
+    const baseUrl   = process.env['BASE_URL'] ?? '';
+    const guestName = row?.guestName ?? null;
+    const lang      = row?.language ?? 'en';
+
+    const honorifics: Record<string, string> = {
+      tr: 'Sayın',
+      uz: 'Hurmatli',
+      en: 'Dear',
+    };
+    const honorific = honorifics[lang] ?? honorifics['en'];
 
     const title = guestName
-      ? `${guestName} — Berfin & Shamsiddin`
+      ? `${honorific} ${guestName}`
       : 'Berfin & Shamsiddin — Wedding Invitation';
     const description = 'You are cordially invited to the wedding of Berfin & Shamsiddin.';
 
