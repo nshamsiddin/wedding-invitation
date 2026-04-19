@@ -402,8 +402,9 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
   }
 });
 
-// POST /guests/bulk — create multiple guests from a plain list of names,
-// skipping any names that already exist in the database (case-insensitive).
+// POST /guests/bulk — create multiple guests from a plain list of names.
+// Duplicate detection is case-insensitive and can optionally include
+// table_number+event scope when a batch table number is provided.
 // Supports dryRun=true to preview duplicates without writing any rows.
 router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const parsed = bulkAddGuestsSchema.safeParse(req.body);
@@ -428,12 +429,29 @@ router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Pr
     const lowerNames = normalizedNames.map((n) => n.toLowerCase());
     const placeholders = lowerNames.map(() => '?').join(', ');
 
-    // Identify which names already have a guest record (case-insensitive match)
-    const existing = sqlite
-      .prepare(`SELECT name FROM guests WHERE LOWER(name) IN (${placeholders})`)
-      .all(...lowerNames) as { name: string }[];
-
-    const existingLower = new Set(existing.map((g) => g.name.toLowerCase()));
+    // Identify duplicates with case-insensitive matching:
+    // - With tableNumber: duplicate means same name + same table number in any selected event.
+    // - Without tableNumber: preserve legacy behavior (same name anywhere).
+    let existingLower: Set<string>;
+    if (tableNumber !== null && tableNumber !== undefined) {
+      const eventPlaceholders = eventIds.map(() => '?').join(', ');
+      const existing = sqlite
+        .prepare(
+          `SELECT DISTINCT LOWER(g.name) AS lowerName
+           FROM guests g
+           INNER JOIN guest_invitations gi ON gi.guest_id = g.id
+           WHERE LOWER(g.name) IN (${placeholders})
+             AND gi.event_id IN (${eventPlaceholders})
+             AND gi.table_number = ?`
+        )
+        .all(...lowerNames, ...eventIds, tableNumber) as { lowerName: string }[];
+      existingLower = new Set(existing.map((g) => g.lowerName));
+    } else {
+      const existing = sqlite
+        .prepare(`SELECT name FROM guests WHERE LOWER(name) IN (${placeholders})`)
+        .all(...lowerNames) as { name: string }[];
+      existingLower = new Set(existing.map((g) => g.name.toLowerCase()));
+    }
 
     const newNames = normalizedNames.filter((n) => !existingLower.has(n.toLowerCase()));
     const duplicateNames = normalizedNames.filter((n) => existingLower.has(n.toLowerCase()));
