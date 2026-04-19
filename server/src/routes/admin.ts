@@ -412,7 +412,7 @@ router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Pr
     return;
   }
 
-  const { names, eventIds, language, guestCount, dryRun } = parsed.data;
+  const { names, eventIds, language, guestCount, tableNumber, dryRun } = parsed.data;
 
   // Normalize: trim + collapse inner whitespace, then drop entries that are too short
   const normalizedNames = names
@@ -439,12 +439,26 @@ router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Pr
     const duplicateNames = normalizedNames.filter((n) => existingLower.has(n.toLowerCase()));
 
     if (dryRun) {
-      res.json({ dryRun: true, newNames, duplicateNames, created: 0 });
+      res.json({ dryRun: true, newNames, duplicateNames, created: 0, createdInvitations: [] });
       return;
     }
 
+    const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
+    const eventRows = sqlite
+      .prepare(
+        `SELECT id, name FROM events WHERE id IN (${eventIds.map(() => '?').join(',')})`
+      )
+      .all(...eventIds) as { id: number; name: string }[];
+    const eventNameById = new Map(eventRows.map((row) => [row.id, row.name]));
+
     // Insert new guests + one invitation row per event in a single transaction
     let created = 0;
+    const createdInvitations: Array<{
+      guestName: string;
+      eventId: number;
+      eventName: string;
+      invitationUrl: string;
+    }> = [];
     sqlite.transaction(() => {
       for (const name of newNames) {
         const guest = sqlite
@@ -452,20 +466,35 @@ router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Pr
           .get(name) as typeof schema.guests.$inferSelect;
 
         for (const eventId of eventIds) {
+          const token = randomUUID();
           sqlite
             .prepare(
               `INSERT INTO guest_invitations
-                 (guest_id, event_id, token, status, guest_count, language)
-               VALUES (?, ?, ?, ?, ?, ?)`
+                 (guest_id, event_id, token, status, guest_count, table_number, language)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`
             )
-            .run(guest.id, eventId, randomUUID(), 'pending', guestCount ?? 1, language ?? 'en');
+            .run(
+              guest.id,
+              eventId,
+              token,
+              'pending',
+              guestCount ?? 1,
+              tableNumber ?? null,
+              language ?? 'en'
+            );
+          createdInvitations.push({
+            guestName: name,
+            eventId,
+            eventName: eventNameById.get(eventId) ?? `Event ${eventId}`,
+            invitationUrl: `${baseUrl}/invite/${token}`,
+          });
         }
         created++;
       }
     })();
 
     logger.info({ created, skipped: duplicateNames.length }, 'bulk guests added');
-    res.status(201).json({ dryRun: false, newNames, duplicateNames, created });
+    res.status(201).json({ dryRun: false, newNames, duplicateNames, created, createdInvitations });
   } catch (error: unknown) {
     logger.error({ err: error }, 'bulk add guests error');
     res.status(500).json({ error: 'Failed to bulk add guests' });

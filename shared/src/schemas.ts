@@ -312,6 +312,7 @@ export const bulkAddGuestsSchema = z.object({
   eventIds: z.array(z.number().int().positive()).min(1, 'Select at least one event'),
   language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
   guestCount: z.number().int().min(1).max(10).optional().default(1),
+  tableNumber: z.number().int().min(1).max(500).nullable().optional(),
   // When true, perform a dry-run: check duplicates and return what would be created/skipped
   // without actually writing any rows to the database.
   dryRun: z.boolean().optional().default(false),
@@ -324,6 +325,12 @@ export interface BulkAddGuestsResult {
   newNames: string[];
   duplicateNames: string[];
   created: number;
+  createdInvitations: Array<{
+    guestName: string;
+    eventId: number;
+    eventName: string;
+    invitationUrl: string;
+  }>;
 }
 
 // ─── API response interfaces ─────────────────────────────────────────────────

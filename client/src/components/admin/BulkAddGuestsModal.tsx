@@ -32,6 +32,21 @@ function parseLinesFromText(raw: string): string[] {
     .filter((l) => l.length >= 2);
 }
 
+function escapeCsvCell(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function buildInvitationsCsv(rows: BulkAddGuestsResult['createdInvitations']): string {
+  const header = ['Guest Name', 'Event Name', 'Invitation Link'];
+  const body = rows.map((row) =>
+    [row.guestName, row.eventName, row.invitationUrl].map(escapeCsvCell).join(',')
+  );
+  return [header.join(','), ...body].join('\n');
+}
+
 export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEventId }: Props) {
   const { language: currentLanguage } = useContext(LanguageContext);
   const qc = useQueryClient();
@@ -45,6 +60,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
     (currentLanguage as 'en' | 'tr' | 'uz') ?? 'en',
   );
   const [guestCount, setGuestCount] = useState(1);
+  const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<BulkAddGuestsResult | null>(null);
   const [finalResult, setFinalResult] = useState<BulkAddGuestsResult | null>(null);
@@ -57,6 +73,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
       setSelectedEventIds(defaultEventId ? [defaultEventId] : []);
       setLanguage((currentLanguage as 'en' | 'tr' | 'uz') ?? 'en');
       setGuestCount(1);
+      setTableNumber(null);
       setInputError(null);
       setPreviewResult(null);
       setFinalResult(null);
@@ -70,6 +87,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
         eventIds: selectedEventIds,
         language,
         guestCount,
+        tableNumber,
         dryRun: true,
       }),
     onSuccess: (result) => {
@@ -86,6 +104,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
         eventIds: selectedEventIds,
         language,
         guestCount,
+        tableNumber,
         dryRun: false,
       }),
     onSuccess: (result) => {
@@ -126,6 +145,26 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
   const handleImport = () => {
     if (!previewResult || previewResult.newNames.length === 0) return;
     importMutation.mutate(previewResult.newNames);
+  };
+
+  const handleDownloadCsv = () => {
+    const rows = finalResult?.createdInvitations ?? [];
+    if (rows.length === 0) {
+      toast.error('No invitation links available to download.');
+      return;
+    }
+
+    const csv = buildInvitationsCsv(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    anchor.href = url;
+    anchor.download = `bulk-invitations-${date}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
   };
 
   const toggleEvent = (id: number) => {
@@ -282,6 +321,29 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
+          </div>
+
+          {/* Table number */}
+          <div>
+            <label htmlFor="bulk-table-number" className={ADMIN_LABEL_CLASS}>Table Number</label>
+            <input
+              id="bulk-table-number"
+              type="number"
+              min={1}
+              max={500}
+              value={tableNumber ?? ''}
+              onChange={(e) => {
+                const next = e.target.value.trim();
+                if (next === '') {
+                  setTableNumber(null);
+                  return;
+                }
+                const parsed = Number.parseInt(next, 10);
+                setTableNumber(Number.isNaN(parsed) ? null : parsed);
+              }}
+              className={ADMIN_INPUT_CLASS}
+              placeholder="Optional"
+            />
           </div>
 
           {/* Actions */}
@@ -477,9 +539,18 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
             </button>
             <button
               type="button"
+              onClick={handleDownloadCsv}
+              className={ADMIN_SECONDARY_BTN_CLASS}
+              disabled={(finalResult.createdInvitations?.length ?? 0) === 0}
+            >
+              Download CSV
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setStep('input');
                 setRawText('');
+                setTableNumber(null);
                 setPreviewResult(null);
                 setFinalResult(null);
               }}
