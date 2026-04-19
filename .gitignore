@@ -14,3 +14,6 @@ test-results/
 client/public/*.jpg
 client/public/*.jpeg
 client/public/*.png
+
+# Local bulk guest import files
+guest-list/
