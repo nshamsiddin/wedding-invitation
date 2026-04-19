@@ -412,7 +412,7 @@ router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Pr
     return;
   }
 
-  const { names, eventIds, language, guestCount, tableNumber, dryRun } = parsed.data;
+  const { names, eventIds, status, language, guestCount, tableNumber, dryRun } = parsed.data;
 
   // Normalize: trim + collapse inner whitespace, then drop entries that are too short
   const normalizedNames = names
@@ -477,7 +477,7 @@ router.post('/guests/bulk', requireAuth, async (req: Request, res: Response): Pr
               guest.id,
               eventId,
               token,
-              'pending',
+              status ?? 'pending',
               guestCount ?? 1,
               tableNumber ?? null,
               language ?? 'en'

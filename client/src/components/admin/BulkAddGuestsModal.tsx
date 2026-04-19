@@ -59,6 +59,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
   const [language, setLanguage] = useState<'en' | 'tr' | 'uz'>(
     (currentLanguage as 'en' | 'tr' | 'uz') ?? 'en',
   );
+  const [status, setStatus] = useState<'attending' | 'declined' | 'maybe' | 'pending'>('pending');
   const [guestCount, setGuestCount] = useState(1);
   const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
       setRawText('');
       setSelectedEventIds(defaultEventId ? [defaultEventId] : []);
       setLanguage((currentLanguage as 'en' | 'tr' | 'uz') ?? 'en');
+      setStatus('pending');
       setGuestCount(1);
       setTableNumber(null);
       setInputError(null);
@@ -85,6 +87,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
       adminApi.bulkAddGuests({
         names,
         eventIds: selectedEventIds,
+        status,
         language,
         guestCount,
         tableNumber,
@@ -102,6 +105,7 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
       adminApi.bulkAddGuests({
         names,
         eventIds: selectedEventIds,
+        status,
         language,
         guestCount,
         tableNumber,
@@ -305,6 +309,24 @@ export default function BulkAddGuestsModal({ isOpen, onClose, events, defaultEve
               <option value="en">EN — English</option>
               <option value="tr">TR — Türkçe</option>
               <option value="uz">UZ — O&apos;zbek</option>
+            </select>
+          </div>
+
+          {/* RSVP status */}
+          <div>
+            <label htmlFor="bulk-status" className={ADMIN_LABEL_CLASS}>Default RSVP Status</label>
+            <select
+              id="bulk-status"
+              value={status}
+              onChange={(e) =>
+                setStatus(e.target.value as 'attending' | 'declined' | 'maybe' | 'pending')
+              }
+              className={ADMIN_SELECT_CLASS}
+            >
+              <option value="pending">Pending</option>
+              <option value="attending">Attending</option>
+              <option value="maybe">Maybe</option>
+              <option value="declined">Declined</option>
             </select>
           </div>
 

@@ -310,6 +310,7 @@ export const bulkAddGuestsSchema = z.object({
     .array(z.string().min(2, 'Each name must be at least 2 characters').max(100).trim())
     .min(1, 'At least one name is required'),
   eventIds: z.array(z.number().int().positive()).min(1, 'Select at least one event'),
+  status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional().default('pending'),
   language: z.enum(['en', 'tr', 'uz']).optional().default('en'),
   guestCount: z.number().int().min(1).max(10).optional().default(1),
   tableNumber: z.number().int().min(1).max(500).nullable().optional(),
