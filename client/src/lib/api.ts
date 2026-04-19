@@ -169,6 +169,10 @@ export const adminApi = {
     const params = eventId ? `?eventId=${eventId}` : '';
     window.location.href = `/api/admin/export${params}`;
   },
+  exportEventTablesCSV: (eventId?: number): void => {
+    const params = eventId ? `?eventId=${eventId}` : '';
+    window.location.href = `/api/admin/export/event-tables${params}`;
+  },
 };
 
 export interface AdminNotification {

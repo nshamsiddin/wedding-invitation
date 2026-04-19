@@ -29,14 +29,21 @@ export interface CSVRow {
   updatedAt: string;
 }
 
-export function toCSV(rows: CSVRow[]): string {
-  const headers = [
-    'Guest ID', 'Name', 'Partner Name', 'Phone',
-    'Event', 'Event Slug', 'Status', 'Guest Count',
-    'Dietary Restrictions', 'Partner Dietary', 'Message',
-    'Table Number', 'RSVP Date', 'Updated At',
-  ];
+export interface EventTableCSVGroup {
+  eventName: string;
+  eventSlug: string;
+  tableNumber: number | null;
+  rows: CSVRow[];
+}
 
+const CSV_HEADERS = [
+  'Guest ID', 'Name', 'Partner Name', 'Phone',
+  'Event', 'Event Slug', 'Status', 'Guest Count',
+  'Dietary Restrictions', 'Partner Dietary', 'Message',
+  'Table Number', 'RSVP Date', 'Updated At',
+];
+
+export function toCSV(rows: CSVRow[]): string {
   const dataRows = rows.map((r) => [
     r.guestId,
     r.name,
@@ -55,9 +62,46 @@ export function toCSV(rows: CSVRow[]): string {
   ]);
 
   const lines = [
-    headers.map(escapeCsvField).join(','),
+    CSV_HEADERS.map(escapeCsvField).join(','),
     ...dataRows.map((row) => row.map(escapeCsvField).join(',')),
   ];
 
   return lines.join('\r\n');
+}
+
+export function toEventTableCSV(groups: EventTableCSVGroup[]): string {
+  const sections: string[] = [];
+
+  for (const group of groups) {
+    const tableLabel = group.tableNumber === null ? 'Unassigned' : `Table ${group.tableNumber}`;
+
+    sections.push(`Event,${escapeCsvField(group.eventName)}`);
+    sections.push(`Event Slug,${escapeCsvField(group.eventSlug)}`);
+    sections.push(`Table,${escapeCsvField(tableLabel)}`);
+    sections.push(CSV_HEADERS.map(escapeCsvField).join(','));
+
+    for (const row of group.rows) {
+      const csvRow = [
+        row.guestId,
+        row.name,
+        row.partnerName ?? '',
+        row.phone ?? '',
+        row.eventName,
+        row.eventSlug,
+        row.status,
+        row.guestCount,
+        row.dietary ?? '',
+        row.partnerDietary ?? '',
+        row.message ?? '',
+        row.tableNumber ?? '',
+        row.rsvpDate,
+        row.updatedAt,
+      ];
+      sections.push(csvRow.map(escapeCsvField).join(','));
+    }
+
+    sections.push('');
+  }
+
+  return sections.join('\r\n');
 }

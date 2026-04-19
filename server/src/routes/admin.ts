@@ -19,7 +19,7 @@ import {
   addInvitationSchema,
   createOpenInvitationSchema,
 } from '@invitation/shared';
-import { toCSV } from '../lib/csv.js';
+import { toCSV, toEventTableCSV } from '../lib/csv.js';
 import type { AttendanceStatus } from '@invitation/shared';
 
 const router = Router();
@@ -930,6 +930,69 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
   } catch (error) {
     logger.error({ err: error, eventId }, 'export error');
     res.status(500).json({ error: 'Failed to export guest list' });
+  }
+});
+
+// GET /api/admin/export/event-tables — grouped export with one CSV section per event table.
+router.get('/export/event-tables', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
+
+  try {
+    const conditions = [];
+    if (eventId && !isNaN(eventId)) {
+      conditions.push(eq(schema.guestInvitations.eventId, eventId));
+    }
+    // Only export claimed/personal invitations (those with a guest record)
+    conditions.push(isNotNull(schema.guestInvitations.guestId));
+
+    const rows = await db
+      .select({
+        guestId: schema.guests.id,
+        name: schema.guests.name,
+        partnerName: schema.guests.partnerName,
+        phone: schema.guests.phone,
+        eventName: schema.events.name,
+        eventSlug: schema.events.slug,
+        status: schema.guestInvitations.status,
+        guestCount: schema.guestInvitations.guestCount,
+        dietary: schema.guestInvitations.dietary,
+        partnerDietary: schema.guestInvitations.partnerDietary,
+        message: schema.guestInvitations.message,
+        tableNumber: schema.guestInvitations.tableNumber,
+        rsvpDate: schema.guestInvitations.createdAt,
+        updatedAt: schema.guestInvitations.updatedAt,
+      })
+      .from(schema.guestInvitations)
+      .innerJoin(schema.guests, eq(schema.guests.id, schema.guestInvitations.guestId))
+      .innerJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(schema.events.slug, schema.guestInvitations.tableNumber, schema.guests.name);
+
+    const grouped = new Map<string, { eventName: string; eventSlug: string; tableNumber: number | null; rows: typeof rows }>();
+    for (const row of rows) {
+      const key = `${row.eventSlug}::${row.tableNumber ?? 'unassigned'}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.rows.push(row);
+      } else {
+        grouped.set(key, {
+          eventName: row.eventName,
+          eventSlug: row.eventSlug,
+          tableNumber: row.tableNumber ?? null,
+          rows: [row],
+        });
+      }
+    }
+
+    const csv = toEventTableCSV(Array.from(grouped.values()));
+    const suffix = eventId ? `-event-${eventId}` : '-all-events';
+    const filename = `guests-event-tables${suffix}-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    logger.error({ err: error, eventId }, 'event table export error');
+    res.status(500).json({ error: 'Failed to export guest list by event tables' });
   }
 });
 
