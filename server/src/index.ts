@@ -538,10 +538,16 @@ if (!isDev) {
     };
     const honorific = honorifics[lang] ?? honorifics['en'];
 
+    const descriptions: Record<string, string> = {
+      en: 'You are cordially invited to the wedding of Berfin & Shamsiddin.',
+      tr: 'Berfin ve Şamsiddin’in düğününe sizi içtenlikle davet ediyoruz.',
+      uz: "Sizni Berfin va Shamsiddinning to'y marosimiga taklif qilamiz.",
+    };
+
     const title = guestName
       ? `${honorific} ${guestName}`
       : 'Berfin & Shamsiddin — Wedding Invitation';
-    const description = 'You are cordially invited to the wedding of Berfin & Shamsiddin.';
+    const description = descriptions[lang] ?? descriptions['en'];
 
     const ogTags = [
       `<meta property="og:title" content="${escAttr(title)}" />`,
