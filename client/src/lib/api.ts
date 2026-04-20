@@ -118,12 +118,19 @@ export const adminApi = {
   getGuests: async (params?: {
     eventId?: number;
     status?: string;
+    tableNumber?: number;
     search?: string;
     page?: number;
     limit?: number;
   }): Promise<{ guests: AdminGuest[]; total: number; page: number; limit: number }> => {
     const { data } = await api.get<{ guests: AdminGuest[]; total: number; page: number; limit: number }>('/admin/guests', { params });
     return data;
+  },
+  getTableNumbers: async (eventId?: number): Promise<number[]> => {
+    const { data } = await api.get<{ tables: number[] }>('/admin/tables', {
+      params: eventId ? { eventId } : undefined,
+    });
+    return data.tables;
   },
   addGuest: async (values: AddGuestValues): Promise<{ guest: AdminGuest; invitations: AdminInvitation[] }> => {
     const { data } = await api.post('/admin/guests', values);

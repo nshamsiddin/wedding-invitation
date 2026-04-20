@@ -301,11 +301,12 @@ export default function DashboardPage() {
   const [guestPage, setGuestPage] = useState(1);
 
   // Reset to page 1 whenever filters change
-  useEffect(() => { setGuestPage(1); }, [selectedEventId, statusFilters, search]);
+  useEffect(() => { setGuestPage(1); }, [selectedEventId, statusFilters, search, tableFilter]);
 
   const guestQueryParams = {
     eventId: selectedEventId ?? undefined,
     status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
+    tableNumber: tableFilter ?? undefined,
     search: search || undefined,
     page: guestPage,
     limit: 100,
@@ -321,23 +322,15 @@ export default function DashboardPage() {
   const guestLimit = guestsData?.limit ?? 100;
   const totalPages = Math.ceil(guestTotal / guestLimit);
 
-  // Collect all unique table numbers from the loaded guests (sorted)
-  const availableTables = useMemo(() => {
-    const nums = new Set<number>();
-    guests.forEach((g) => g.invitations.forEach((i) => {
-      if (i.tableNumber != null) nums.add(i.tableNumber);
-    }));
-    return Array.from(nums).sort((a, b) => a - b);
-  }, [guests]);
+  const { data: availableTables = [] } = useQuery({
+    queryKey: ['admin', 'tables', selectedEventId],
+    queryFn: () => adminApi.getTableNumbers(selectedEventId ?? undefined),
+    staleTime: 30_000,
+  });
 
-  // Client-side table filter
-  const filteredGuests = useMemo(() =>
-    tableFilter != null
-      ? guests.filter((g) => g.invitations.some((i) => i.tableNumber === tableFilter))
-      : guests,
-  [guests, tableFilter]);
+  const filteredGuests = guests;
 
-  // Headcount for the selected table (sum of guestCount for attending invitations at that table)
+  // Headcount for the selected table on current result page
   const tableHeadcount = useMemo(() => {
     if (tableFilter == null) return null;
     return filteredGuests.reduce((sum, g) => {
@@ -538,7 +531,7 @@ export default function DashboardPage() {
   };
 
   // Is any filter active? — show indicator
-  const isFiltered = statusFilters.length > 0 || searchInput.length > 0;
+  const isFiltered = statusFilters.length > 0 || searchInput.length > 0 || tableFilter !== null;
 
   return (
     <div className="admin-page min-h-screen" style={{ background: CREAM, color: ESPRESSO }}>

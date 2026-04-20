@@ -177,6 +177,7 @@ const GUESTS_PAGE_LIMIT = 100; // max guests returned per page
 router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
   const status = req.query['status'] as string | undefined;
+  const tableNumber = req.query['tableNumber'] ? parseInt(req.query['tableNumber'] as string, 10) : undefined;
   const search = req.query['search'] as string | undefined;
   const page   = Math.max(1, parseInt((req.query['page'] as string) ?? '1', 10) || 1);
   const limit  = Math.min(GUESTS_PAGE_LIMIT, Math.max(1, parseInt((req.query['limit'] as string) ?? String(GUESTS_PAGE_LIMIT), 10) || GUESTS_PAGE_LIMIT));
@@ -185,9 +186,12 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
   try {
     // Resolve which guest IDs match the event/status filter
     let matchingGuestIds: number[] | null = null;
-    if (eventId || (status && status !== '')) {
+    if (eventId || (status && status !== '') || (tableNumber !== undefined && !isNaN(tableNumber))) {
       const invConditions = [];
       if (eventId && !isNaN(eventId)) invConditions.push(eq(schema.guestInvitations.eventId, eventId));
+      if (tableNumber !== undefined && !isNaN(tableNumber)) {
+        invConditions.push(eq(schema.guestInvitations.tableNumber, tableNumber));
+      }
       if (status) {
         // Support comma-separated statuses for multi-select filtering (e.g. "attending,maybe")
         const VALID = ['attending', 'declined', 'maybe', 'pending'] as const;
@@ -337,6 +341,35 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
   } catch (error) {
     logger.error({ err: error }, 'guest list error');
     res.status(500).json({ error: 'Failed to fetch guests' });
+  }
+});
+
+// GET /api/admin/tables — list all assigned table numbers (optionally scoped to an event)
+router.get('/tables', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
+
+  try {
+    const conditions = [isNotNull(schema.guestInvitations.tableNumber)];
+    if (eventId && !isNaN(eventId)) {
+      conditions.push(eq(schema.guestInvitations.eventId, eventId));
+    }
+    // Only include claimed/personal invitations
+    conditions.push(isNotNull(schema.guestInvitations.guestId));
+
+    const rows = await db
+      .selectDistinct({ tableNumber: schema.guestInvitations.tableNumber })
+      .from(schema.guestInvitations)
+      .where(and(...conditions));
+
+    const tables = rows
+      .map((r) => r.tableNumber)
+      .filter((n): n is number => n !== null)
+      .sort((a, b) => a - b);
+
+    res.json({ tables });
+  } catch (error) {
+    logger.error({ err: error, eventId }, 'table list error');
+    res.status(500).json({ error: 'Failed to fetch table numbers' });
   }
 });
 
