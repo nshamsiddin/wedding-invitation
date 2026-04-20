@@ -19,7 +19,7 @@ import {
   addInvitationSchema,
   createOpenInvitationSchema,
 } from '@invitation/shared';
-import { toCSV, toEventTableCSV } from '../lib/csv.js';
+import { toAcceptedInvitationLinksCSV, toCSV, toEventTableCSV } from '../lib/csv.js';
 import type { AttendanceStatus } from '@invitation/shared';
 
 const router = Router();
@@ -891,6 +891,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
 
   try {
+    const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
     const conditions = [];
     if (eventId && !isNaN(eventId)) {
       conditions.push(eq(schema.guestInvitations.eventId, eventId));
@@ -912,6 +913,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
         partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         tableNumber: schema.guestInvitations.tableNumber,
+        invitationLink: sql<string>`(${baseUrl} || '/invite/' || ${schema.guestInvitations.token})`,
         rsvpDate: schema.guestInvitations.createdAt,
         updatedAt: schema.guestInvitations.updatedAt,
       })
@@ -938,6 +940,7 @@ router.get('/export/event-tables', requireAuth, async (req: Request, res: Respon
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
 
   try {
+    const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
     const conditions = [];
     if (eventId && !isNaN(eventId)) {
       conditions.push(eq(schema.guestInvitations.eventId, eventId));
@@ -959,6 +962,7 @@ router.get('/export/event-tables', requireAuth, async (req: Request, res: Respon
         partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         tableNumber: schema.guestInvitations.tableNumber,
+        invitationLink: sql<string>`(${baseUrl} || '/invite/' || ${schema.guestInvitations.token})`,
         rsvpDate: schema.guestInvitations.createdAt,
         updatedAt: schema.guestInvitations.updatedAt,
       })
@@ -993,6 +997,43 @@ router.get('/export/event-tables', requireAuth, async (req: Request, res: Respon
   } catch (error) {
     logger.error({ err: error, eventId }, 'event table export error');
     res.status(500).json({ error: 'Failed to export guest list by event tables' });
+  }
+});
+
+// GET /api/admin/export/accepted-links — export accepted guests with invitation links.
+router.get('/export/accepted-links', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
+
+  try {
+    const baseUrl = process.env.BASE_URL ?? 'http://localhost:5173';
+    const conditions = [
+      isNotNull(schema.guestInvitations.guestId),
+      eq(schema.guestInvitations.status, 'attending'),
+    ];
+    if (eventId && !isNaN(eventId)) {
+      conditions.push(eq(schema.guestInvitations.eventId, eventId));
+    }
+
+    const rows = await db
+      .select({
+        guestName: schema.guests.name,
+        tableNumber: schema.guestInvitations.tableNumber,
+        invitationLink: sql<string>`(${baseUrl} || '/invite/' || ${schema.guestInvitations.token})`,
+      })
+      .from(schema.guestInvitations)
+      .innerJoin(schema.guests, eq(schema.guests.id, schema.guestInvitations.guestId))
+      .where(and(...conditions))
+      .orderBy(schema.guestInvitations.tableNumber, schema.guests.name);
+
+    const csv = toAcceptedInvitationLinksCSV(rows);
+    const suffix = eventId ? `-event-${eventId}` : '-all-events';
+    const filename = `accepted-invitation-links${suffix}-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    logger.error({ err: error, eventId }, 'accepted links export error');
+    res.status(500).json({ error: 'Failed to export accepted invitation links' });
   }
 });
 

@@ -520,13 +520,8 @@ export default function DashboardPage() {
 
   const handleExportCSV = async () => {
     try {
-      if (selectedEventId === null) {
-        adminApi.exportEventTablesCSV(undefined);
-        toast.success('Downloading grouped CSV (event tables)…');
-      } else {
-        adminApi.exportCSV(selectedEventId);
-        toast.success('Downloading CSV…');
-      }
+      adminApi.exportAcceptedInvitationLinksCSV(selectedEventId ?? undefined);
+      toast.success('Downloading accepted guests with invitation links…');
     } catch {
       toast.error('Export failed');
     }

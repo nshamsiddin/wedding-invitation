@@ -25,6 +25,7 @@ export interface CSVRow {
   partnerDietary: string | null;
   message: string | null;
   tableNumber: number | null;
+  invitationLink: string;
   rsvpDate: string;
   updatedAt: string;
 }
@@ -36,11 +37,17 @@ export interface EventTableCSVGroup {
   rows: CSVRow[];
 }
 
+export interface AcceptedInvitationLinkRow {
+  guestName: string;
+  tableNumber: number | null;
+  invitationLink: string;
+}
+
 const CSV_HEADERS = [
   'Guest ID', 'Name', 'Partner Name', 'Phone',
   'Event', 'Event Slug', 'Status', 'Guest Count',
   'Dietary Restrictions', 'Partner Dietary', 'Message',
-  'Table Number', 'RSVP Date', 'Updated At',
+  'Table Number', 'Invitation Link', 'RSVP Date', 'Updated At',
 ];
 
 export function toCSV(rows: CSVRow[]): string {
@@ -57,6 +64,7 @@ export function toCSV(rows: CSVRow[]): string {
     r.partnerDietary ?? '',
     r.message ?? '',
     r.tableNumber ?? '',
+    r.invitationLink,
     r.rsvpDate,
     r.updatedAt,
   ]);
@@ -94,6 +102,7 @@ export function toEventTableCSV(groups: EventTableCSVGroup[]): string {
         row.partnerDietary ?? '',
         row.message ?? '',
         row.tableNumber ?? '',
+        row.invitationLink,
         row.rsvpDate,
         row.updatedAt,
       ];
@@ -104,4 +113,15 @@ export function toEventTableCSV(groups: EventTableCSVGroup[]): string {
   }
 
   return sections.join('\r\n');
+}
+
+export function toAcceptedInvitationLinksCSV(rows: AcceptedInvitationLinkRow[]): string {
+  const headers = ['Guest Name', 'Table Number', 'Invitation Link'];
+  const lines = [
+    headers.map(escapeCsvField).join(','),
+    ...rows.map((row) =>
+      [row.guestName, row.tableNumber ?? '', row.invitationLink].map(escapeCsvField).join(',')
+    ),
+  ];
+  return lines.join('\r\n');
 }
