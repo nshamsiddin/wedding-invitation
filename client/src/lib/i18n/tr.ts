@@ -14,6 +14,7 @@ export const tr: Translations = {
   aboutEvent: 'Kutlama',
   eventSubheading: 'Büyülü Bir Akşam',
   venue: 'Mekan',
+  openInMaps: 'Konumu Haritalarda Aç',
   date: 'Tarih',
   time: 'Saat',
   dressCode: 'Kıyafet Kodu',

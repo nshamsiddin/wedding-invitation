@@ -8,6 +8,7 @@ export type Translations = {
   aboutEvent: string;
   eventSubheading: string;
   venue: string;
+  openInMaps: string;
   date: string;
   time: string;
   dressCode: string;
@@ -149,6 +150,7 @@ export const en: Translations = {
   aboutEvent: 'The Celebration',
   eventSubheading: 'An Enchanted Evening',
   venue: 'Venue',
+  openInMaps: 'Open location in Maps',
   date: 'Date',
   time: 'Time',
   dressCode: 'Dress Code',

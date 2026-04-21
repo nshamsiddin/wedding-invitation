@@ -756,38 +756,58 @@ function HeroSlide({
 
         {/* Date / time / venue — only when event details are available */}
         {hasEventDetails && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 1.5 }}
-            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1rem', marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)' }}
-          >
-            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
-            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
-            {venueMapUrl ? (
-              <a
-                href={venueMapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em',
-                  color: GOLD, textDecoration: 'none',
-                  borderBottom: `1px dashed ${GOLD_DIM}`,
-                  display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-                }}
-                aria-label={`Open ${venueName} in maps`}
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 1.5 }}
+              style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1rem', marginBottom: '0.45rem' }}
+            >
+              <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
+              <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
+              <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
+              <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
+              <span style={{ fontFamily: sans, fontSize: '0.92rem', letterSpacing: '0.03em', color: ESPRESSO, fontWeight: 600 }}>{venueName}</span>
+            </motion.div>
+
+            {venueMapUrl && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.55, delay: 1.58 }}
+                style={{ display: 'flex', justifyContent: 'center', marginBottom: 'clamp(0.75rem, 1.8vh, 1.25rem)' }}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-                {venueName}
-              </a>
-            ) : (
-              <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{venueName}</span>
+                <a
+                  href={venueMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontFamily: sans,
+                    fontSize: '0.84rem',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    textDecoration: 'none',
+                    color: '#2A1F1A',
+                    background: 'rgba(184,146,74,0.32)',
+                    border: `1.5px solid ${GOLD}`,
+                    borderRadius: '999px',
+                    padding: '0.48rem 1.2rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontWeight: 800,
+                    boxShadow: '0 6px 16px rgba(184,146,74,0.2)',
+                  }}
+                  aria-label={`${t.openInMaps}: ${venueName}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  {t.openInMaps}
+                </a>
+              </motion.div>
             )}
-          </motion.div>
+          </>
         )}
 
         {/* Assigned table number — hidden on short screens to protect CTA visibility */}

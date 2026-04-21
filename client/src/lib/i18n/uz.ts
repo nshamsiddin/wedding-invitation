@@ -14,6 +14,7 @@ export const uz: Translations = {
   aboutEvent: 'Bayram',
   eventSubheading: 'Sehrli Kecha',
   venue: 'Manzil',
+  openInMaps: 'Lokatsiyani xaritada ochish',
   date: 'Sana',
   time: 'Vaqt',
   dressCode: 'Kiyinish tartibi',
