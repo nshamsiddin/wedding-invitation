@@ -135,6 +135,7 @@ export const tr: Translations = {
   phoneLabel: 'Telefon',
   phoneHint: 'Gizli tutulur — yalnızca düğün günü bir aksaklık olursa kullanılır',
   honorific: 'Sayın',
+  tableLabel: 'Masa',
   chapter: 'Bölüm',
   returnToHomepage: 'Ana sayfaya dön',
   needHelp: 'Sorun mu yaşıyorsunuz? Kendi kişisel bağlantınızı kullandığınızdan emin olun.',

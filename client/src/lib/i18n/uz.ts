@@ -135,6 +135,7 @@ export const uz: Translations = {
   phoneLabel: 'Telefon',
   phoneHint: "To'y kunida zarur bo'lsa foydalaniladigan shaxsiy raqamingiz",
   honorific: 'Hurmatli',
+  tableLabel: 'Stol',
   chapter: 'Bob',
   returnToHomepage: 'Bosh sahifaga qaytish',
   needHelp: "Muammo bormi? O'zingizning shaxsiy havolangizdan foydalanayotganingizni tekshiring.",

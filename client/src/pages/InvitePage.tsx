@@ -799,19 +799,32 @@ function HeroSlide({
             className="table-badge"
             style={{ marginBottom: 'clamp(0.5rem, 1.5vh, 1rem)', display: 'flex', justifyContent: 'center' }}
           >
-            <span style={{
-              fontFamily: sans,
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              color: GOLD,
-              background: 'rgba(184,146,74,0.1)',
-              border: `1px solid ${GOLD_DIM}`,
-              borderRadius: '999px',
-              padding: '0.35rem 1.1rem',
-            }}>
-              Table {tableNumber}
+            <span
+              style={{
+                fontFamily: sans,
+                fontSize: '0.84rem',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#6E4509',
+                background: 'linear-gradient(135deg, rgba(184,146,74,0.28), rgba(184,146,74,0.18))',
+                border: `1.5px solid ${GOLD}`,
+                borderRadius: '999px',
+                padding: '0.44rem 1.2rem',
+                boxShadow: '0 6px 18px rgba(184,146,74,0.24)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+              }}
+              aria-label={`${t.tableLabel} ${tableNumber}`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.85 }}>
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+              </svg>
+              <span>{t.tableLabel} {tableNumber}</span>
             </span>
           </motion.div>
         )}
