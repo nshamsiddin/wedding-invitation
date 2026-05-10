@@ -711,7 +711,17 @@ export default function DashboardPage() {
         {/* ── Stats ──────────────────────────────────────────────────────── */}
         <section aria-labelledby="stats-heading">
           <h2 id="stats-heading" className="sr-only">Event Statistics</h2>
-          <StatsCards events={events} selectedEventId={selectedEventId} isLoading={eventsLoading} />
+          <StatsCards
+            events={events}
+            selectedEventId={selectedEventId}
+            isLoading={eventsLoading}
+            selectedStatuses={statusFilters}
+            onToggleStatus={(status) =>
+              setStatusFilters((prev) =>
+                prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
+              )
+            }
+          />
         </section>
 
         {/* ── Shareable Links ─────────────────────────────────────────────── */}

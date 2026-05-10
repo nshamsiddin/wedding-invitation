@@ -1,63 +1,79 @@
 import { motion } from 'framer-motion';
 import type { AdminEvent } from '../../lib/api';
-import { PARCHMENT, ESPRESSO, ESPRESSO_DIM, GOLD_DIM } from '../../garden/tokens';
+import {
+  PARCHMENT,
+  ESPRESSO,
+  ESPRESSO_DIM,
+  GOLD_DIM,
+  GOLD_ACCESSIBLE,
+} from '../../garden/tokens';
 import { useAdminTranslation } from '../../lib/i18n/admin';
 
 interface Props {
   events: AdminEvent[];
   selectedEventId: number | null;
   isLoading: boolean;
+  /** Currently active status filters. When provided, breakdown rows become toggle buttons. */
+  selectedStatuses?: string[];
+  /** Called when a breakdown row is pressed — toggles that status in the filter. */
+  onToggleStatus?: (status: 'attending' | 'declined' | 'maybe' | 'pending') => void;
 }
 
 // Warm muted tones consistent with the parchment palette
 const SEGMENT_COLORS = {
-  attending: '#4A9E78',   // muted emerald
-  declined:  '#C0615A',   // muted red
-  maybe:     '#C4924A',   // muted amber (matches GOLD family)
-  pending:   '#C9BFB6',   // warm light gray
-};
+  attending: '#4A9E78', // muted emerald
+  declined:  '#C0615A', // muted red
+  maybe:     '#C4924A', // muted amber (matches GOLD family)
+  pending:   '#C9BFB6', // warm light gray
+} as const;
 
 const STATUS_TEXT_COLORS = {
   attending: '#2D6B50',
   declined:  '#8B3A36',
   maybe:     '#7A5520',
-  pending:   'rgba(42,31,26,0.45)',
-};
+  pending:   'rgba(42,31,26,0.55)',
+} as const;
+
+// Diagonal stripe for "No response" so the segment reads as “unknown”,
+// not “empty space remaining”. Subtle enough to keep the bar quiet.
+const PENDING_STRIPE = `repeating-linear-gradient(45deg, ${SEGMENT_COLORS.pending} 0, ${SEGMENT_COLORS.pending} 4px, rgba(255,255,255,0.55) 4px, rgba(255,255,255,0.55) 8px)`;
 
 function SkeletonBar() {
   return (
     <div
-      className="rounded-xl px-5 py-4 shadow-sm"
+      className="rounded-xl px-6 py-5 shadow-sm space-y-4"
       style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
       aria-hidden="true"
     >
-      <div className="flex items-center gap-5 sm:gap-8">
-        <div className="flex-shrink-0 space-y-2 text-center min-w-[44px]">
-          <div className="h-8 w-8 mx-auto rounded animate-pulse" style={{ background: GOLD_DIM }} />
-          <div className="h-2 w-12 mx-auto rounded animate-pulse" style={{ background: GOLD_DIM }} />
-        </div>
-        <div className="flex-1 min-w-0 space-y-3">
-          <div className="h-2 w-full rounded-full animate-pulse" style={{ background: GOLD_DIM }} />
-          <div className="flex gap-4">
-            {[72, 60, 50, 80].map((w, i) => (
-              <div key={i} className="h-2.5 rounded animate-pulse" style={{ background: GOLD_DIM, width: w }} />
-            ))}
-          </div>
-        </div>
-        <div
-          className="flex-shrink-0 space-y-2 text-center pl-5 sm:pl-8 min-w-[60px]"
-          style={{ borderLeft: `1px solid ${GOLD_DIM}` }}
-        >
-          <div className="h-8 w-8 mx-auto rounded animate-pulse" style={{ background: GOLD_DIM }} />
-          <div className="h-2 w-14 mx-auto rounded animate-pulse" style={{ background: GOLD_DIM }} />
-        </div>
+      <div className="flex items-baseline justify-between">
+        <div className="h-9 w-28 rounded animate-pulse" style={{ background: GOLD_DIM }} />
+        <div className="h-3 w-32 rounded animate-pulse" style={{ background: GOLD_DIM }} />
+      </div>
+      <div className="h-2 w-full rounded-full animate-pulse" style={{ background: GOLD_DIM }} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-8 rounded animate-pulse" style={{ background: GOLD_DIM }} />
+        ))}
+      </div>
+      <div className="h-px w-full" style={{ background: GOLD_DIM }} />
+      <div className="flex items-baseline justify-between">
+        <div className="h-3 w-32 rounded animate-pulse" style={{ background: GOLD_DIM }} />
+        <div className="h-4 w-10 rounded animate-pulse" style={{ background: GOLD_DIM }} />
       </div>
     </div>
   );
 }
 
-export default function StatsCards({ events, selectedEventId, isLoading }: Props) {
+export default function StatsCards({
+  events,
+  selectedEventId,
+  isLoading,
+  selectedStatuses,
+  onToggleStatus,
+}: Props) {
   const at = useAdminTranslation();
+  const interactive = typeof onToggleStatus === 'function';
+  const activeSet = new Set(selectedStatuses ?? []);
 
   if (isLoading || events.length === 0) return <SkeletonBar />;
 
@@ -79,13 +95,16 @@ export default function StatsCards({ events, selectedEventId, isLoading }: Props
     );
   }
 
-  const safeTotal = stats.total || 1;
+  const responded  = stats.attending + stats.declined + stats.maybe;
+  const safeTotal  = stats.total || 1;
+  const rate       = stats.total === 0 ? 0 : Math.round((responded / safeTotal) * 100);
 
+  // Logical reading order on the bar: positive → uncertain → negative → unknown
   const segments = [
-    { key: 'attending', value: stats.attending, label: at.statsAttending },
-    { key: 'declined',  value: stats.declined,  label: at.statsDeclined  },
-    { key: 'maybe',     value: stats.maybe,     label: at.statsMaybe     },
-    { key: 'pending',   value: stats.pending,   label: at.statsPending   },
+    { key: 'attending', value: stats.attending, label: at.statsAttending, isPending: false },
+    { key: 'maybe',     value: stats.maybe,     label: at.statsMaybe,     isPending: false },
+    { key: 'declined',  value: stats.declined,  label: at.statsDeclined,  isPending: false },
+    { key: 'pending',   value: stats.pending,   label: at.statsPending,   isPending: true  },
   ] as const;
 
   const activeSegments = segments.filter((s) => s.value > 0);
@@ -95,113 +114,167 @@ export default function StatsCards({ events, selectedEventId, isLoading }: Props
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="rounded-xl px-5 py-4 shadow-sm"
+      className="rounded-xl px-6 py-5 shadow-sm"
       style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
       aria-label="Event statistics"
     >
-      <div className="flex items-center gap-5 sm:gap-8">
-
-        {/* ── Invited ─────────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 text-center min-w-[44px]">
+      {/* ── Hero: Response rate ──────────────────────────────────────────── */}
+      <div className="flex items-baseline justify-between gap-4 mb-3">
+        <div className="flex items-baseline gap-3 min-w-0">
           <p
-            className="font-sans text-3xl font-bold tabular-nums leading-none"
+            className="font-sans text-4xl font-bold tabular-nums leading-none"
             style={{ color: ESPRESSO }}
           >
-            {stats.total}
+            {rate}
+            <span
+              className="text-2xl font-semibold ml-0.5"
+              style={{ color: ESPRESSO_DIM }}
+            >
+              %
+            </span>
           </p>
           <p
-            className="text-[10px] font-sans uppercase tracking-widest mt-1.5"
+            className="text-[10px] font-sans uppercase tracking-widest"
             style={{ color: ESPRESSO_DIM }}
           >
-            {at.statsInvited}
+            {at.statsResponseRate}
           </p>
         </div>
-
-        {/* ── Breakdown bar + legend ──────────────────────────────────────── */}
-        <div className="flex-1 min-w-0">
-
-          {/* Bar */}
-          <div
-            className="flex h-2 rounded-full overflow-hidden mb-3"
-            style={{ gap: '2px' }}
-            role="img"
-            aria-label={`${stats.attending} attending, ${stats.declined} declined, ${stats.maybe} maybe, ${stats.pending} no response`}
-          >
-            {stats.total === 0 ? (
-              <div className="flex-1 rounded-full" style={{ background: GOLD_DIM }} />
-            ) : (
-              activeSegments.map((seg, idx) => {
-                const pct = (seg.value / safeTotal) * 100;
-                const isFirst = idx === 0;
-                const isLast  = idx === activeSegments.length - 1;
-                const radius  = isFirst && isLast
-                  ? '9999px'
-                  : isFirst ? '9999px 0 0 9999px'
-                  : isLast  ? '0 9999px 9999px 0'
-                  : '0';
-                return (
-                  <div
-                    key={seg.key}
-                    style={{
-                      width: `${pct}%`,
-                      background: SEGMENT_COLORS[seg.key],
-                      borderRadius: radius,
-                      minWidth: 4,
-                    }}
-                  />
-                );
-              })
-            )}
-          </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-            {segments.map((seg) => (
-              <div key={seg.key} className="flex items-center gap-1.5">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: SEGMENT_COLORS[seg.key] }}
-                />
-                <span
-                  className="text-xs font-sans font-semibold tabular-nums"
-                  style={{ color: STATUS_TEXT_COLORS[seg.key] }}
-                >
-                  {seg.value}
-                </span>
-                <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                  {seg.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Headcount ────────────────────────────────────────────────────── */}
-        <div
-          className="flex-shrink-0 text-center pl-5 sm:pl-8 min-w-[60px]"
-          style={{ borderLeft: `1px solid ${GOLD_DIM}` }}
-          title={at.headcountHint}
+        <p
+          className="text-xs font-sans tabular-nums whitespace-nowrap"
+          style={{ color: ESPRESSO_DIM }}
         >
-          <p
-            className="font-sans text-3xl font-bold tabular-nums leading-none"
-            style={{ color: '#9A7535' }}
-          >
-            {stats.totalHeadcount}
-          </p>
-          <p
-            className="text-[10px] font-sans uppercase tracking-widest mt-1.5"
-            style={{ color: ESPRESSO_DIM }}
-          >
-            {at.statsHeadcount}
-          </p>
-          <p
-            className="text-[10px] font-sans mt-0.5 whitespace-nowrap"
-            style={{ color: 'rgba(42,31,26,0.38)' }}
-          >
-            {at.statsAttendingGuests}
-          </p>
-        </div>
+          {at.statsResponded(responded, stats.total)}
+        </p>
+      </div>
 
+      {/* ── Stacked progress bar ─────────────────────────────────────────── */}
+      <div
+        className="flex h-2 rounded-full overflow-hidden mb-5"
+        style={{ gap: '2px' }}
+        role="img"
+        aria-label={`${stats.attending} attending, ${stats.maybe} maybe, ${stats.declined} declined, ${stats.pending} no response`}
+      >
+        {stats.total === 0 ? (
+          <div className="flex-1 rounded-full" style={{ background: GOLD_DIM }} />
+        ) : (
+          activeSegments.map((seg, idx) => {
+            const pct     = (seg.value / safeTotal) * 100;
+            const isFirst = idx === 0;
+            const isLast  = idx === activeSegments.length - 1;
+            const radius  = isFirst && isLast
+              ? '9999px'
+              : isFirst ? '9999px 0 0 9999px'
+              : isLast  ? '0 9999px 9999px 0'
+              : '0';
+            return (
+              <div
+                key={seg.key}
+                style={{
+                  width: `${pct}%`,
+                  background: seg.isPending ? PENDING_STRIPE : SEGMENT_COLORS[seg.key],
+                  borderRadius: radius,
+                  minWidth: 4,
+                }}
+              />
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Breakdown grid (pressable to filter the guest list) ──────────── */}
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+        role={interactive ? 'group' : undefined}
+        aria-label={interactive ? 'Filter guest list by status' : undefined}
+      >
+        {segments.map((seg) => {
+          const pct      = stats.total === 0 ? 0 : Math.round((seg.value / safeTotal) * 100);
+          const isActive = activeSet.has(seg.key);
+          const disabled = interactive && seg.value === 0;
+
+          const rowContent = (
+            <>
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ background: SEGMENT_COLORS[seg.key] }}
+                aria-hidden="true"
+              />
+              <span
+                className="text-base font-sans font-bold tabular-nums leading-none"
+                style={{ color: STATUS_TEXT_COLORS[seg.key] }}
+              >
+                {seg.value}
+              </span>
+              <span
+                className="text-[10px] font-sans tabular-nums leading-none"
+                style={{ color: 'rgba(42,31,26,0.45)' }}
+              >
+                {pct}%
+              </span>
+              <span
+                className="text-xs font-sans truncate"
+                style={{ color: ESPRESSO_DIM }}
+              >
+                {seg.label}
+              </span>
+            </>
+          );
+
+          if (!interactive) {
+            return (
+              <div key={seg.key} className="flex items-center gap-2.5 min-w-0 px-2 py-1.5">
+                {rowContent}
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={seg.key}
+              type="button"
+              onClick={() => onToggleStatus?.(seg.key)}
+              disabled={disabled}
+              aria-pressed={isActive}
+              aria-label={
+                isActive
+                  ? `Remove ${seg.label} filter (${seg.value})`
+                  : `Filter guest list to ${seg.label} (${seg.value})`
+              }
+              className="flex items-center gap-2.5 min-w-0 px-2 py-1.5 rounded-lg text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-[rgba(184,146,74,0.08)]"
+              style={
+                isActive
+                  ? {
+                      background: `${SEGMENT_COLORS[seg.key]}1F`, // ~12% tint of the segment colour
+                      boxShadow: `inset 0 0 0 1px ${SEGMENT_COLORS[seg.key]}`,
+                    }
+                  : { background: 'transparent', boxShadow: `inset 0 0 0 1px transparent` }
+              }
+            >
+              {rowContent}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Footer: Expected headcount (derived metric) ──────────────────── */}
+      <div
+        className="flex items-baseline justify-between mt-5 pt-3"
+        style={{ borderTop: `1px solid ${GOLD_DIM}` }}
+        title={at.headcountHint}
+      >
+        <p
+          className="text-[10px] font-sans uppercase tracking-widest"
+          style={{ color: ESPRESSO_DIM }}
+        >
+          {at.statsExpectedHeadcount}
+        </p>
+        <p
+          className="text-base font-sans font-bold tabular-nums leading-none"
+          style={{ color: GOLD_ACCESSIBLE }}
+        >
+          {stats.totalHeadcount}
+        </p>
       </div>
     </motion.div>
   );

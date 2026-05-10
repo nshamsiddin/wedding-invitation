@@ -22,6 +22,9 @@ export interface AdminTranslations {
   statsPending: string;
   statsHeadcount: string;
   statsAttendingGuests: string;
+  statsResponseRate: string;
+  statsResponded: (responded: number, total: number) => string;
+  statsExpectedHeadcount: string;
 
   // Shareable links section
   shareableLinksTitle: string;
@@ -128,6 +131,9 @@ const adminEn: AdminTranslations = {
   statsPending: 'No Response',
   statsHeadcount: 'Headcount',
   statsAttendingGuests: 'attending guests',
+  statsResponseRate: 'Response rate',
+  statsResponded: (responded, total) => `${responded} of ${total} responded`,
+  statsExpectedHeadcount: 'Expected headcount',
 
   shareableLinksTitle: 'Shareable Invitation Links',
   shareableLinksDesc: '6 permanent links — 3 languages × 2 venues. Anyone can RSVP via these.',
@@ -218,6 +224,9 @@ const adminTr: AdminTranslations = {
   statsPending: 'Yanıt Yok',
   statsHeadcount: 'Toplam Kişi',
   statsAttendingGuests: 'katılan misafir',
+  statsResponseRate: 'Yanıt oranı',
+  statsResponded: (responded, total) => `${total} kişiden ${responded} yanıtladı`,
+  statsExpectedHeadcount: 'Beklenen kişi sayısı',
 
   shareableLinksTitle: 'Paylaşılabilir Davet Bağlantıları',
   shareableLinksDesc: '6 kalıcı bağlantı — 3 dil × 2 mekan. Herkes bu bağlantılar üzerinden RSVP yapabilir.',
@@ -308,6 +317,9 @@ const adminUz: AdminTranslations = {
   statsPending: "Javob yo'q",
   statsHeadcount: 'Jami kishi',
   statsAttendingGuests: 'qatnashuvchi mehmon',
+  statsResponseRate: 'Javob darajasi',
+  statsResponded: (responded, total) => `${total} tadan ${responded} tasi javob berdi`,
+  statsExpectedHeadcount: 'Kutilayotgan kishi soni',
 
   shareableLinksTitle: "Ulashish Mumkin Bo'lgan Havolalar",
   shareableLinksDesc: "6 ta doimiy havola — 3 ta til × 2 ta joy. Har kim bu havolalar orqali RSVP qilishi mumkin.",
