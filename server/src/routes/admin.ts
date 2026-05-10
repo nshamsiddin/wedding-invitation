@@ -116,16 +116,16 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
     type StatRow = {
       eventId: number;
       status: string;
-      cnt: number;
-      headcount: number;
+      invitationCount: number;
+      peopleCount: number;
     };
     const statRows = sqlite
       .prepare<[], StatRow>(`
         SELECT
-          event_id         AS eventId,
+          event_id                AS eventId,
           status,
-          COUNT(*)         AS cnt,
-          SUM(guest_count) AS headcount
+          COUNT(*)                AS invitationCount,
+          SUM(guest_count)        AS peopleCount
         FROM guest_invitations
         WHERE NOT (is_open = 1 AND claimed_at IS NULL)
         GROUP BY event_id, status
@@ -143,11 +143,11 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
     for (const row of statRows) {
       const s = statsMap.get(row.eventId);
       if (!s) continue;
-      s.total += row.cnt;
-      if (row.status === 'attending') { s.attending += row.cnt; s.totalHeadcount += row.headcount; }
-      else if (row.status === 'declined') s.declined += row.cnt;
-      else if (row.status === 'maybe') s.maybe += row.cnt;
-      else s.pending += row.cnt;
+      s.total += row.peopleCount;
+      if (row.status === 'attending') { s.attending += row.peopleCount; s.totalHeadcount += row.peopleCount; }
+      else if (row.status === 'declined') s.declined += row.peopleCount;
+      else if (row.status === 'maybe') s.maybe += row.peopleCount;
+      else s.pending += row.peopleCount;
     }
 
     res.json(
