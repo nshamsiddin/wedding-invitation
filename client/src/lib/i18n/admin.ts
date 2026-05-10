@@ -38,6 +38,8 @@ export interface AdminTranslations {
   guestWishesUpdated: string;
   guestWishSingular: string;
   guestWishPlural: string;
+  openGuestWishes: string;
+  backToGuestList: string;
 
   // Guest list section
   guestList: string;
@@ -139,6 +141,8 @@ const adminEn: AdminTranslations = {
   guestWishesUpdated: 'Updated',
   guestWishSingular: 'message',
   guestWishPlural: 'messages',
+  openGuestWishes: 'Guest Wishes',
+  backToGuestList: 'Back to Guest List',
 
   guestList: 'Guest List',
   guestSingular: 'guest',
@@ -227,6 +231,8 @@ const adminTr: AdminTranslations = {
   guestWishesUpdated: 'Güncellendi',
   guestWishSingular: 'mesaj',
   guestWishPlural: 'mesaj',
+  openGuestWishes: 'Misafir Dilekleri',
+  backToGuestList: 'Misafir Listesine Dön',
 
   guestList: 'Misafir Listesi',
   guestSingular: 'misafir',
@@ -315,6 +321,8 @@ const adminUz: AdminTranslations = {
   guestWishesUpdated: 'Yangilangan',
   guestWishSingular: 'xabar',
   guestWishPlural: 'xabar',
+  openGuestWishes: 'Mehmon Tilaklari',
+  backToGuestList: "Mehmonlar Ro'yxatiga Qaytish",
 
   guestList: "Mehmonlar Ro'yxati",
   guestSingular: 'mehmon',

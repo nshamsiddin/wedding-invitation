@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import type { AdminGuest, AdminGuestMessage, AdminInvitation } from '../../lib/api';
+import type { AdminGuest, AdminInvitation } from '../../lib/api';
 import type {
   AddGuestValues,
   UpdateGuestContactValues,
@@ -299,11 +299,9 @@ export default function DashboardPage() {
   });
 
   const [guestPage, setGuestPage] = useState(1);
-  const [messagePage, setMessagePage] = useState(1);
 
   // Reset to page 1 whenever filters change
   useEffect(() => { setGuestPage(1); }, [selectedEventId, statusFilters, search, tableFilter]);
-  useEffect(() => { setMessagePage(1); }, [selectedEventId]);
 
   const guestQueryParams = {
     eventId: selectedEventId ?? undefined,
@@ -323,21 +321,6 @@ export default function DashboardPage() {
   const guestTotal = guestsData?.total ?? 0;
   const guestLimit = guestsData?.limit ?? 100;
   const totalPages = Math.ceil(guestTotal / guestLimit);
-
-  const messageQueryParams = {
-    eventId: selectedEventId ?? undefined,
-    page: messagePage,
-    limit: 8,
-  };
-  const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ['admin', 'messages', messageQueryParams],
-    queryFn: () => adminApi.getMessages(messageQueryParams),
-    placeholderData: (prev) => prev,
-  });
-  const guestMessages = messagesData?.messages ?? [];
-  const guestMessagesTotal = messagesData?.total ?? 0;
-  const guestMessageLimit = messagesData?.limit ?? 8;
-  const guestMessagePages = Math.max(1, Math.ceil(guestMessagesTotal / guestMessageLimit));
 
   const { data: availableTables = [] } = useQuery({
     queryKey: ['admin', 'tables', selectedEventId],
@@ -538,12 +521,6 @@ export default function DashboardPage() {
   };
 
   const selectedEvent = selectedEventId !== null ? events.find((e) => e.id === selectedEventId) : null;
-  const statusLabelByValue: Record<AdminGuestMessage['status'], string> = {
-    attending: at.statusAttending,
-    declined: at.statusDeclined,
-    maybe: at.statusMaybe,
-    pending: at.statusPending,
-  };
 
   // ── Clear filters when switching tabs ────────────────────────────────────────
   const handleSelectEvent = (id: number | null) => {
@@ -581,6 +558,16 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             {/* Notification bell */}
             <NotificationBell />
+
+            <button
+              onClick={() => navigate('/admin/messages')}
+              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+            >
+              {at.openGuestWishes}
+            </button>
 
             {/* Language switcher */}
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD_DIM}` }}>
@@ -729,100 +716,6 @@ export default function DashboardPage() {
 
         {/* ── Shareable Links ─────────────────────────────────────────────── */}
         <ShareableLinksSection baseUrl={config?.baseUrl ?? ''} />
-
-        {/* ── Guest wishes/messages ──────────────────────────────────────── */}
-        <section aria-labelledby="guest-wishes-heading">
-          <div className="flex items-end justify-between gap-3 mb-3">
-            <div>
-              <h2 id="guest-wishes-heading" className="font-sans font-semibold text-sm" style={{ color: ESPRESSO }}>
-                {at.guestWishesTitle}
-              </h2>
-              <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
-                {at.guestWishesSubtitle}
-              </p>
-            </div>
-            {!messagesLoading && (
-              <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                {guestMessagesTotal} {guestMessagesTotal === 1 ? at.guestWishSingular : at.guestWishPlural}
-              </p>
-            )}
-          </div>
-
-          <div
-            className="rounded-xl border p-3 sm:p-4 space-y-3"
-            style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
-          >
-            {messagesLoading ? (
-              Array.from({ length: 3 }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-lg border p-3 animate-pulse"
-                  style={{ borderColor: GOLD_DIM, background: 'rgba(255,255,255,0.35)' }}
-                >
-                  <div className="h-3 w-36 rounded mb-2" style={{ background: GOLD_DIM }} />
-                  <div className="h-3 w-4/5 rounded mb-1.5" style={{ background: GOLD_DIM }} />
-                  <div className="h-3 w-3/5 rounded" style={{ background: GOLD_DIM }} />
-                </div>
-              ))
-            ) : guestMessages.length === 0 ? (
-              <div className="rounded-lg border p-4" style={{ borderColor: GOLD_DIM }}>
-                <p className="font-sans text-sm" style={{ color: ESPRESSO }}>{at.guestWishesEmpty}</p>
-                <p className="font-sans text-xs mt-1" style={{ color: ESPRESSO_DIM }}>{at.guestWishesEmptyHint}</p>
-              </div>
-            ) : (
-              guestMessages.map((item) => (
-                <article key={item.invitationId} className="rounded-lg border p-3" style={{ borderColor: GOLD_DIM }}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-sans text-xs font-semibold" style={{ color: ESPRESSO }}>
-                      {at.guestWishesFrom}: {item.guestName}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                        style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO_DIM }}
-                      >
-                        {item.eventName ?? item.eventSlug ?? `Event ${item.eventId}`}
-                      </span>
-                      <span className="text-[10px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
-                        {statusLabelByValue[item.status]} · {item.guestCount}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-sm font-sans whitespace-pre-wrap break-words" style={{ color: ESPRESSO }}>
-                    {item.message}
-                  </p>
-                  <p className="mt-2 text-[10px] font-sans" style={{ color: ESPRESSO_DIM }}>
-                    {at.guestWishesUpdated}: {new Date(item.updatedAt).toLocaleString()}
-                  </p>
-                </article>
-              ))
-            )}
-
-            {!messagesLoading && guestMessagePages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-1">
-                <button
-                  onClick={() => setMessagePage((p) => Math.max(1, p - 1))}
-                  disabled={messagePage <= 1}
-                  className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                >
-                  ← Prev
-                </button>
-                <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                  {messagePage} / {guestMessagePages}
-                </span>
-                <button
-                  onClick={() => setMessagePage((p) => Math.min(guestMessagePages, p + 1))}
-                  disabled={messagePage >= guestMessagePages}
-                  className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* ── Guest list ──────────────────────────────────────────────────── */}
         <section aria-labelledby="guests-heading">

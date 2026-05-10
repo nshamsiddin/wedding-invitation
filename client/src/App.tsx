@@ -12,6 +12,7 @@ import PublicInvitePage from './pages/PublicInvitePage';
 import EventPage from './pages/EventPage';
 import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
+import GuestWishesPage from './pages/admin/GuestWishesPage';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 
 function InvitationChrome() {
@@ -68,6 +69,14 @@ function AppInner() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/messages"
+            element={
+              <ProtectedRoute>
+                <GuestWishesPage />
               </ProtectedRoute>
             }
           />
