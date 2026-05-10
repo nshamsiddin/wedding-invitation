@@ -29,6 +29,16 @@ export interface AdminTranslations {
   permanent: string;
   copyLink: string;
 
+  // Guest wishes/messages section
+  guestWishesTitle: string;
+  guestWishesSubtitle: string;
+  guestWishesEmpty: string;
+  guestWishesEmptyHint: string;
+  guestWishesFrom: string;
+  guestWishesUpdated: string;
+  guestWishSingular: string;
+  guestWishPlural: string;
+
   // Guest list section
   guestList: string;
   guestSingular: string;
@@ -121,6 +131,14 @@ const adminEn: AdminTranslations = {
   shareableLinksDesc: '6 permanent links — 3 languages × 2 venues. Anyone can RSVP via these.',
   permanent: 'Permanent',
   copyLink: 'Copy link',
+  guestWishesTitle: 'Guest Wishes',
+  guestWishesSubtitle: 'All messages guests left with their RSVP responses.',
+  guestWishesEmpty: 'No guest wishes yet',
+  guestWishesEmptyHint: 'Messages will appear here once guests submit a note.',
+  guestWishesFrom: 'From',
+  guestWishesUpdated: 'Updated',
+  guestWishSingular: 'message',
+  guestWishPlural: 'messages',
 
   guestList: 'Guest List',
   guestSingular: 'guest',
@@ -201,6 +219,14 @@ const adminTr: AdminTranslations = {
   shareableLinksDesc: '6 kalıcı bağlantı — 3 dil × 2 mekan. Herkes bu bağlantılar üzerinden RSVP yapabilir.',
   permanent: 'Kalıcı',
   copyLink: 'Bağlantıyı kopyala',
+  guestWishesTitle: 'Misafir Dilekleri',
+  guestWishesSubtitle: 'Misafirlerin RSVP ile bıraktığı tüm mesajlar.',
+  guestWishesEmpty: 'Henüz mesaj yok',
+  guestWishesEmptyHint: 'Misafirler not bıraktıkça burada görünecek.',
+  guestWishesFrom: 'Gönderen',
+  guestWishesUpdated: 'Güncellendi',
+  guestWishSingular: 'mesaj',
+  guestWishPlural: 'mesaj',
 
   guestList: 'Misafir Listesi',
   guestSingular: 'misafir',
@@ -281,6 +307,14 @@ const adminUz: AdminTranslations = {
   shareableLinksDesc: "6 ta doimiy havola — 3 ta til × 2 ta joy. Har kim bu havolalar orqali RSVP qilishi mumkin.",
   permanent: 'Doimiy',
   copyLink: 'Havolani nusxalash',
+  guestWishesTitle: 'Mehmon Tilaklari',
+  guestWishesSubtitle: "Mehmonlar RSVP bilan qoldirgan barcha xabarlar.",
+  guestWishesEmpty: 'Hozircha xabarlar yo‘q',
+  guestWishesEmptyHint: 'Mehmonlar izoh qoldirganda bu yerda ko‘rinadi.',
+  guestWishesFrom: 'Kimdan',
+  guestWishesUpdated: 'Yangilangan',
+  guestWishSingular: 'xabar',
+  guestWishPlural: 'xabar',
 
   guestList: "Mehmonlar Ro'yxati",
   guestSingular: 'mehmon',

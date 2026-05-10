@@ -4,6 +4,7 @@ import type {
   PartialEventData,
   AdminEvent,
   AdminGuest,
+  AdminGuestMessage,
   AdminInvitation,
   OpenInvitation,
   AdminLoginValues,
@@ -27,6 +28,7 @@ export type {
   PartialEventData,
   AdminEvent,
   AdminGuest,
+  AdminGuestMessage,
   AdminInvitation,
   OpenInvitation,
   TokenLookupResponse,
@@ -124,6 +126,14 @@ export const adminApi = {
     limit?: number;
   }): Promise<{ guests: AdminGuest[]; total: number; page: number; limit: number }> => {
     const { data } = await api.get<{ guests: AdminGuest[]; total: number; page: number; limit: number }>('/admin/guests', { params });
+    return data;
+  },
+  getMessages: async (params?: {
+    eventId?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<{ messages: AdminGuestMessage[]; total: number; page: number; limit: number }> => {
+    const { data } = await api.get<{ messages: AdminGuestMessage[]; total: number; page: number; limit: number }>('/admin/messages', { params });
     return data;
   },
   getTableNumbers: async (eventId?: number): Promise<number[]> => {

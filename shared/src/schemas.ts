@@ -152,6 +152,23 @@ export const adminGuestSchema = z.object({
 
 export type AdminGuest = z.infer<typeof adminGuestSchema>;
 
+// Admin-facing guest wishes/messages list item
+export const adminGuestMessageSchema = z.object({
+  invitationId: z.number(),
+  guestId: z.number().nullable(),
+  guestName: z.string(),
+  eventId: z.number(),
+  eventSlug: z.string().nullable(),
+  eventName: z.string().nullable(),
+  status: z.enum(attendanceStatus),
+  guestCount: z.number().int().min(1),
+  message: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type AdminGuestMessage = z.infer<typeof adminGuestMessageSchema>;
+
 // Admin event with stats
 export const adminEventSchema = eventSchema.extend({
   stats: z.object({

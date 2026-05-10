@@ -173,6 +173,7 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
 // ─── Guests (with their invitations) ────────────────────────────────────────
 
 const GUESTS_PAGE_LIMIT = 100; // max guests returned per page
+const MESSAGES_PAGE_LIMIT = 50; // max guest wishes/messages returned per page
 
 router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
@@ -341,6 +342,78 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
   } catch (error) {
     logger.error({ err: error }, 'guest list error');
     res.status(500).json({ error: 'Failed to fetch guests' });
+  }
+});
+
+// GET /api/admin/messages — list all non-empty guest wishes/messages
+router.get('/messages', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
+  const page = Math.max(1, parseInt((req.query['page'] as string) ?? '1', 10) || 1);
+  const limit = Math.min(
+    MESSAGES_PAGE_LIMIT,
+    Math.max(1, parseInt((req.query['limit'] as string) ?? String(MESSAGES_PAGE_LIMIT), 10) || MESSAGES_PAGE_LIMIT)
+  );
+  const offset = (page - 1) * limit;
+
+  try {
+    const conditions = [
+      isNotNull(schema.guestInvitations.guestId),
+      isNotNull(schema.guestInvitations.message),
+      sql`TRIM(${schema.guestInvitations.message}) <> ''`,
+    ];
+    if (eventId !== undefined && !isNaN(eventId)) {
+      conditions.push(eq(schema.guestInvitations.eventId, eventId));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [totalRows, rows] = await Promise.all([
+      db.select({ value: count() }).from(schema.guestInvitations).where(whereClause),
+      db
+        .select({
+          invitationId: schema.guestInvitations.id,
+          guestId: schema.guestInvitations.guestId,
+          guestName: schema.guests.name,
+          eventId: schema.guestInvitations.eventId,
+          eventSlug: schema.events.slug,
+          eventName: schema.events.name,
+          status: schema.guestInvitations.status,
+          guestCount: schema.guestInvitations.guestCount,
+          message: schema.guestInvitations.message,
+          createdAt: schema.guestInvitations.createdAt,
+          updatedAt: schema.guestInvitations.updatedAt,
+        })
+        .from(schema.guestInvitations)
+        .innerJoin(schema.guests, eq(schema.guests.id, schema.guestInvitations.guestId))
+        .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
+        .where(whereClause)
+        .orderBy(desc(schema.guestInvitations.updatedAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = totalRows[0]?.value ?? 0;
+    res.json({
+      messages: rows.map((row) => ({
+        invitationId: row.invitationId,
+        guestId: row.guestId,
+        guestName: row.guestName,
+        eventId: row.eventId,
+        eventSlug: row.eventSlug,
+        eventName: row.eventName,
+        status: row.status,
+        guestCount: row.guestCount,
+        message: row.message ?? '',
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+    });
+  } catch (error) {
+    logger.error({ err: error, eventId }, 'message list error');
+    res.status(500).json({ error: 'Failed to fetch guest messages' });
   }
 });
 
