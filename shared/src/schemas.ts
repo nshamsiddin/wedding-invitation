@@ -178,6 +178,11 @@ export const adminEventSchema = eventSchema.extend({
     maybe: z.number(),
     pending: z.number(),
     totalHeadcount: z.number(),
+    totalInvitations: z.number().optional(),
+    invitationAttending: z.number().optional(),
+    invitationDeclined: z.number().optional(),
+    invitationMaybe: z.number().optional(),
+    invitationPending: z.number().optional(),
   }),
 });
 

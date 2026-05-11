@@ -143,6 +143,9 @@ export default function GuestWishesPage() {
                       aria-pressed={active}
                     >
                       {getEventDisplayName(ev)}
+                      <span className="ml-2 text-[10px] font-bold tabular-nums">
+                        {(ev.stats.totalInvitations ?? ev.stats.total)}i · {ev.stats.total}p
+                      </span>
                     </button>
                   </div>
                 );
@@ -159,6 +162,12 @@ export default function GuestWishesPage() {
             {!messagesLoading && (
               <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
                 {guestMessagesTotal} {guestMessagesTotal === 1 ? at.guestWishSingular : at.guestWishPlural}
+                <span className="ml-1">
+                  · {guestMessagesTotal} {guestMessagesTotal === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}
+                </span>
+                <span className="ml-1">
+                  · {guestMessages.reduce((sum, m) => sum + m.guestCount, 0)} {at.personUnitPlural}
+                </span>
               </p>
             )}
           </div>

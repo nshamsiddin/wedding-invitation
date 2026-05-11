@@ -80,7 +80,19 @@ export default function StatsCards({
   let stats: AdminEvent['stats'];
   if (selectedEventId !== null) {
     const ev = events.find((e) => e.id === selectedEventId);
-    stats = ev?.stats ?? { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 };
+    stats = ev?.stats ?? {
+      total: 0,
+      attending: 0,
+      declined: 0,
+      maybe: 0,
+      pending: 0,
+      totalHeadcount: 0,
+      totalInvitations: 0,
+      invitationAttending: 0,
+      invitationDeclined: 0,
+      invitationMaybe: 0,
+      invitationPending: 0,
+    };
   } else {
     stats = events.reduce(
       (acc, ev) => ({
@@ -90,21 +102,44 @@ export default function StatsCards({
         maybe:          acc.maybe          + ev.stats.maybe,
         pending:        acc.pending        + ev.stats.pending,
         totalHeadcount: acc.totalHeadcount + ev.stats.totalHeadcount,
+        totalInvitations:     acc.totalInvitations     + (ev.stats.totalInvitations ?? 0),
+        invitationAttending:  acc.invitationAttending  + (ev.stats.invitationAttending ?? 0),
+        invitationDeclined:   acc.invitationDeclined   + (ev.stats.invitationDeclined ?? 0),
+        invitationMaybe:      acc.invitationMaybe      + (ev.stats.invitationMaybe ?? 0),
+        invitationPending:    acc.invitationPending    + (ev.stats.invitationPending ?? 0),
       }),
-      { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 },
+      {
+        total: 0,
+        attending: 0,
+        declined: 0,
+        maybe: 0,
+        pending: 0,
+        totalHeadcount: 0,
+        totalInvitations: 0,
+        invitationAttending: 0,
+        invitationDeclined: 0,
+        invitationMaybe: 0,
+        invitationPending: 0,
+      },
     );
   }
 
-  const responded  = stats.attending + stats.declined + stats.maybe;
-  const safeTotal  = stats.total || 1;
-  const rate       = stats.total === 0 ? 0 : Math.round((responded / safeTotal) * 100);
+  const invitationTotal = stats.totalInvitations ?? stats.total;
+  const invitationAttending = stats.invitationAttending ?? stats.attending;
+  const invitationDeclined = stats.invitationDeclined ?? stats.declined;
+  const invitationMaybe = stats.invitationMaybe ?? stats.maybe;
+  const invitationPending = stats.invitationPending ?? stats.pending;
+
+  const responded  = invitationAttending + invitationDeclined + invitationMaybe;
+  const safeTotal  = invitationTotal || 1;
+  const rate       = invitationTotal === 0 ? 0 : Math.round((responded / safeTotal) * 100);
 
   // Logical reading order on the bar: positive → uncertain → negative → unknown
   const segments = [
-    { key: 'attending', value: stats.attending, label: at.statsAttending, isPending: false },
-    { key: 'maybe',     value: stats.maybe,     label: at.statsMaybe,     isPending: false },
-    { key: 'declined',  value: stats.declined,  label: at.statsDeclined,  isPending: false },
-    { key: 'pending',   value: stats.pending,   label: at.statsPending,   isPending: true  },
+    { key: 'attending', value: invitationAttending, people: stats.attending, label: at.statsAttending, isPending: false },
+    { key: 'maybe',     value: invitationMaybe,     people: stats.maybe,     label: at.statsMaybe,     isPending: false },
+    { key: 'declined',  value: invitationDeclined,  people: stats.declined,  label: at.statsDeclined,  isPending: false },
+    { key: 'pending',   value: invitationPending,   people: stats.pending,   label: at.statsPending,   isPending: true  },
   ] as const;
 
   const activeSegments = segments.filter((s) => s.value > 0);
@@ -144,18 +179,21 @@ export default function StatsCards({
           className="text-xs font-sans tabular-nums whitespace-nowrap"
           style={{ color: ESPRESSO_DIM }}
         >
-          {at.statsResponded(responded, stats.total)}
+          {at.statsRespondedInvitations(responded, invitationTotal)}
         </p>
       </div>
+      <p className="text-[11px] font-sans tabular-nums mb-3" style={{ color: ESPRESSO_DIM }}>
+        {at.statsInvitations}: {invitationTotal} · {at.statsPeople}: {stats.total}
+      </p>
 
       {/* ── Stacked progress bar ─────────────────────────────────────────── */}
       <div
         className="flex h-2 rounded-full overflow-hidden mb-5"
         style={{ gap: '2px' }}
         role="img"
-        aria-label={`${stats.attending} attending, ${stats.maybe} maybe, ${stats.declined} declined, ${stats.pending} no response`}
+        aria-label={`${invitationAttending} attending invitations, ${invitationMaybe} maybe invitations, ${invitationDeclined} declined invitations, ${invitationPending} no-response invitations`}
       >
-        {stats.total === 0 ? (
+        {invitationTotal === 0 ? (
           <div className="flex-1 rounded-full" style={{ background: GOLD_DIM }} />
         ) : (
           activeSegments.map((seg, idx) => {
@@ -205,6 +243,13 @@ export default function StatsCards({
                 style={{ color: STATUS_TEXT_COLORS[seg.key] }}
               >
                 {seg.value}
+              </span>
+              <span
+                className="text-[10px] font-sans tabular-nums leading-none"
+                style={{ color: 'rgba(42,31,26,0.55)' }}
+                title={`${seg.people} ${at.statsPeople.toLowerCase()}`}
+              >
+                · {seg.people}p
               </span>
               <span
                 className="text-[10px] font-sans tabular-nums leading-none"
@@ -267,7 +312,7 @@ export default function StatsCards({
           className="text-[10px] font-sans uppercase tracking-widest"
           style={{ color: ESPRESSO_DIM }}
         >
-          {at.statsExpectedHeadcount}
+          {at.statsPeople}
         </p>
         <p
           className="text-base font-sans font-bold tabular-nums leading-none"

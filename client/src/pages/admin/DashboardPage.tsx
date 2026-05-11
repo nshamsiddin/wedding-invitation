@@ -329,6 +329,23 @@ export default function DashboardPage() {
   });
 
   const filteredGuests = guests;
+  const visibleInvitationCount = useMemo(() => (
+    filteredGuests.reduce((sum, g) => {
+      if (selectedEventId === null) return sum + g.invitations.length;
+      return sum + g.invitations.filter((i) => i.eventId === selectedEventId).length;
+    }, 0)
+  ), [filteredGuests, selectedEventId]);
+
+  const visiblePeopleCount = useMemo(() => (
+    filteredGuests.reduce((sum, g) => {
+      if (selectedEventId === null) {
+        return sum + g.invitations.reduce((inner, i) => inner + i.guestCount, 0);
+      }
+      return sum + g.invitations
+        .filter((i) => i.eventId === selectedEventId)
+        .reduce((inner, i) => inner + i.guestCount, 0);
+    }, 0)
+  ), [filteredGuests, selectedEventId]);
 
   // Headcount for the selected table on current result page
   const tableHeadcount = useMemo(() => {
@@ -667,15 +684,29 @@ export default function DashboardPage() {
                       aria-pressed={active}
                     >
                       {getEventDisplayName(ev)}
-                      <span
-                        className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
-                        style={
-                          active
-                            ? { background: 'rgba(42,31,26,0.15)', color: ESPRESSO }
-                            : { background: GOLD, color: ESPRESSO }
-                        }
-                      >
-                        {ev.stats.total}
+                      <span className="inline-flex items-center gap-1.5 text-[10px] leading-none">
+                        <span
+                          className="inline-flex items-center justify-center min-w-[22px] h-[18px] px-1 rounded-full font-bold"
+                          title={`${ev.stats.totalInvitations ?? ev.stats.total} ${ev.stats.totalInvitations === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}`}
+                          style={
+                            active
+                              ? { background: 'rgba(42,31,26,0.15)', color: ESPRESSO }
+                              : { background: GOLD, color: ESPRESSO }
+                          }
+                        >
+                          {ev.stats.totalInvitations ?? ev.stats.total}i
+                        </span>
+                        <span
+                          className="inline-flex items-center justify-center min-w-[22px] h-[18px] px-1 rounded-full font-bold"
+                          title={`${ev.stats.total} ${ev.stats.total === 1 ? at.personUnitSingular : at.personUnitPlural}`}
+                          style={
+                            active
+                              ? { background: 'rgba(42,31,26,0.15)', color: ESPRESSO }
+                              : { background: GOLD, color: ESPRESSO }
+                          }
+                        >
+                          {ev.stats.total}p
+                        </span>
                       </span>
                     </button>
                   </div>
@@ -736,6 +767,12 @@ export default function DashboardPage() {
                 {!guestsLoading && (
                   <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>
                     {guestTotal} {guestTotal === 1 ? at.guestSingular : at.guestPlural}
+                    <span className="ml-1">
+                      · {visibleInvitationCount} {visibleInvitationCount === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}
+                    </span>
+                    <span className="ml-1">
+                      · {visiblePeopleCount} {visiblePeopleCount === 1 ? at.personUnitSingular : at.personUnitPlural}
+                    </span>
                     {isFiltered && (
                       <span className="ml-1 text-[rgba(184,146,74,0.9)]">· filtered</span>
                     )}

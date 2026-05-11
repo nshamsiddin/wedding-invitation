@@ -135,19 +135,47 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
     type EventStats = {
       total: number; attending: number; declined: number;
       maybe: number; pending: number; totalHeadcount: number;
+      totalInvitations: number;
+      invitationAttending: number;
+      invitationDeclined: number;
+      invitationMaybe: number;
+      invitationPending: number;
     };
     const statsMap = new Map<number, EventStats>();
     for (const e of eventRows) {
-      statsMap.set(e.id, { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 });
+      statsMap.set(e.id, {
+        total: 0,
+        attending: 0,
+        declined: 0,
+        maybe: 0,
+        pending: 0,
+        totalHeadcount: 0,
+        totalInvitations: 0,
+        invitationAttending: 0,
+        invitationDeclined: 0,
+        invitationMaybe: 0,
+        invitationPending: 0,
+      });
     }
     for (const row of statRows) {
       const s = statsMap.get(row.eventId);
       if (!s) continue;
+      s.totalInvitations += row.invitationCount;
       s.total += row.peopleCount;
-      if (row.status === 'attending') { s.attending += row.peopleCount; s.totalHeadcount += row.peopleCount; }
-      else if (row.status === 'declined') s.declined += row.peopleCount;
-      else if (row.status === 'maybe') s.maybe += row.peopleCount;
-      else s.pending += row.peopleCount;
+      if (row.status === 'attending') {
+        s.attending += row.peopleCount;
+        s.totalHeadcount += row.peopleCount;
+        s.invitationAttending += row.invitationCount;
+      } else if (row.status === 'declined') {
+        s.declined += row.peopleCount;
+        s.invitationDeclined += row.invitationCount;
+      } else if (row.status === 'maybe') {
+        s.maybe += row.peopleCount;
+        s.invitationMaybe += row.invitationCount;
+      } else {
+        s.pending += row.peopleCount;
+        s.invitationPending += row.invitationCount;
+      }
     }
 
     res.json(
@@ -161,7 +189,19 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
         venueAddress: e.venueAddress,
         dressCode: e.dressCode,
         mapsUrl: e.mapsUrl,
-        stats: statsMap.get(e.id) ?? { total: 0, attending: 0, declined: 0, maybe: 0, pending: 0, totalHeadcount: 0 },
+        stats: statsMap.get(e.id) ?? {
+          total: 0,
+          attending: 0,
+          declined: 0,
+          maybe: 0,
+          pending: 0,
+          totalHeadcount: 0,
+          totalInvitations: 0,
+          invitationAttending: 0,
+          invitationDeclined: 0,
+          invitationMaybe: 0,
+          invitationPending: 0,
+        },
       }))
     );
   } catch (error) {

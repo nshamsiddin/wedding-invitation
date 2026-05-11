@@ -16,6 +16,8 @@ export interface AdminTranslations {
 
   // Stats cards
   statsInvited: string;
+  statsInvitations: string;
+  statsPeople: string;
   statsAttending: string;
   statsDeclined: string;
   statsMaybe: string;
@@ -24,6 +26,7 @@ export interface AdminTranslations {
   statsAttendingGuests: string;
   statsResponseRate: string;
   statsResponded: (responded: number, total: number) => string;
+  statsRespondedInvitations: (responded: number, total: number) => string;
   statsExpectedHeadcount: string;
 
   // Shareable links section
@@ -51,11 +54,17 @@ export interface AdminTranslations {
   searchPlaceholder: string;
   addGuest: string;
   colName: string;
+  colNumber: string;
   colAdded: string;
   colTable: string;
   colActions: string;
   noGuestsFound: string;
   noGuestsHint: string;
+  invitationUnitSingular: string;
+  invitationUnitPlural: string;
+  personUnitSingular: string;
+  personUnitPlural: string;
+  partySizeLabel: string;
 
   // Add Guest modal
   addGuestTitle: string;
@@ -125,6 +134,8 @@ const adminEn: AdminTranslations = {
   atWord: 'at',
 
   statsInvited: 'Invited',
+  statsInvitations: 'Invitations',
+  statsPeople: 'People',
   statsAttending: 'Attending',
   statsDeclined: 'Declined',
   statsMaybe: 'Maybe',
@@ -133,6 +144,7 @@ const adminEn: AdminTranslations = {
   statsAttendingGuests: 'attending guests',
   statsResponseRate: 'Response rate',
   statsResponded: (responded, total) => `${responded} of ${total} responded`,
+  statsRespondedInvitations: (responded, total) => `${responded} of ${total} invitations responded`,
   statsExpectedHeadcount: 'Expected headcount',
 
   shareableLinksTitle: 'Shareable Invitation Links',
@@ -156,11 +168,17 @@ const adminEn: AdminTranslations = {
   searchPlaceholder: 'Search guests…',
   addGuest: 'Add Guest',
   colName: 'Name',
+  colNumber: '#',
   colAdded: 'Added',
   colTable: 'Table #',
   colActions: 'Actions',
   noGuestsFound: 'No guests found',
   noGuestsHint: 'Try adjusting filters or add a guest manually',
+  invitationUnitSingular: 'invitation',
+  invitationUnitPlural: 'invitations',
+  personUnitSingular: 'person',
+  personUnitPlural: 'people',
+  partySizeLabel: 'Party size',
 
   addGuestTitle: 'Add Guest',
   fullName: 'Full Name',
@@ -218,6 +236,8 @@ const adminTr: AdminTranslations = {
   atWord: 'saat',
 
   statsInvited: 'Davetli',
+  statsInvitations: 'Davet',
+  statsPeople: 'Kişi',
   statsAttending: 'Katılıyor',
   statsDeclined: 'Katılmıyor',
   statsMaybe: 'Belki',
@@ -226,6 +246,7 @@ const adminTr: AdminTranslations = {
   statsAttendingGuests: 'katılan misafir',
   statsResponseRate: 'Yanıt oranı',
   statsResponded: (responded, total) => `${total} kişiden ${responded} yanıtladı`,
+  statsRespondedInvitations: (responded, total) => `${total} davetten ${responded} yanıt geldi`,
   statsExpectedHeadcount: 'Beklenen kişi sayısı',
 
   shareableLinksTitle: 'Paylaşılabilir Davet Bağlantıları',
@@ -249,11 +270,17 @@ const adminTr: AdminTranslations = {
   searchPlaceholder: 'Misafir ara…',
   addGuest: 'Misafir Ekle',
   colName: 'Ad',
+  colNumber: '#',
   colAdded: 'Eklenme',
   colTable: 'Masa #',
   colActions: 'İşlemler',
   noGuestsFound: 'Misafir bulunamadı',
   noGuestsHint: 'Filtreleri değiştirin veya manuel olarak misafir ekleyin',
+  invitationUnitSingular: 'davet',
+  invitationUnitPlural: 'davet',
+  personUnitSingular: 'kişi',
+  personUnitPlural: 'kişi',
+  partySizeLabel: 'Grup sayısı',
 
   addGuestTitle: 'Misafir Ekle',
   fullName: 'Ad Soyad',
@@ -311,6 +338,8 @@ const adminUz: AdminTranslations = {
   atWord: 'soat',
 
   statsInvited: 'Taklif qilingan',
+  statsInvitations: 'Takliflar',
+  statsPeople: 'Kishilar',
   statsAttending: 'Qatnashadi',
   statsDeclined: 'Rad etdi',
   statsMaybe: 'Balki',
@@ -319,6 +348,7 @@ const adminUz: AdminTranslations = {
   statsAttendingGuests: 'qatnashuvchi mehmon',
   statsResponseRate: 'Javob darajasi',
   statsResponded: (responded, total) => `${total} tadan ${responded} tasi javob berdi`,
+  statsRespondedInvitations: (responded, total) => `${total} taklifdan ${responded} tasi javob berdi`,
   statsExpectedHeadcount: 'Kutilayotgan kishi soni',
 
   shareableLinksTitle: "Ulashish Mumkin Bo'lgan Havolalar",
@@ -342,11 +372,17 @@ const adminUz: AdminTranslations = {
   searchPlaceholder: 'Mehmon qidirish…',
   addGuest: "Mehmon Qo'shish",
   colName: 'Ism',
+  colNumber: '#',
   colAdded: "Qo'shilgan",
   colTable: 'Stol #',
   colActions: 'Amallar',
   noGuestsFound: 'Mehmon topilmadi',
   noGuestsHint: "Filtrlarni o'zgartiring yoki qo'lda mehmon qo'shing",
+  invitationUnitSingular: 'taklif',
+  invitationUnitPlural: 'taklif',
+  personUnitSingular: 'kishi',
+  personUnitPlural: 'kishi',
+  partySizeLabel: 'Guruh soni',
 
   addGuestTitle: "Mehmon Qo'shish",
   fullName: "To'liq Ism",

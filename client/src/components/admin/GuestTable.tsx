@@ -428,7 +428,7 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const totalColSpan = 2 + events.length + 1 + 1;
+  const totalColSpan = 3 + events.length + 1 + 1;
 
   const columns: Array<{ key: SortKey; label: string }> = [
     { key: 'name',      label: at.colName },
@@ -440,6 +440,9 @@ export default function GuestTable({
       <table className="w-full text-sm font-sans" aria-label="Guest list">
         <thead>
           <tr style={{ borderBottom: `1px solid ${GOLD_DIM}`, background: CREAM }}>
+            <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+              {at.colNumber}
+            </th>
             {columns.map((col) => (
               <th
                 key={col.key}
@@ -509,7 +512,7 @@ export default function GuestTable({
           )}
 
           <AnimatePresence initial={false}>
-            {!isLoading && sorted.map((guest) => (
+            {!isLoading && sorted.map((guest, rowIndex) => (
               <motion.tr
                 key={guest.id}
                 initial={{ opacity: 0 }}
@@ -521,6 +524,11 @@ export default function GuestTable({
                 onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
+                {/* Row number */}
+                <td className="px-3 py-3 whitespace-nowrap text-xs tabular-nums" style={{ color: ESPRESSO_DIM }}>
+                  {rowIndex + 1}
+                </td>
+
                 {/* Name cell */}
                 <td className="px-4 py-3 font-medium whitespace-nowrap max-w-[160px] truncate" style={{ color: ESPRESSO }}>
                   {guest.name}
@@ -550,6 +558,9 @@ export default function GuestTable({
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium self-start ${config.classes}`}>
                             {config.icon}
                             {config.label}
+                          </span>
+                          <span className="text-[10px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
+                            {at.partySizeLabel}: {inv.guestCount}
                           </span>
 
                           {/* Inline table number */}
