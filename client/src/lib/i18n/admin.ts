@@ -59,6 +59,8 @@ export interface AdminTranslations {
   colNumber: string;
   colAdded: string;
   colTable: string;
+  colStatus: string;
+  colParty: string;
   colActions: string;
   noGuestsFound: string;
   noGuestsHint: string;
@@ -185,6 +187,8 @@ const adminEn: AdminTranslations = {
   colNumber: '#',
   colAdded: 'Added',
   colTable: 'Table #',
+  colStatus: 'Status',
+  colParty: 'Party',
   colActions: 'Actions',
   noGuestsFound: 'No guests found',
   noGuestsHint: 'Try adjusting filters or add a guest manually',
@@ -299,6 +303,8 @@ const adminTr: AdminTranslations = {
   colNumber: '#',
   colAdded: 'Eklenme',
   colTable: 'Masa #',
+  colStatus: 'Durum',
+  colParty: 'Grup',
   colActions: 'İşlemler',
   noGuestsFound: 'Misafir bulunamadı',
   noGuestsHint: 'Filtreleri değiştirin veya manuel olarak misafir ekleyin',
@@ -413,6 +419,8 @@ const adminUz: AdminTranslations = {
   colNumber: '#',
   colAdded: "Qo'shilgan",
   colTable: 'Stol #',
+  colStatus: 'Holat',
+  colParty: 'Guruh',
   colActions: 'Amallar',
   noGuestsFound: 'Mehmon topilmadi',
   noGuestsHint: "Filtrlarni o'zgartiring yoki qo'lda mehmon qo'shing",

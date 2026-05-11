@@ -724,8 +724,19 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  // Columns: checkbox + # + name + (events) + message + actions
-  const totalColSpan = 3 + displayedEvents.length + 1 + 1;
+  // When the admin has filtered to a single event the per-event cell becomes
+  // pointless duplication: every row is for that one event. In that case we
+  // promote the invitation fields (status / party / table) to first-class
+  // columns and lift per-invitation actions (copy link, edit RSVP, remove)
+  // into the unified Actions column. The "All" tab keeps the grouped layout
+  // because the side-by-side comparison across events is the whole point.
+  const isSingleEvent = displayedEvents.length === 1;
+  const singleEvent = isSingleEvent ? displayedEvents[0] : null;
+
+  // Columns: checkbox + # + name + (per-invitation OR per-event) + message + actions
+  const totalColSpan = isSingleEvent
+    ? 3 + 3 + 1 + 1
+    : 3 + displayedEvents.length + 1 + 1;
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const allVisibleSelected = sorted.length > 0 && sorted.every((g) => selectedGuestIds.has(g.id));
   const someVisibleSelected = sorted.some((g) => selectedGuestIds.has(g.id));
@@ -981,13 +992,29 @@ export default function GuestTable({
               </th>
             ))}
 
-            {/* Event columns — use getEventDisplayName for consistency.
-                Filtered to the active event when the admin is on a single-event tab. */}
-            {displayedEvents.map((ev) => (
-              <th key={ev.id} scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
-                {getEventDisplayName(ev)}
-              </th>
-            ))}
+            {/* Single-event tab: promote invitation fields to columns so the
+                Ankara/Tashkent header (and its stacked sub-fields) stops being
+                redundant with the active tab.
+                "All" tab: keep grouped per-event columns for cross-event scan. */}
+            {isSingleEvent ? (
+              <>
+                <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+                  {at.colStatus}
+                </th>
+                <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+                  {at.colParty}
+                </th>
+                <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+                  {at.colTable}
+                </th>
+              </>
+            ) : (
+              displayedEvents.map((ev) => (
+                <th key={ev.id} scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+                  {getEventDisplayName(ev)}
+                </th>
+              ))
+            )}
 
             {/* Message column header */}
             <th scope="col" className="px-3 py-3 text-center font-medium" style={{ color: ESPRESSO_DIM }}>
@@ -1070,26 +1097,30 @@ export default function GuestTable({
                   )}
                 </td>
 
-                {/* Per-event invitation cells — filtered to the active event tab */}
-                {displayedEvents.map((ev) => {
-                  const inv = guest.invitations.find((i) => i.eventId === ev.id);
-                  const config = inv ? (STATUS_CONFIG[inv.status] ?? STATUS_CONFIG['pending']) : null;
-
-                  return (
-                    <td key={ev.id} className="px-4 py-3 min-w-[140px]">
-                      {inv && config ? (
-                        <div className="flex flex-col gap-1.5">
-                          {/* Status badge with icon — WCAG 1.4.1 */}
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium self-start ${config.classes}`}>
-                            {config.icon}
-                            {config.label}
-                          </span>
-                          <span className="text-[10px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
-                            {at.partySizeLabel}: {inv.guestCount}
-                          </span>
-
-                          {/* Inline table number */}
-                          {onUpdateTableNumber && (
+                {/* Invitation columns.
+                    Single-event tab → 3 narrow columns (status / party / table).
+                    "All" tab → grouped compound cell per event. */}
+                {isSingleEvent && singleEvent ? (
+                  (() => {
+                    const inv = guest.invitations.find((i) => i.eventId === singleEvent.id);
+                    const config = inv ? (STATUS_CONFIG[inv.status] ?? STATUS_CONFIG['pending']) : null;
+                    return (
+                      <>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          {inv && config ? (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.classes}`}>
+                              {config.icon}
+                              {config.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm tabular-nums" style={{ color: ESPRESSO }}>
+                          {inv ? inv.guestCount : <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          {inv && onUpdateTableNumber ? (
                             <TableNumberCell
                               invitationId={inv.id}
                               tableNumber={inv.tableNumber}
@@ -1098,44 +1129,80 @@ export default function GuestTable({
                               onFilterByTable={onFilterByTable}
                               activeTableFilter={activeTableFilter}
                             />
+                          ) : (
+                            <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
                           )}
+                        </td>
+                      </>
+                    );
+                  })()
+                ) : (
+                  displayedEvents.map((ev) => {
+                    const inv = guest.invitations.find((i) => i.eventId === ev.id);
+                    const config = inv ? (STATUS_CONFIG[inv.status] ?? STATUS_CONFIG['pending']) : null;
 
-                          {/* Per-invitation actions */}
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
+                    return (
+                      <td key={ev.id} className="px-4 py-3 min-w-[140px]">
+                        {inv && config ? (
+                          <div className="flex flex-col gap-1.5">
+                            {/* Status badge with icon — WCAG 1.4.1 */}
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium self-start ${config.classes}`}>
+                              {config.icon}
+                              {config.label}
+                            </span>
+                            <span className="text-[10px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
+                              {at.partySizeLabel}: {inv.guestCount}
+                            </span>
 
-                            <button
-                              onClick={() => onEditInvitation(inv, guest)}
-                              title="Edit RSVP"
-                              className="p-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
-                              style={{ color: ESPRESSO_DIM }}
-                              onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
-                              aria-label={`Edit ${getEventDisplayName(ev)} RSVP for ${guest.name}`}
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
+                            {/* Inline table number */}
+                            {onUpdateTableNumber && (
+                              <TableNumberCell
+                                invitationId={inv.id}
+                                tableNumber={inv.tableNumber}
+                                onUpdate={onUpdateTableNumber}
+                                existingTables={existingTables}
+                                onFilterByTable={onFilterByTable}
+                                activeTableFilter={activeTableFilter}
+                              />
+                            )}
 
-                            <button
-                              onClick={() => onDeleteInvitation(inv)}
-                              title="Remove from this event"
-                              className="p-1 rounded text-[rgba(42,31,26,0.35)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
-                              aria-label={`Remove ${guest.name} from ${getEventDisplayName(ev)}`}
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
+                            {/* Per-invitation actions */}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
+
+                              <button
+                                onClick={() => onEditInvitation(inv, guest)}
+                                title="Edit RSVP"
+                                className="p-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                                style={{ color: ESPRESSO_DIM }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
+                                aria-label={`Edit ${getEventDisplayName(ev)} RSVP for ${guest.name}`}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+
+                              <button
+                                onClick={() => onDeleteInvitation(inv)}
+                                title="Remove from this event"
+                                className="p-1 rounded text-[rgba(42,31,26,0.35)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                                aria-label={`Remove ${guest.name} from ${getEventDisplayName(ev)}`}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
-                      )}
-                    </td>
-                  );
-                })}
+                        ) : (
+                          <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
+                        )}
+                      </td>
+                    );
+                  })
+                )}
 
                 {/* Message cell */}
                 <td className="px-3 py-3 text-center">
@@ -1163,16 +1230,77 @@ export default function GuestTable({
                   })()}
                 </td>
 
-                {/* Row actions — persistent at reduced opacity, full on hover/focus */}
+                {/* Row actions — persistent at reduced opacity, full on hover/focus.
+                    Single-event tab: per-invitation actions (copy link, edit RSVP,
+                    remove from event) are lifted into this same cell behind a
+                    vertical divider so all action affordances live in one column. */}
                 <td className="px-4 py-3">
-                  <div
-                    className="flex items-center justify-end gap-1 transition-opacity"
-                    // Always visible at 40% — revealed fully on row hover or keyboard focus
-                    // This replaces the previous opacity-0 which broke keyboard and touch access
-                    style={{ opacity: undefined }}
-                  >
+                  <div className="flex items-center justify-end gap-0.5 transition-opacity">
+                    {isSingleEvent && singleEvent && (() => {
+                      const inv = guest.invitations.find((i) => i.eventId === singleEvent.id);
+                      if (!inv) return null;
+                      return (
+                        <>
+                          <button
+                            onClick={async () => {
+                              const url = `${baseUrl}/invite/${inv.token}`;
+                              try {
+                                await navigator.clipboard.writeText(url);
+                                toast.success('Invite link copied!');
+                              } catch {
+                                toast.error('Failed to copy link');
+                              }
+                            }}
+                            title={`Copy invite link for ${guest.name}`}
+                            className="p-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] opacity-50 group-hover:opacity-100 focus-visible:opacity-100"
+                            style={{ color: ESPRESSO_DIM }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
+                            aria-label={`Copy invite link for ${guest.name}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() => onEditInvitation(inv, guest)}
+                            title="Edit RSVP"
+                            className="p-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] opacity-50 group-hover:opacity-100 focus-visible:opacity-100"
+                            style={{ color: ESPRESSO_DIM }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
+                            aria-label={`Edit RSVP for ${guest.name}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() => onDeleteInvitation(inv)}
+                            title="Remove from this event"
+                            className="p-1.5 rounded-lg text-[rgba(42,31,26,0.35)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 opacity-50 group-hover:opacity-100 focus-visible:opacity-100"
+                            aria-label={`Remove ${guest.name} from ${getEventDisplayName(singleEvent)}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+
+                          {/* Divider separating per-invitation actions from per-guest actions */}
+                          <span
+                            aria-hidden="true"
+                            className="mx-1 w-px h-5"
+                            style={{ background: GOLD_DIM }}
+                          />
+                        </>
+                      );
+                    })()}
+
                     <button
                       onClick={() => onEditGuest(guest)}
+                      title="Edit contact info"
                       className="p-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
                       style={{ color: ESPRESSO_DIM }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
@@ -1186,6 +1314,7 @@ export default function GuestTable({
 
                     <button
                       onClick={() => onDeleteGuest(guest)}
+                      title="Delete guest"
                       className="p-1.5 rounded-lg text-[rgba(42,31,26,0.35)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
                       aria-label={`Delete ${guest.name}`}
                     >
