@@ -268,56 +268,68 @@ function TableCardChip({
   option,
   isCurrent,
   onSelect,
+  onEdit,
 }: {
   option: TableOption;
   isCurrent: boolean;
   onSelect: () => void;
+  /** When provided, a small pencil overlay lets the admin rename/renumber
+   *  this table without leaving the picker. Only meaningful when the picker
+   *  has an `eventId` (the API requires it to update event_tables). */
+  onEdit?: () => void;
 }) {
+  const at = useAdminTranslation();
   const { tableNumber, label, capacity, occupancy } = option;
   const hasMeta = capacity != null;
   const isFull = capacity != null && occupancy != null && occupancy >= capacity;
   const isOver = capacity != null && occupancy != null && occupancy > capacity;
 
+  // A blank label slot reads as a half-finished card; fall back to the
+  // canonical "Table N" name so every card has a recognisable line of text.
+  // This matches the convention in TableCard / DB schema comments which
+  // explicitly say label "falls back to 'Table N' in the UI when null".
+  const displayLabel = label?.trim() || at.seatingTableLabel(tableNumber);
+
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      role="option"
-      aria-selected={isCurrent}
-      aria-label={
-        label
-          ? `Table ${tableNumber} — ${label}${hasMeta ? `, ${occupancy ?? 0} of ${capacity} seats` : ''}`
-          : `Table ${tableNumber}${hasMeta ? `, ${occupancy ?? 0} of ${capacity} seats` : ''}`
-      }
-      title={label ? `${label} · #${tableNumber}` : `Table ${tableNumber}`}
-      className="group/tbl relative flex flex-col items-stretch justify-between text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
-      style={{
-        padding: '0.4rem 0.5rem 0.35rem',
-        borderRadius: '0.5rem',
-        border: `1.5px solid ${isCurrent ? GOLD : isOver ? 'rgba(220,38,38,0.45)' : 'rgba(184,146,74,0.32)'}`,
-        background: isCurrent
-          ? GOLD
-          : isOver
-            ? 'rgba(220,38,38,0.06)'
-            : 'rgba(184,146,74,0.07)',
-        color: isCurrent ? '#FFFFFF' : ESPRESSO,
-        cursor: 'pointer',
-        minHeight: hasMeta ? '3.2rem' : '2.4rem',
-      }}
-    >
-      <span
-        className="font-sans tabular-nums"
+    <div className="group/tbl relative">
+      <button
+        type="button"
+        onClick={onSelect}
+        role="option"
+        aria-selected={isCurrent}
+        aria-label={
+          `${displayLabel}${hasMeta ? `, ${occupancy ?? 0} of ${capacity} seats` : ''}`
+        }
+        title={`${displayLabel}${hasMeta ? ` · ${occupancy ?? 0}/${capacity}` : ''}`}
+        className="w-full flex flex-col items-stretch justify-between text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
         style={{
-          fontSize: '0.95rem',
-          fontWeight: 700,
-          letterSpacing: '-0.01em',
-          lineHeight: 1.05,
-          color: isCurrent ? '#FFFFFF' : '#7A4F10',
+          // Right padding leaves room for the edit overlay so the # never
+          // collides with the pencil icon on narrow cards.
+          padding: onEdit ? '0.4rem 1.25rem 0.35rem 0.5rem' : '0.4rem 0.5rem 0.35rem',
+          borderRadius: '0.5rem',
+          border: `1.5px solid ${isCurrent ? GOLD : isOver ? 'rgba(220,38,38,0.45)' : 'rgba(184,146,74,0.32)'}`,
+          background: isCurrent
+            ? GOLD
+            : isOver
+              ? 'rgba(220,38,38,0.06)'
+              : 'rgba(184,146,74,0.07)',
+          color: isCurrent ? '#FFFFFF' : ESPRESSO,
+          cursor: 'pointer',
+          minHeight: hasMeta ? '3.2rem' : '2.4rem',
         }}
       >
-        #{tableNumber}
-      </span>
-      {label && (
+        <span
+          className="font-sans tabular-nums"
+          style={{
+            fontSize: '0.95rem',
+            fontWeight: 700,
+            letterSpacing: '-0.01em',
+            lineHeight: 1.05,
+            color: isCurrent ? '#FFFFFF' : '#7A4F10',
+          }}
+        >
+          #{tableNumber}
+        </span>
         <span
           className="font-sans truncate"
           style={{
@@ -325,55 +337,100 @@ function TableCardChip({
             fontWeight: 500,
             opacity: isCurrent ? 0.92 : 0.85,
             marginTop: '0.1rem',
-          }}
-        >
-          {label}
-        </span>
-      )}
-      {hasMeta && (
-        <span
-          className="font-sans tabular-nums"
-          style={{
-            fontSize: '0.6rem',
-            fontWeight: 600,
-            letterSpacing: '0.02em',
-            marginTop: '0.15rem',
+            // Custom labels read bolder than the "Table N" fallback so the
+            // matrix doesn't look identical for unnamed and named tables.
+            fontStyle: label?.trim() ? 'normal' : 'italic',
             color: isCurrent
               ? 'rgba(255,255,255,0.92)'
-              : isOver
-                ? '#B0203F'
-                : isFull
-                  ? '#7A4F10'
-                  : ESPRESSO_DIM,
+              : label?.trim()
+                ? ESPRESSO
+                : ESPRESSO_DIM,
           }}
         >
-          {occupancy ?? 0}/{capacity}
-          {isFull && !isOver ? ' · full' : ''}
+          {displayLabel}
         </span>
-      )}
-      {isCurrent && (
-        <span
-          aria-hidden="true"
+        {hasMeta && (
+          <span
+            className="font-sans tabular-nums"
+            style={{
+              fontSize: '0.6rem',
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+              marginTop: '0.15rem',
+              color: isCurrent
+                ? 'rgba(255,255,255,0.92)'
+                : isOver
+                  ? '#B0203F'
+                  : isFull
+                    ? '#7A4F10'
+                    : ESPRESSO_DIM,
+            }}
+          >
+            {occupancy ?? 0}/{capacity}
+            {isFull && !isOver ? ' · full' : ''}
+          </span>
+        )}
+        {isCurrent && (
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 3,
+              right: 3,
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              color: GOLD,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          </span>
+        )}
+      </button>
+
+      {/* Edit overlay — quiet at rest, visible on hover, always tappable
+          on touch (no opacity-0 gating). Stops propagation so a tap on the
+          pencil never also selects the card. Placed at bottom-right when
+          the card is current (top-right is taken by the selected check),
+          else top-right. */}
+      {onEdit && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          aria-label={`Edit ${displayLabel}`}
+          title={`Edit ${displayLabel}`}
+          className="focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)] opacity-60 hover:opacity-100 group-hover/tbl:opacity-100 transition-opacity"
           style={{
             position: 'absolute',
-            top: 3,
-            right: 3,
-            width: 12,
-            height: 12,
-            borderRadius: '50%',
-            background: '#FFFFFF',
-            color: GOLD,
+            // Tuck under the selected-check when current; otherwise top-right.
+            top: isCurrent ? 'auto' : 2,
+            bottom: isCurrent ? 2 : 'auto',
+            right: 2,
+            width: 18,
+            height: 18,
+            borderRadius: '0.25rem',
+            background: isCurrent ? 'rgba(255,255,255,0.18)' : 'rgba(184,146,74,0.18)',
+            color: isCurrent ? '#FFFFFF' : '#7A4F10',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            cursor: 'pointer',
           }}
         >
-          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6L9 17l-5-5" />
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-        </span>
+        </button>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -409,6 +466,7 @@ export function TablePicker({
   subtitle?: string;
 }) {
   const qc = useQueryClient();
+  const at = useAdminTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ── Rich event_tables (when eventId is provided) ───────────────────────────
@@ -450,24 +508,55 @@ export function TablePicker({
     return null;
   }, [options]);
 
-  // ── "Add new table" inline form state ──────────────────────────────────────
-  const [adding, setAdding] = useState(false);
-  const [newNumber, setNewNumber] = useState<number>(nextAvailable ?? 1);
-  const [newLabel, setNewLabel] = useState('');
-  const [newCapacity, setNewCapacity] = useState(10);
-  const newLabelRef = useRef<HTMLInputElement>(null);
+  // ── Inline form state ─────────────────────────────────────────────────────
+  // The same form serves both "create a new table" and "edit this table" — a
+  // table named "Family A" with 8 seats is shaped identically whether we're
+  // adding it or amending it, so collapsing both flows into one form keeps
+  // the picker compact and the mental model consistent.
+  type FormMode =
+    | { kind: 'none' }
+    | { kind: 'create' }
+    | { kind: 'edit'; tableNumber: number; original: TableOption };
+  const [formMode, setFormMode] = useState<FormMode>({ kind: 'none' });
+  const [formNumber, setFormNumber] = useState<number>(nextAvailable ?? 1);
+  const [formLabel, setFormLabel] = useState('');
+  const [formCapacity, setFormCapacity] = useState(10);
+  const formLabelRef = useRef<HTMLInputElement>(null);
+  const formNumberRef = useRef<HTMLInputElement>(null);
 
+  // While the form is closed, keep the "Table #" prefilled with the next free
+  // slot so admins don't have to think about numbering on the common path.
   useEffect(() => {
-    if (!adding) setNewNumber(nextAvailable ?? 1);
-  }, [nextAvailable, adding]);
+    if (formMode.kind === 'none') setFormNumber(nextAvailable ?? 1);
+  }, [nextAvailable, formMode.kind]);
 
+  // Auto-focus the most useful field for the mode: label when creating
+  // (admin's first action is usually typing a name), number when editing
+  // (most common reason to edit is renumber).
   useEffect(() => {
-    if (adding) {
-      const id = requestAnimationFrame(() => newLabelRef.current?.focus());
-      return () => cancelAnimationFrame(id);
-    }
-    return undefined;
-  }, [adding]);
+    if (formMode.kind === 'none') return undefined;
+    const id = requestAnimationFrame(() => {
+      if (formMode.kind === 'edit') formNumberRef.current?.focus();
+      else formLabelRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [formMode.kind]);
+
+  const openCreate = () => {
+    setFormNumber(nextAvailable ?? 1);
+    setFormLabel('');
+    setFormCapacity(10);
+    setFormMode({ kind: 'create' });
+  };
+
+  const openEdit = (opt: TableOption) => {
+    setFormNumber(opt.tableNumber);
+    setFormLabel(opt.label ?? '');
+    setFormCapacity(opt.capacity ?? 10);
+    setFormMode({ kind: 'edit', tableNumber: opt.tableNumber, original: opt });
+  };
+
+  const closeForm = () => setFormMode({ kind: 'none' });
 
   // ── "Advanced: type a number" escape hatch ─────────────────────────────────
   const [typingMode, setTypingMode] = useState(false);
@@ -516,14 +605,14 @@ export function TablePicker({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        if (adding) { setAdding(false); return; }
+        if (formMode.kind !== 'none') { closeForm(); return; }
         if (typingMode) { setTypingMode(false); return; }
         onCancel();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onCancel, adding, typingMode]);
+  }, [onCancel, formMode.kind, typingMode]);
 
   // ── Create a new event_table (only available with eventId) ─────────────────
   const createMutation = useMutation({
@@ -532,33 +621,91 @@ export function TablePicker({
       qc.invalidateQueries({ queryKey: ['admin', 'eventTables', eventId ?? null] });
       qc.invalidateQueries({ queryKey: ['admin', 'tables'] });
       toast.success(`Table ${created.tableNumber} created`);
-      setAdding(false);
-      setNewLabel('');
+      closeForm();
       onCommit(created.tableNumber);
     },
     onError: () => toast.error('Failed to create table'),
   });
 
-  const handleCreate = () => {
-    const n = Number.isFinite(newNumber) && newNumber > 0 ? Math.floor(newNumber) : (nextAvailable ?? 1);
-    const c = Number.isFinite(newCapacity) && newCapacity > 0 ? Math.floor(newCapacity) : 10;
-    if (eventId != null) {
-      createMutation.mutate({
-        eventId,
-        tableNumber: n,
-        label: newLabel.trim() || null,
-        capacity: c,
-      });
-    } else {
-      // No eventId — we can't create a real event_table row, so just commit
-      // the chosen number. The invitation will still link via tableNumber.
-      setAdding(false);
-      setNewLabel('');
-      onCommit(n);
+  // ── Rename / re-number / resize an existing event_table ────────────────────
+  // The server handles the cascade — if the table number changes, every
+  // invitation currently linked to the old (eventId, oldTableNumber) is moved
+  // to the new number inside the same transaction. We invalidate guest queries
+  // here so the dashboard's "Table N" pills follow the renumber immediately.
+  const updateMutation = useMutation({
+    mutationFn: ({
+      tableNumber,
+      values,
+    }: {
+      tableNumber: number;
+      values: {
+        tableNumber?: number;
+        label?: string | null;
+        capacity?: number;
+      };
+    }) => eventTablesApi.update(eventId!, tableNumber, values),
+    onSuccess: (updated) => {
+      // Cache invalidation is sufficient to propagate the rename: the server
+      // already cascaded `tableNumber` updates to `guest_invitations` inside
+      // the same transaction, so refetching the guests query will surface
+      // the new number on the parent row's pill on the next render. Calling
+      // onCommit here would only trigger a redundant updateInvitation API
+      // call (no-op against the new value).
+      qc.invalidateQueries({ queryKey: ['admin', 'eventTables', eventId ?? null] });
+      qc.invalidateQueries({ queryKey: ['admin', 'tables'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+      toast.success(`Table ${updated.tableNumber} updated`);
+      closeForm();
+    },
+    onError: (err: unknown) => {
+      // Friendlier 409 messaging — admins renaming to an in-use number get
+      // told what's wrong rather than a generic "failed".
+      const msg =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+          : null;
+      toast.error(msg || 'Failed to update table');
+    },
+  });
+
+  const handleSubmitForm = () => {
+    const n = Number.isFinite(formNumber) && formNumber > 0 ? Math.floor(formNumber) : (nextAvailable ?? 1);
+    const c = Number.isFinite(formCapacity) && formCapacity > 0 ? Math.floor(formCapacity) : 10;
+    const labelClean = formLabel.trim() || null;
+
+    if (formMode.kind === 'create') {
+      if (eventId != null) {
+        createMutation.mutate({
+          eventId,
+          tableNumber: n,
+          label: labelClean,
+          capacity: c,
+        });
+      } else {
+        // No eventId — can't create a real event_table row, so just commit
+        // the chosen number. The invitation will still link via tableNumber.
+        closeForm();
+        onCommit(n);
+      }
+      return;
+    }
+
+    if (formMode.kind === 'edit' && eventId != null) {
+      const orig = formMode.original;
+      // Skip the network round-trip when nothing actually changed.
+      const values: { tableNumber?: number; label?: string | null; capacity?: number } = {};
+      if (n !== orig.tableNumber) values.tableNumber = n;
+      if (labelClean !== (orig.label ?? null)) values.label = labelClean;
+      if (orig.capacity != null && c !== orig.capacity) values.capacity = c;
+      else if (orig.capacity == null) values.capacity = c;
+      if (Object.keys(values).length === 0) { closeForm(); return; }
+      updateMutation.mutate({ tableNumber: orig.tableNumber, values });
     }
   };
 
   const showClearButton = showClear && value != null;
+  const formOpen = formMode.kind !== 'none';
+  const formBusy = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div
@@ -649,6 +796,13 @@ export function TablePicker({
               option={opt}
               isCurrent={opt.tableNumber === value}
               onSelect={() => onCommit(opt.tableNumber)}
+              // Edit affordance only when we can actually update the row —
+              // requires both an eventId and a real event_table (capacity!=null).
+              onEdit={
+                eventId != null && opt.capacity != null
+                  ? () => openEdit(opt)
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -668,9 +822,9 @@ export function TablePicker({
         </p>
       )}
 
-      {/* ── Add-new-table affordance ──────────────────────────────────────── */}
+      {/* ── Create / edit table form ──────────────────────────────────────── */}
       <AnimatePresence initial={false} mode="wait">
-        {!adding ? (
+        {!formOpen ? (
           <motion.button
             key="add-trigger"
             type="button"
@@ -678,7 +832,7 @@ export function TablePicker({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            onClick={() => setAdding(true)}
+            onClick={openCreate}
             aria-label={
               nextAvailable != null
                 ? `Add a new table (next available is ${nextAvailable})`
@@ -750,22 +904,27 @@ export function TablePicker({
                 color: GOLD,
               }}
             >
-              {eventId != null ? 'Create new table' : 'Use a new number'}
+              {formMode.kind === 'edit'
+                ? `Edit ${at.seatingTableLabel(formMode.original.tableNumber)}`
+                : eventId != null ? 'Create new table' : 'Use a new number'}
             </p>
 
-            {/* Label — only meaningful when we can create a real event_table */}
+            {/* Label — only meaningful when we can persist on event_tables */}
             {eventId != null && (
               <input
-                ref={newLabelRef}
+                ref={formLabelRef}
                 type="text"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
+                value={formLabel}
+                onChange={(e) => setFormLabel(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
-                  if (e.key === 'Escape') { e.preventDefault(); setAdding(false); }
+                  if (e.key === 'Enter') { e.preventDefault(); handleSubmitForm(); }
+                  if (e.key === 'Escape') { e.preventDefault(); closeForm(); }
                 }}
                 maxLength={100}
-                placeholder="Optional name (e.g. Family)"
+                // Show the default "Table N" name as the placeholder so admins
+                // see what the table will be called if they leave this blank,
+                // matching the convention in the seating planner's AddTable.
+                placeholder={at.seatingTableLabel(formNumber)}
                 aria-label="Table label"
                 className="font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
                 style={{
@@ -788,17 +947,17 @@ export function TablePicker({
                   Table #
                 </span>
                 <input
-                  ref={eventId == null ? newLabelRef : undefined}
+                  ref={formNumberRef}
                   type="number"
                   min={1}
                   max={500}
-                  value={newNumber}
-                  onChange={(e) => setNewNumber(parseInt(e.target.value, 10) || (nextAvailable ?? 1))}
+                  value={formNumber}
+                  onChange={(e) => setFormNumber(parseInt(e.target.value, 10) || (nextAvailable ?? 1))}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
-                    if (e.key === 'Escape') { e.preventDefault(); setAdding(false); }
+                    if (e.key === 'Enter') { e.preventDefault(); handleSubmitForm(); }
+                    if (e.key === 'Escape') { e.preventDefault(); closeForm(); }
                   }}
-                  aria-label="New table number"
+                  aria-label={formMode.kind === 'edit' ? 'Table number' : 'New table number'}
                   className="font-sans tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
                   style={{
                     padding: '0.3rem 0.4rem',
@@ -824,13 +983,13 @@ export function TablePicker({
                     type="number"
                     min={1}
                     max={50}
-                    value={newCapacity}
-                    onChange={(e) => setNewCapacity(parseInt(e.target.value, 10) || 10)}
+                    value={formCapacity}
+                    onChange={(e) => setFormCapacity(parseInt(e.target.value, 10) || 10)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
-                      if (e.key === 'Escape') { e.preventDefault(); setAdding(false); }
+                      if (e.key === 'Enter') { e.preventDefault(); handleSubmitForm(); }
+                      if (e.key === 'Escape') { e.preventDefault(); closeForm(); }
                     }}
-                    aria-label="New table capacity"
+                    aria-label="Table capacity"
                     className="font-sans tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
                     style={{
                       padding: '0.3rem 0.4rem',
@@ -850,7 +1009,7 @@ export function TablePicker({
             <div className="flex gap-1.5 mt-0.5">
               <button
                 type="button"
-                onClick={() => setAdding(false)}
+                onClick={closeForm}
                 className="flex-1 font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
                 style={{
                   padding: '0.3rem 0.5rem',
@@ -867,8 +1026,8 @@ export function TablePicker({
               </button>
               <button
                 type="button"
-                onClick={handleCreate}
-                disabled={createMutation.isPending}
+                onClick={handleSubmitForm}
+                disabled={formBusy}
                 className="flex-1 font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   padding: '0.3rem 0.5rem',
@@ -881,7 +1040,11 @@ export function TablePicker({
                   cursor: 'pointer',
                 }}
               >
-                {createMutation.isPending ? 'Adding…' : (eventId != null ? 'Create & assign' : 'Assign')}
+                {formBusy
+                  ? (formMode.kind === 'edit' ? 'Saving…' : 'Adding…')
+                  : formMode.kind === 'edit'
+                    ? 'Save changes'
+                    : eventId != null ? 'Create & assign' : 'Assign'}
               </button>
             </div>
           </motion.div>

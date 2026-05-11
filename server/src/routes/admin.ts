@@ -26,16 +26,16 @@ import type { AttendanceStatus } from '@invitation/shared';
 
 const router = Router();
 
-// Returns true when a SQLite UNIQUE constraint violation caused the error.
-// Used to convert DB-level uniqueness failures into 409 responses without a
-// pre-insert SELECT, which would introduce a TOCTOU race condition.
+// Returns true when a SQLite uniqueness violation (either UNIQUE index or
+// PRIMARY KEY) caused the error. Used to convert DB-level uniqueness failures
+// into 409 responses without a pre-insert SELECT, which would introduce a
+// TOCTOU race condition. PRIMARY KEY collisions matter for tables that use a
+// composite PK (e.g. event_tables on (event_id, table_number)) — renaming a
+// table to one already in use trips PRIMARYKEY, not UNIQUE.
 function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code: unknown }).code === 'SQLITE_CONSTRAINT_UNIQUE'
-  );
+  if (typeof error !== 'object' || error === null || !('code' in error)) return false;
+  const code = (error as { code: unknown }).code;
+  return code === 'SQLITE_CONSTRAINT_UNIQUE' || code === 'SQLITE_CONSTRAINT_PRIMARYKEY';
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -606,14 +606,22 @@ router.post('/event-tables', requireAuth, async (req: Request, res: Response): P
   }
 });
 
-// PATCH /api/admin/event-tables/:eventId/:tableNumber — update label / capacity / sortOrder.
+// PATCH /api/admin/event-tables/:eventId/:tableNumber — update label /
+// capacity / sortOrder, and optionally the table_number itself.
+//
+// Renumbering: when `tableNumber` is supplied in the body and differs from
+// the URL param, the handler renames the row's primary key AND cascades the
+// new number to every `guest_invitations` row currently linked to the old
+// (event_id, table_number). Both statements run inside a single transaction
+// so a crash between them cannot leave seats pointing at a non-existent
+// table. A duplicate target table number returns 409.
 router.patch(
   '/event-tables/:eventId/:tableNumber',
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
     const eventId = parseInt(req.params['eventId'] ?? '', 10);
-    const tableNumber = parseInt(req.params['tableNumber'] ?? '', 10);
-    if (!Number.isInteger(eventId) || !Number.isInteger(tableNumber)) {
+    const oldTableNumber = parseInt(req.params['tableNumber'] ?? '', 10);
+    if (!Number.isInteger(eventId) || !Number.isInteger(oldTableNumber)) {
       res.status(400).json({ error: 'Invalid eventId or tableNumber' });
       return;
     }
@@ -624,6 +632,14 @@ router.patch(
       return;
     }
 
+    const newTableNumber =
+      parsed.data.tableNumber !== undefined && parsed.data.tableNumber !== oldTableNumber
+        ? parsed.data.tableNumber
+        : null;
+
+    // Build the SET list for the secondary update (label/capacity/sortOrder).
+    // Note: tableNumber is NOT pushed here — renaming the PK requires its own
+    // statement so we can cascade to guest_invitations within the same tx.
     const updates: string[] = [];
     const values: (string | number | null)[] = [];
     if (parsed.data.label !== undefined) {
@@ -639,29 +655,80 @@ router.patch(
       values.push(parsed.data.sortOrder);
     }
 
-    if (updates.length === 0) {
+    if (updates.length === 0 && newTableNumber === null) {
       res.status(400).json({ error: 'No fields to update' });
       return;
     }
 
     try {
-      values.push(eventId, tableNumber);
-      const updated = sqlite
-        .prepare(
-          `UPDATE event_tables SET ${updates.join(', ')}
-           WHERE event_id = ? AND table_number = ?
-           RETURNING event_id AS eventId, table_number AS tableNumber, label, capacity, sort_order AS sortOrder, created_at AS createdAt`,
-        )
-        .get(...values);
+      const finalTableNumber = newTableNumber ?? oldTableNumber;
 
+      const tx = sqlite.transaction(() => {
+        // Step 1 — renumber the row if requested. Order matters: rename the
+        // event_tables PK first, then cascade to invitations. If the new
+        // number collides with an existing table for this event, the PK
+        // UNIQUE constraint trips and the whole tx aborts.
+        if (newTableNumber !== null) {
+          const renamed = sqlite
+            .prepare(
+              `UPDATE event_tables SET table_number = ?
+               WHERE event_id = ? AND table_number = ?`,
+            )
+            .run(newTableNumber, eventId, oldTableNumber);
+          if (renamed.changes === 0) {
+            // The original row didn't exist — surface as 404 (caught below).
+            throw new Error('TABLE_NOT_FOUND');
+          }
+          sqlite
+            .prepare(
+              `UPDATE guest_invitations SET table_number = ?
+               WHERE event_id = ? AND table_number = ?`,
+            )
+            .run(newTableNumber, eventId, oldTableNumber);
+        }
+
+        // Step 2 — apply secondary field updates against the (now possibly
+        // renamed) row. Using finalTableNumber keeps both branches working.
+        if (updates.length > 0) {
+          const result = sqlite
+            .prepare(
+              `UPDATE event_tables SET ${updates.join(', ')}
+               WHERE event_id = ? AND table_number = ?`,
+            )
+            .run(...values, eventId, finalTableNumber);
+          if (result.changes === 0) {
+            throw new Error('TABLE_NOT_FOUND');
+          }
+        }
+
+        return sqlite
+          .prepare(
+            `SELECT event_id AS eventId, table_number AS tableNumber, label,
+                    capacity, sort_order AS sortOrder, created_at AS createdAt
+             FROM event_tables
+             WHERE event_id = ? AND table_number = ?`,
+          )
+          .get(eventId, finalTableNumber);
+      });
+
+      const updated = tx();
       if (!updated) {
         res.status(404).json({ error: 'Table not found' });
         return;
       }
-
       res.json(updated);
     } catch (error) {
-      logger.error({ err: error, eventId, tableNumber }, 'event table update error');
+      if (error instanceof Error && error.message === 'TABLE_NOT_FOUND') {
+        res.status(404).json({ error: 'Table not found' });
+        return;
+      }
+      if (isUniqueConstraintError(error)) {
+        res
+          .status(409)
+          .json({ error: `Table ${newTableNumber} already exists for this event` });
+        return;
+      }
+      logger.error({ err: error, eventId, oldTableNumber }, 'event table update error');
       res.status(500).json({ error: 'Failed to update event table' });
     }
   },

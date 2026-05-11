@@ -364,6 +364,10 @@ export const createEventTableSchema = z.object({
 export type CreateEventTableValues = z.infer<typeof createEventTableSchema>;
 
 export const updateEventTableSchema = z.object({
+  // Renaming a table to a different number is a real-world operation
+  // (e.g. the venue swaps two tables around). The server handles this
+  // transactionally so any linked invitations are migrated atomically.
+  tableNumber: z.number().int().min(1).max(500).optional(),
   label: z.string().max(100).trim().nullable().optional(),
   capacity: z.number().int().min(1).max(50).optional(),
   sortOrder: z.number().int().optional(),
