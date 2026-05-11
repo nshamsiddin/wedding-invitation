@@ -694,8 +694,8 @@ export default function DashboardPage() {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30" style={{ background: PARCHMENT, borderBottom: `1px solid ${GOLD_DIM}` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: `rgba(184,146,74,0.1)`, border: `1px solid ${GOLD_DIM}` }}
@@ -705,33 +705,38 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <div>
-              <p className="font-sans font-semibold text-sm leading-none" style={{ color: ESPRESSO }}>Guest Admin</p>
+            <div className="min-w-0">
+              <p className="font-sans font-semibold text-sm leading-none truncate" style={{ color: ESPRESSO }}>Guest Admin</p>
               <p className="text-xs font-sans mt-0.5 hidden sm:block" style={{ color: ESPRESSO_DIM }}>B & S · Wedding 2026</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Notification bell */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <NotificationBell />
 
+            {/* Guest Wishes — icon-only on mobile, full label from sm: */}
             <button
               onClick={() => navigate('/admin/messages')}
-              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
               style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              aria-label={at.openGuestWishes}
+              title={at.openGuestWishes}
             >
-              {at.openGuestWishes}
+              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="hidden sm:inline">{at.openGuestWishes}</span>
             </button>
 
-            {/* Language switcher */}
+            {/* Language switcher — compact on mobile */}
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD_DIM}` }}>
               {LANGUAGES.map((l) => (
                 <button
                   key={l}
                   onClick={() => setLanguage(l)}
-                  className="px-2.5 py-1.5 text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  className="px-2 sm:px-2.5 py-1.5 text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.55)]"
                   style={
                     language === l
                       ? { background: GOLD, color: ESPRESSO }
@@ -745,7 +750,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Export CSV — desktop */}
+            {/* Export CSV — hidden on mobile (also offered in the toolbar below) */}
             <button
               onClick={handleExportCSV}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
@@ -760,20 +765,26 @@ export default function DashboardPage() {
               {at.exportCsv}
             </button>
 
+            {/* Sign out — icon-only on mobile so the row never overflows */}
             <button
               onClick={() => logoutMutation.mutate()}
-              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
               style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              aria-label={at.signOut}
+              title={at.signOut}
             >
-              {at.signOut}
+              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="hidden sm:inline">{at.signOut}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
 
         {/* ── Event tabs ──────────────────────────────────────────────────── */}
         <section aria-label="Event selector">
@@ -782,12 +793,12 @@ export default function DashboardPage() {
             Active tab text uses ESPRESSO on GOLD — 5.85:1 contrast (WCAG AA ✓).
             Inactive tab text uses ESPRESSO on PARCHMENT — ~18:1 (WCAG AAA ✓).
           */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
 
             {/* "All" standalone pill — default/home state, first in DOM and visual order */}
             <button
               onClick={() => handleSelectEvent(null)}
-              className="px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
+              className="px-3 sm:px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
               style={
                 selectedEventId === null
                   ? { background: ESPRESSO, color: PARCHMENT }
@@ -814,7 +825,7 @@ export default function DashboardPage() {
                     )}
                     <button
                       onClick={() => handleSelectEvent(ev.id)}
-                      className="px-4 py-2 text-sm font-sans font-semibold transition-all inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.8)]"
+                      className="px-2.5 sm:px-4 py-2 text-sm font-sans font-semibold transition-all inline-flex items-center gap-1.5 sm:gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.8)]"
                       style={
                         active
                           ? { background: GOLD, color: ESPRESSO }
@@ -922,9 +933,9 @@ export default function DashboardPage() {
 
             <div className="flex flex-col gap-2 sm:items-end">
               {/* Row 1: search + add + mobile-CSV */}
-              <div className="flex flex-wrap gap-2">
-                {/* Search with loading indicator */}
-                <div className="relative">
+              <div className="flex flex-wrap items-stretch gap-2">
+                {/* Search with loading indicator — fills remaining width on mobile */}
+                <div className="relative flex-1 min-w-[8rem] sm:flex-none">
                   <svg
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
                     style={{ color: ESPRESSO_DIM }}
@@ -941,7 +952,7 @@ export default function DashboardPage() {
                     onChange={(e) => setSearchInput(e.target.value)}
                     placeholder={at.searchPlaceholder}
                     aria-label="Search guests"
-                    className="pl-8 pr-8 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] transition-colors w-48"
+                    className="pl-8 pr-8 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] transition-colors w-full min-w-0 sm:w-48"
                     style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
                   />
                   {/* Debounce loading indicator */}
@@ -1120,6 +1131,7 @@ export default function DashboardPage() {
           <GuestTable
             guests={filteredGuests}
             events={events}
+            selectedEventId={selectedEventId}
             isLoading={guestsLoading}
             selectedGuestIds={selectedGuestIds}
             onToggleGuestSelection={(guestId) =>

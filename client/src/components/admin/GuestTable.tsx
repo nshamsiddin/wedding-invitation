@@ -54,6 +54,11 @@ const STATUS_CONFIG: Record<
 interface Props {
   guests: AdminGuest[];
   events: AdminEvent[];
+  /**
+   * When an event tab is active, the table only displays that event's column.
+   * `null` (the "All" tab) keeps every event column visible.
+   */
+  selectedEventId?: number | null;
   isLoading: boolean;
   selectedGuestIds: Set<number>;
   onToggleGuestSelection: (guestId: number) => void;
@@ -403,6 +408,7 @@ function MessageModal({
 export default function GuestTable({
   guests,
   events,
+  selectedEventId = null,
   isLoading,
   selectedGuestIds,
   onToggleGuestSelection,
@@ -413,12 +419,24 @@ export default function GuestTable({
   onDeleteInvitation,
   onUpdateTableNumber,
 }: Props) {
+  // Default to "newest first" so freshly added guests stay visible.
+  // Sorting by name is the only user-toggleable option below.
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [viewingMessages, setViewingMessages] = useState<AdminGuest | null>(null);
   const at = useAdminTranslation();
 
   const baseUrl = window.location.origin;
+
+  // When a single event is selected, only show that event's column so the
+  // admin doesn't have to look at irrelevant venues (e.g. Tashkent on the
+  // Ankara tab) — this is also what unblocks fitting on iPhone width.
+  const displayedEvents = useMemo(
+    () => (selectedEventId != null
+      ? events.filter((e) => e.id === selectedEventId)
+      : events),
+    [events, selectedEventId],
+  );
 
   const sorted = useMemo(() => {
     return [...guests].sort((a, b) => {
@@ -434,7 +452,8 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const totalColSpan = 4 + events.length + 1 + 1;
+  // Columns: checkbox + # + name + (events) + message + actions
+  const totalColSpan = 3 + displayedEvents.length + 1 + 1;
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const allVisibleSelected = sorted.length > 0 && sorted.every((g) => selectedGuestIds.has(g.id));
   const someVisibleSelected = sorted.some((g) => selectedGuestIds.has(g.id));
@@ -445,12 +464,204 @@ export default function GuestTable({
   }, [someVisibleSelected, allVisibleSelected]);
 
   const columns: Array<{ key: SortKey; label: string }> = [
-    { key: 'name',      label: at.colName },
-    { key: 'createdAt', label: at.colAdded },
+    { key: 'name', label: at.colName },
   ];
 
   return (
-    <div className="overflow-x-auto rounded-xl shadow-sm" style={{ border: `1px solid ${GOLD_DIM}`, background: PARCHMENT }}>
+    <>
+    {/* ── Mobile card list (below md) ─────────────────────────────────────────
+        On iPhone the wide table needs horizontal scrolling, so phones render a
+        vertical card per guest instead — same data, fits the viewport. */}
+    <div className="md:hidden space-y-2.5" aria-label="Guest list (mobile)">
+      {isLoading && Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={`m-skel-${i}`}
+          className="rounded-xl p-4 animate-pulse"
+          style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+        >
+          <div className="h-3 w-2/5 rounded mb-2" style={{ background: GOLD_DIM }} />
+          <div className="h-2.5 w-3/5 rounded mb-3" style={{ background: GOLD_DIM }} />
+          <div className="h-16 w-full rounded" style={{ background: GOLD_DIM }} />
+        </div>
+      ))}
+
+      {!isLoading && sorted.length === 0 && (
+        <div
+          className="rounded-xl p-8 text-center"
+          style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(184,146,74,0.12)' }}>
+              <svg className="w-6 h-6" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <p className="font-medium text-sm" style={{ color: ESPRESSO }}>{at.noGuestsFound}</p>
+            <p className="text-xs" style={{ color: ESPRESSO_DIM }}>{at.noGuestsHint}</p>
+          </div>
+        </div>
+      )}
+
+      <AnimatePresence initial={false}>
+        {!isLoading && sorted.map((guest, rowIndex) => {
+          const isSelected = selectedGuestIds.has(guest.id);
+          const hasMessage = guest.invitations.some((inv) => inv.message && inv.message.trim().length > 0);
+          return (
+            <motion.div
+              key={`m-${guest.id}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15 }}
+              className="rounded-xl overflow-hidden"
+              style={{
+                background: isSelected ? 'rgba(184,146,74,0.08)' : PARCHMENT,
+                border: `1px solid ${isSelected ? GOLD : GOLD_DIM}`,
+              }}
+            >
+              {/* Card header: select + index + name + per-guest actions */}
+              <div className="flex items-start gap-2.5 px-3.5 pt-3 pb-2">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleGuestSelection(guest.id)}
+                  aria-label={`Select ${guest.name}`}
+                  className="mt-0.5 w-4 h-4 rounded border-[rgba(184,146,74,0.45)] focus:ring-[rgba(184,146,74,0.45)] flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-sans font-semibold text-sm leading-tight break-words" style={{ color: ESPRESSO }}>
+                    <span className="tabular-nums mr-1.5" style={{ color: ESPRESSO_DIM }}>#{rowIndex + 1}</span>
+                    {guest.name}
+                  </p>
+                  {guest.partnerName && (
+                    <p className="text-xs font-sans mt-0.5 break-words" style={{ color: ESPRESSO_DIM }}>
+                      & {guest.partnerName}
+                    </p>
+                  )}
+                  {guest.phone && (
+                    <p className="text-xs font-sans mt-0.5 tabular-nums" style={{ color: ESPRESSO_DIM }}>
+                      {guest.phone}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {hasMessage && (
+                    <button
+                      onClick={() => setViewingMessages(guest)}
+                      className="p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                      style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: GOLD }}
+                      aria-label={`Read message from ${guest.name}`}
+                      title={`Message from ${guest.name}`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onEditGuest(guest)}
+                    className="p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                    style={{ color: ESPRESSO_DIM, background: 'rgba(184,146,74,0.06)', border: `1px solid ${GOLD_DIM}` }}
+                    aria-label={`Edit contact info for ${guest.name}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDeleteGuest(guest)}
+                    className="p-2 rounded-lg text-[rgba(42,31,26,0.55)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                    style={{ background: 'rgba(42,31,26,0.04)', border: `1px solid ${GOLD_DIM}` }}
+                    aria-label={`Delete ${guest.name}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Per-event invitation sub-cards */}
+              <div className="px-3.5 pb-3 space-y-2">
+                {displayedEvents.map((ev) => {
+                  const inv = guest.invitations.find((i) => i.eventId === ev.id);
+                  const config = inv ? (STATUS_CONFIG[inv.status] ?? STATUS_CONFIG['pending']) : null;
+                  return (
+                    <div
+                      key={ev.id}
+                      className="rounded-lg p-2.5"
+                      style={{ background: CREAM, border: `1px solid ${GOLD_DIM}` }}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span
+                          className="text-[10px] font-sans font-bold uppercase tracking-widest"
+                          style={{ color: GOLD }}
+                        >
+                          {getEventDisplayName(ev)}
+                        </span>
+                        {inv && config ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${config.classes}`}>
+                            {config.icon}
+                            {config.label}
+                          </span>
+                        ) : (
+                          <span className="text-[11px]" style={{ color: ESPRESSO_DIM }}>—</span>
+                        )}
+                      </div>
+
+                      {inv && config ? (
+                        <>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+                            <span className="text-[11px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
+                              {at.partySizeLabel}: <span className="font-semibold" style={{ color: ESPRESSO }}>{inv.guestCount}</span>
+                            </span>
+                            {onUpdateTableNumber && (
+                              <TableNumberCell
+                                invitationId={inv.id}
+                                tableNumber={inv.tableNumber}
+                                onUpdate={onUpdateTableNumber}
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
+                            <button
+                              onClick={() => onEditInvitation(inv, guest)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-sans transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                              style={{ background: 'rgba(184,146,74,0.06)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                              aria-label={`Edit ${getEventDisplayName(ev)} RSVP for ${guest.name}`}
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit RSVP
+                            </button>
+                            <button
+                              onClick={() => onDeleteInvitation(inv)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-sans text-[rgba(42,31,26,0.55)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                              style={{ border: `1px solid ${GOLD_DIM}` }}
+                              aria-label={`Remove ${guest.name} from ${getEventDisplayName(ev)}`}
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Remove
+                            </button>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+
+    {/* ── Desktop table (md and up) ─────────────────────────────────────── */}
+    <div className="hidden md:block overflow-x-auto rounded-xl shadow-sm" style={{ border: `1px solid ${GOLD_DIM}`, background: PARCHMENT }}>
       <table className="w-full text-sm font-sans" aria-label="Guest list">
         <thead>
           <tr style={{ borderBottom: `1px solid ${GOLD_DIM}`, background: CREAM }}>
@@ -495,8 +706,9 @@ export default function GuestTable({
               </th>
             ))}
 
-            {/* Event columns — use getEventDisplayName for consistency */}
-            {events.map((ev) => (
+            {/* Event columns — use getEventDisplayName for consistency.
+                Filtered to the active event when the admin is on a single-event tab. */}
+            {displayedEvents.map((ev) => (
               <th key={ev.id} scope="col" className="px-4 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
                 {getEventDisplayName(ev)}
               </th>
@@ -583,13 +795,8 @@ export default function GuestTable({
                   )}
                 </td>
 
-                {/* Added date */}
-                <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: ESPRESSO_DIM }}>
-                  {new Date(guest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </td>
-
-                {/* Per-event invitation cells */}
-                {events.map((ev) => {
+                {/* Per-event invitation cells — filtered to the active event tab */}
+                {displayedEvents.map((ev) => {
                   const inv = guest.invitations.find((i) => i.eventId === ev.id);
                   const config = inv ? (STATUS_CONFIG[inv.status] ?? STATUS_CONFIG['pending']) : null;
 
@@ -715,13 +922,15 @@ export default function GuestTable({
           </AnimatePresence>
         </tbody>
       </table>
-      {viewingMessages && (
-        <MessageModal
-          guest={viewingMessages}
-          events={events}
-          onClose={() => setViewingMessages(null)}
-        />
-      )}
     </div>
+
+    {viewingMessages && (
+      <MessageModal
+        guest={viewingMessages}
+        events={events}
+        onClose={() => setViewingMessages(null)}
+      />
+    )}
+    </>
   );
 }

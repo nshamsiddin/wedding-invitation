@@ -52,33 +52,37 @@ export default function GuestWishesPage() {
   return (
     <div className="admin-page min-h-screen" style={{ background: CREAM, color: ESPRESSO }}>
       <header className="sticky top-0 z-30" style={{ background: PARCHMENT, borderBottom: `1px solid ${GOLD_DIM}` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Back — arrow-only on mobile, label from sm: */}
             <button
               onClick={() => navigate('/admin')}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] flex-shrink-0"
               style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              aria-label={at.backToGuestList}
+              title={at.backToGuestList}
             >
-              ← {at.backToGuestList}
+              <span aria-hidden="true">←</span>
+              <span className="hidden sm:inline">{at.backToGuestList}</span>
             </button>
-            <div>
-              <p className="font-sans font-semibold text-sm leading-none" style={{ color: ESPRESSO }}>{at.guestWishesTitle}</p>
+            <div className="min-w-0">
+              <p className="font-sans font-semibold text-sm leading-none truncate" style={{ color: ESPRESSO }}>{at.guestWishesTitle}</p>
               <p className="text-xs font-sans mt-0.5 hidden sm:block" style={{ color: ESPRESSO_DIM }}>
                 {at.guestWishesSubtitle}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <NotificationBell />
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD_DIM}` }}>
               {LANGUAGES.map((l) => (
                 <button
                   key={l}
                   onClick={() => setLanguage(l)}
-                  className="px-2.5 py-1.5 text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  className="px-2 sm:px-2.5 py-1.5 text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.55)]"
                   style={
                     language === l
                       ? { background: GOLD, color: ESPRESSO }
@@ -91,25 +95,31 @@ export default function GuestWishesPage() {
                 </button>
               ))}
             </div>
+            {/* Sign out — icon-only on mobile */}
             <button
               onClick={() => logoutMutation.mutate()}
-              className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
               style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              aria-label={at.signOut}
+              title={at.signOut}
             >
-              {at.signOut}
+              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="hidden sm:inline">{at.signOut}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-5 sm:py-6 space-y-6">
         <section aria-label="Event selector">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => setSelectedEventId(null)}
-              className="px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
+              className="px-3 sm:px-4 py-2 rounded-lg text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1"
               style={
                 selectedEventId === null
                   ? { background: ESPRESSO, color: PARCHMENT }
@@ -132,7 +142,7 @@ export default function GuestWishesPage() {
                     {idx > 0 && <div className="w-px self-stretch" style={{ background: GOLD_DIM }} aria-hidden="true" />}
                     <button
                       onClick={() => setSelectedEventId(ev.id)}
-                      className="px-4 py-2 text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.8)]"
+                      className="px-2.5 sm:px-4 py-2 text-sm font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.8)]"
                       style={active ? { background: GOLD, color: ESPRESSO } : { background: PARCHMENT, color: ESPRESSO }}
                       aria-pressed={active}
                     >
