@@ -135,6 +135,21 @@ export interface AdminTranslations {
   // Undo delete toast
   undoRemove: string;
   guestRestored: (name: string) => string;
+
+  // Data backup / restore
+  backupTitle: string;
+  backupDesc: string;
+  backupDownload: string;
+  backupRestore: string;
+  backupDownloading: string;
+  backupConfirmTitle: string;
+  backupConfirmDesc: string;
+  backupConfirmDanger: string;
+  backupRestoring: string;
+  backupRestoreSuccess: (summary: string) => string;
+  backupRestoreFailed: string;
+  backupInvalidFile: string;
+  backupConfirmAction: string;
 }
 
 const adminEn: AdminTranslations = {
@@ -251,6 +266,20 @@ const adminEn: AdminTranslations = {
   remove: 'Remove',
   undoRemove: 'Undo',
   guestRestored: (name) => `${name} restored. Update their RSVP in the table.`,
+
+  backupTitle: 'Data Backup',
+  backupDesc: 'Download a snapshot of every guest, invitation, event, and notification. Restore later to roll back any changes.',
+  backupDownload: 'Download Backup',
+  backupRestore: 'Restore from File…',
+  backupDownloading: 'Downloading backup…',
+  backupConfirmTitle: 'Restore from backup?',
+  backupConfirmDesc: 'This will replace every guest, invitation, event, and notification with the contents of the backup file.',
+  backupConfirmDanger: 'This cannot be undone. Consider downloading a fresh backup first.',
+  backupRestoring: 'Restoring…',
+  backupRestoreSuccess: (summary) => `Backup restored — ${summary}`,
+  backupRestoreFailed: 'Failed to restore backup',
+  backupInvalidFile: 'Selected file is not a valid backup',
+  backupConfirmAction: 'Restore',
 };
 
 const adminTr: AdminTranslations = {
@@ -367,6 +396,20 @@ const adminTr: AdminTranslations = {
   remove: 'Kaldır',
   undoRemove: 'Geri al',
   guestRestored: (name) => `${name} geri yüklendi. Tabloda RSVP durumunu güncelleyin.`,
+
+  backupTitle: 'Veri Yedekleme',
+  backupDesc: 'Tüm misafirler, davetler, etkinlikler ve bildirimlerin anlık görüntüsünü indirin. Daha sonra geri yükleyerek değişiklikleri geri alabilirsiniz.',
+  backupDownload: 'Yedeği İndir',
+  backupRestore: 'Dosyadan Geri Yükle…',
+  backupDownloading: 'Yedek indiriliyor…',
+  backupConfirmTitle: 'Yedekten geri yüklensin mi?',
+  backupConfirmDesc: 'Tüm misafir, davet, etkinlik ve bildirim verileri yedek dosyasıyla değiştirilecek.',
+  backupConfirmDanger: 'Bu işlem geri alınamaz. Önce yeni bir yedek indirmeyi düşünün.',
+  backupRestoring: 'Geri yükleniyor…',
+  backupRestoreSuccess: (summary) => `Yedek geri yüklendi — ${summary}`,
+  backupRestoreFailed: 'Yedek geri yüklenemedi',
+  backupInvalidFile: 'Seçilen dosya geçerli bir yedek değil',
+  backupConfirmAction: 'Geri yükle',
 };
 
 const adminUz: AdminTranslations = {
@@ -483,6 +526,20 @@ const adminUz: AdminTranslations = {
   remove: "Olib tashlash",
   undoRemove: "Bekor qilish",
   guestRestored: (name) => `${name} tiklandi. Jadvaldagi RSVP holatini yangilang.`,
+
+  backupTitle: 'Maʼlumotlar Zaxirasi',
+  backupDesc: "Barcha mehmonlar, takliflar, tadbirlar va bildirishnomalarning to'liq nusxasini yuklab oling. Keyinroq qayta tiklab o'zgarishlarni bekor qilishingiz mumkin.",
+  backupDownload: 'Zaxirani Yuklab olish',
+  backupRestore: 'Fayldan Tiklash…',
+  backupDownloading: 'Zaxira yuklab olinmoqda…',
+  backupConfirmTitle: 'Zaxiradan tiklansinmi?',
+  backupConfirmDesc: 'Barcha mehmon, taklif, tadbir va bildirishnoma maʼlumotlari zaxira fayl tarkibi bilan almashtiriladi.',
+  backupConfirmDanger: 'Bu amalni bekor qilib boʻlmaydi. Avval yangi zaxira yuklab olishni tavsiya qilamiz.',
+  backupRestoring: 'Tiklanmoqda…',
+  backupRestoreSuccess: (summary) => `Zaxira tiklandi — ${summary}`,
+  backupRestoreFailed: 'Zaxirani tiklab boʻlmadi',
+  backupInvalidFile: 'Tanlangan fayl haqiqiy zaxira emas',
+  backupConfirmAction: 'Tiklash',
 };
 
 const adminTranslations: Record<Language, AdminTranslations> = {

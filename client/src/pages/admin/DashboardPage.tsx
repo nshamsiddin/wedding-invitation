@@ -105,6 +105,256 @@ function ShareableLinkCard({ venue, lang, baseUrl }: ShareableLinkCardProps) {
   );
 }
 
+// ─── Data Backup / Restore section ───────────────────────────────────────────
+//
+// Lets the admin download a JSON snapshot of every data table (events, guests,
+// invitations, notifications) and restore the database from a previously
+// downloaded backup file. Restoring is destructive — every existing row is
+// replaced with the file contents — so the action is gated behind an explicit
+// confirmation dialog.
+
+function DataBackupSection() {
+  const at = useAdminTranslation();
+  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const toggle = useCallback(() => setIsOpen((v) => !v), []);
+
+  const restoreMutation = useMutation({
+    mutationFn: async (file: File) => {
+      // Read the file in the browser so we can reject obviously invalid
+      // payloads (non-JSON, wrong shape) before bothering the server.
+      const text = await file.text();
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new Error(at.backupInvalidFile);
+      }
+      if (
+        !parsed ||
+        typeof parsed !== 'object' ||
+        Array.isArray(parsed) ||
+        (parsed as { app?: unknown }).app !== 'invitation'
+      ) {
+        throw new Error(at.backupInvalidFile);
+      }
+      return adminApi.restoreBackup(parsed);
+    },
+    onSuccess: ({ counts }) => {
+      const summary = Object.entries(counts)
+        .map(([k, v]) => `${v} ${k}`)
+        .join(', ');
+      toast.success(at.backupRestoreSuccess(summary));
+      qc.invalidateQueries({ queryKey: ['admin'] });
+    },
+    onError: (err) => {
+      // axios.isAxiosError must be checked before the generic Error branch
+      // because AxiosError extends Error — without this ordering TypeScript
+      // narrows `err` to `never` in the second arm of the ternary.
+      const message = axios.isAxiosError(err)
+        ? ((err.response?.data?.error as string | undefined) ?? at.backupRestoreFailed)
+        : err instanceof Error
+          ? err.message
+          : at.backupRestoreFailed;
+      toast.error(message);
+    },
+  });
+
+  const handleDownload = () => {
+    adminApi.downloadBackup();
+    toast.success(at.backupDownloading);
+  };
+
+  const handlePickFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setPendingFile(file);
+    // Reset the input value so re-selecting the same file fires onChange again.
+    e.target.value = '';
+  };
+
+  const handleConfirm = () => {
+    if (!pendingFile) return;
+    restoreMutation.mutate(pendingFile);
+    setPendingFile(null);
+  };
+
+  return (
+    <section aria-labelledby="data-backup-heading">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={isOpen}
+        aria-controls="data-backup-body"
+        className="w-full flex items-center justify-between gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] rounded-lg"
+      >
+        <div className="text-left">
+          <h2
+            id="data-backup-heading"
+            className="font-sans font-semibold text-sm"
+            style={{ color: ESPRESSO }}
+          >
+            {at.backupTitle}
+          </h2>
+          <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
+            {at.backupDesc}
+          </p>
+        </div>
+
+        <span
+          className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+          style={{
+            background: isOpen ? 'rgba(184,146,74,0.12)' : 'rgba(184,146,74,0.07)',
+            color: ESPRESSO_DIM,
+          }}
+          aria-hidden="true"
+        >
+          <motion.svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </motion.svg>
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            id="data-backup-body"
+            key="data-backup-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div
+              className="mt-3 p-4 rounded-xl border flex flex-wrap items-center gap-2"
+              style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
+            >
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                style={{ background: GOLD, color: ESPRESSO }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#A07840'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = GOLD; }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {at.backupDownload}
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePickFile}
+                disabled={restoreMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                onMouseEnter={(e) => { if (!restoreMutation.isPending) { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; } }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {restoreMutation.isPending ? at.backupRestoring : at.backupRestore}
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation modal — destructive operation, gated behind an explicit
+          dialog the admin must accept before any data is replaced. */}
+      <AnimatePresence>
+        {pendingFile && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setPendingFile(null)}
+              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+              aria-hidden="true"
+            />
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="restore-backup-title"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                className="rounded-xl p-6 w-full max-w-sm shadow-lg"
+                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 id="restore-backup-title" className="font-sans font-semibold text-sm mb-1" style={{ color: ESPRESSO }}>
+                      {at.backupConfirmTitle}
+                    </h3>
+                    <p className="text-xs font-sans leading-relaxed" style={{ color: ESPRESSO_DIM }}>
+                      {at.backupConfirmDesc}
+                    </p>
+                    <p className="text-xs font-sans leading-relaxed mt-1" style={{ color: '#B23A3A' }}>
+                      {at.backupConfirmDanger}
+                    </p>
+                    <p className="text-xs font-mono mt-2 truncate" style={{ color: ESPRESSO_DIM }} title={pendingFile.name}>
+                      {pendingFile.name}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button
+                    onClick={() => setPendingFile(null)}
+                    className="flex-1 font-sans font-medium text-xs py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                    style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                  >
+                    {at.cancel}
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={restoreMutation.isPending}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-sans font-semibold text-xs py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed"
+                  >
+                    {restoreMutation.isPending ? at.backupRestoring : at.backupConfirmAction}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
+
 function ShareableLinksSection({ baseUrl }: { baseUrl: string }) {
   const venues = ['tashkent', 'ankara'];
   const langs  = ['en', 'tr', 'uz'];
@@ -923,6 +1173,9 @@ export default function DashboardPage() {
 
         {/* ── Shareable Links ─────────────────────────────────────────────── */}
         <ShareableLinksSection baseUrl={config?.baseUrl ?? ''} />
+
+        {/* ── Data Backup ─────────────────────────────────────────────────── */}
+        <DataBackupSection />
 
         {/* ── Guest list ──────────────────────────────────────────────────── */}
         <section aria-labelledby="guests-heading">

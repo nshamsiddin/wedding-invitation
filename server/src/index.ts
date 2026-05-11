@@ -427,6 +427,11 @@ db.run(sql`
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 app.use(compression());
+// Backup restore payloads can be larger than ordinary admin requests because
+// they contain every row in the database. We register a more permissive JSON
+// parser specifically for that path BEFORE the global 1mb parser; once the
+// path-scoped parser has populated req.body the global parser becomes a no-op.
+app.use('/api/admin/backup/restore', express.json({ limit: '20mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(

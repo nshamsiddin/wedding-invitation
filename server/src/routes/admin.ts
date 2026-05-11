@@ -1128,6 +1128,192 @@ router.get('/export/event-tables', requireAuth, async (req: Request, res: Respon
   }
 });
 
+// ─── Backup / Restore ────────────────────────────────────────────────────────
+// Allowlist of tables that are part of a full data snapshot. Hardcoded — never
+// derived from request input — so it's safe to interpolate into SQL.
+const BACKUP_TABLES = ['events', 'guests', 'guest_invitations', 'notifications'] as const;
+type BackupTableName = typeof BACKUP_TABLES[number];
+
+const BACKUP_VERSION = 1;
+const BACKUP_APP_ID = 'invitation';
+
+interface BackupPayload {
+  app: string;
+  version: number;
+  createdAt: string;
+  data: Record<BackupTableName, Record<string, unknown>[]>;
+}
+
+// Returns the rows of a known table, or [] if the table doesn't exist (some
+// test environments don't seed every table). Table name is from a hardcoded
+// allowlist — never user input — so interpolation is safe.
+function readTableRows(table: BackupTableName): Record<string, unknown>[] {
+  const exists = sqlite
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+    .get(table) as { name: string } | undefined;
+  if (!exists) return [];
+  return sqlite.prepare(`SELECT * FROM ${table}`).all() as Record<string, unknown>[];
+}
+
+// Returns the actual column names of a table from the live schema. Used to
+// reject unknown columns in a restore payload (defensive against malformed or
+// tampered backup files).
+function getTableColumnSet(table: BackupTableName): Set<string> {
+  type ColInfo = { name: string };
+  const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as ColInfo[];
+  return new Set(cols.map((c) => c.name));
+}
+
+// GET /api/admin/backup — download a complete JSON snapshot of all data tables.
+router.get('/backup', requireAuth, (_req: Request, res: Response): void => {
+  try {
+    const data = {} as BackupPayload['data'];
+    for (const table of BACKUP_TABLES) {
+      data[table] = readTableRows(table);
+    }
+
+    const payload: BackupPayload = {
+      app: BACKUP_APP_ID,
+      version: BACKUP_VERSION,
+      createdAt: new Date().toISOString(),
+      data,
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const filename = `invitation-backup-${stamp}.json`;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(json);
+  } catch (error) {
+    logger.error({ err: error }, 'backup error');
+    res.status(500).json({ error: 'Failed to create backup' });
+  }
+});
+
+// POST /api/admin/backup/restore — destructively replace all data with a backup.
+// Wrapped in a single transaction with foreign_keys disabled so a failure mid-
+// way through cannot leave the DB in a torn state.
+router.post('/backup/restore', requireAuth, (req: Request, res: Response): void => {
+  const payload = req.body as Partial<BackupPayload> | undefined;
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    res.status(400).json({ error: 'Invalid backup payload' });
+    return;
+  }
+  if (payload.app !== BACKUP_APP_ID) {
+    res.status(400).json({ error: 'This file is not an invitation backup.' });
+    return;
+  }
+  if (typeof payload.version !== 'number' || payload.version > BACKUP_VERSION) {
+    res.status(400).json({ error: `Unsupported backup version: ${String(payload.version)}` });
+    return;
+  }
+  if (!payload.data || typeof payload.data !== 'object') {
+    res.status(400).json({ error: 'Backup payload missing "data" section' });
+    return;
+  }
+
+  // Validate every required table is an array of objects.
+  for (const table of BACKUP_TABLES) {
+    const rows = payload.data[table];
+    if (!Array.isArray(rows)) {
+      res.status(400).json({ error: `Backup payload missing or invalid table "${table}"` });
+      return;
+    }
+    for (const row of rows) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) {
+        res.status(400).json({ error: `Invalid row found in table "${table}"` });
+        return;
+      }
+    }
+  }
+
+  // Foreign key enforcement must be turned off OUTSIDE the transaction.
+  // We restore it in a finally block so a thrown error never leaves the DB
+  // with FK enforcement permanently disabled.
+  const fkWasEnabled = (sqlite.pragma('foreign_keys', { simple: true }) === 1);
+  sqlite.pragma('foreign_keys = OFF');
+
+  try {
+    const restore = sqlite.transaction(() => {
+      // Clear existing data — child tables first to keep the operation tidy
+      // even though FK enforcement is disabled.
+      for (const table of [...BACKUP_TABLES].reverse()) {
+        const exists = sqlite
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+          .get(table);
+        if (!exists) continue;
+        sqlite.prepare(`DELETE FROM ${table}`).run();
+        // Reset autoincrement so future inserts are not influenced by stale
+        // sqlite_sequence rows from the discarded data set.
+        sqlite.prepare(`DELETE FROM sqlite_sequence WHERE name = ?`).run(table);
+      }
+
+      // Insert restored data — parents first.
+      for (const table of BACKUP_TABLES) {
+        const rows = payload.data![table] as Record<string, unknown>[];
+        if (rows.length === 0) continue;
+
+        const tableColumns = getTableColumnSet(table);
+        if (tableColumns.size === 0) continue; // table doesn't exist locally — skip
+
+        // Use the union of all keys present in the payload rows (some rows
+        // may omit nullable columns). Only include keys that exist on the
+        // live schema — this guards against tampered or unknown columns.
+        const columnSet = new Set<string>();
+        for (const row of rows) {
+          for (const key of Object.keys(row)) {
+            if (tableColumns.has(key)) columnSet.add(key);
+          }
+        }
+        const columns = Array.from(columnSet);
+        if (columns.length === 0) continue;
+
+        // Quote column names to handle reserved words safely. The names came
+        // from PRAGMA table_info — i.e. the live schema — so they're safe.
+        const colList = columns.map((c) => `"${c}"`).join(', ');
+        const placeholders = columns.map(() => '?').join(', ');
+        const stmt = sqlite.prepare(`INSERT INTO ${table} (${colList}) VALUES (${placeholders})`);
+
+        for (const row of rows) {
+          const values = columns.map((c) => {
+            const v = row[c];
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'boolean') return v ? 1 : 0;
+            // better-sqlite3 accepts string/number/bigint/Buffer/null. Stringify
+            // anything else (e.g. a stray nested object) defensively rather
+            // than throwing mid-transaction.
+            if (typeof v === 'object') return JSON.stringify(v);
+            return v as string | number;
+          });
+          stmt.run(...values);
+        }
+      }
+    });
+
+    restore();
+
+    const counts = {} as Record<BackupTableName, number>;
+    for (const table of BACKUP_TABLES) {
+      const exists = sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+        .get(table);
+      counts[table] = exists
+        ? (sqlite.prepare(`SELECT COUNT(*) AS c FROM ${table}`).get() as { c: number }).c
+        : 0;
+    }
+
+    logger.info({ counts }, 'backup restored');
+    res.json({ ok: true, counts });
+  } catch (error) {
+    logger.error({ err: error }, 'restore error');
+    res.status(500).json({ error: 'Failed to restore backup' });
+  } finally {
+    if (fkWasEnabled) sqlite.pragma('foreign_keys = ON');
+  }
+});
+
 // GET /api/admin/export/accepted-links — export accepted guests with invitation links.
 router.get('/export/accepted-links', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;

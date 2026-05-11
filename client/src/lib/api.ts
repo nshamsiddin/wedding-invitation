@@ -190,6 +190,24 @@ export const adminApi = {
     const params = eventId ? `?eventId=${eventId}` : '';
     window.location.href = `/api/admin/export/accepted-links${params}`;
   },
+  // Triggers the browser to download a full JSON backup of every data table.
+  // Implemented as a navigation rather than a fetch so the browser handles
+  // the file save dialog natively.
+  downloadBackup: (): void => {
+    window.location.href = '/api/admin/backup';
+  },
+  // Restores the database from a parsed backup payload. The caller is
+  // responsible for reading and JSON.parse-ing the file first so we can
+  // validate the shape before sending it to the server.
+  restoreBackup: async (
+    payload: unknown,
+  ): Promise<{ ok: boolean; counts: Record<string, number> }> => {
+    const { data } = await api.post<{ ok: boolean; counts: Record<string, number> }>(
+      '/admin/backup/restore',
+      payload,
+    );
+    return data;
+  },
 };
 
 export interface AdminNotification {
