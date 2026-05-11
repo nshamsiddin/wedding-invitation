@@ -189,10 +189,44 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
 
 // ─── AttendancePicker — 2-button radio ────────────────────────────────────────
 
-type AttendanceValue = 'attending' | 'declined' | 'maybe';
-const ATTEND_OPTIONS: { value: AttendanceValue; symbol: string }[] = [
-  { value: 'attending', symbol: '✓' },
-  { value: 'declined',  symbol: '✕' },
+export type AttendanceValue = 'attending' | 'declined';
+
+// Each option carries both an outline and a filled SVG glyph so the selected
+// state is communicated by more than colour alone (accessibility — selection
+// must be perceivable without relying solely on the gold border + gold text).
+const ATTEND_OPTIONS: {
+  value: AttendanceValue;
+  outline: React.ReactNode;
+  filled: React.ReactNode;
+}[] = [
+  {
+    value: 'attending',
+    outline: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M20 6 L9 17 L4 12" />
+      </svg>
+    ),
+    filled: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fillOpacity="0.12" />
+        <path d="M20 6 L9 17 L4 12" stroke="currentColor" strokeWidth="2.4" fill="none" />
+      </svg>
+    ),
+  },
+  {
+    value: 'declined',
+    outline: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M6 6 L18 18 M18 6 L6 18" />
+      </svg>
+    ),
+    filled: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fillOpacity="0.12" />
+        <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeWidth="2.4" fill="none" />
+      </svg>
+    ),
+  },
 ];
 
 export function AttendancePicker({
@@ -200,12 +234,12 @@ export function AttendancePicker({
 }: {
   value: string;
   onChange: (v: AttendanceValue) => void;
-  labels: { attending: string; declined: string; maybe: string };
+  labels: { attending: string; declined: string };
   name?: string;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      {ATTEND_OPTIONS.map(({ value: v, symbol }) => {
+      {ATTEND_OPTIONS.map(({ value: v, outline, filled }) => {
         const isSelected = value === v;
         return (
           <label
@@ -214,9 +248,11 @@ export function AttendancePicker({
             style={{
               background: isSelected ? 'rgba(196,151,90,0.1)' : 'var(--bg-subtle)',
               border: `1px solid ${isSelected ? 'var(--accent-gold)' : 'var(--border-warm)'}`,
+              boxShadow: isSelected ? 'inset 0 0 0 1px var(--accent-gold)' : 'none',
               color: isSelected ? 'var(--accent-gold)' : 'var(--text-secondary)',
               transition: 'all 0.25s ease',
               cursor: 'pointer',
+              minHeight: '64px',
             }}
           >
             <input
@@ -228,13 +264,13 @@ export function AttendancePicker({
               className="sr-only"
               aria-label={labels[v]}
             />
-            <span style={{ fontSize: '1rem', marginBottom: '0.25rem', display: 'block' }} aria-hidden="true">
-              {symbol}
+            <span style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center' }} aria-hidden="true">
+              {isSelected ? filled : outline}
             </span>
             <span style={{
               fontSize: '0.78rem',
               fontFamily: '"DM Sans", system-ui, sans-serif',
-              fontWeight: 500,
+              fontWeight: isSelected ? 600 : 500,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
             }}>
@@ -272,6 +308,42 @@ export function GuestCountSelect({
         ))}
       </FormSelect>
     </FormField>
+  );
+}
+
+// ─── FormCharCounter ──────────────────────────────────────────────────────────
+// Renders a quiet "12 / 280" counter beneath a textarea. Goes amber once the
+// guest is within 20 chars of the limit and rose once they exceed it.
+// The aria-live attribute is set only inside the warning zone so screen
+// readers aren't pestered on every keystroke during normal typing.
+
+export function FormCharCounter({ value, max }: { value: string; max: number }) {
+  const length = value?.length ?? 0;
+  const remaining = max - length;
+  const isWarn = remaining <= 20 && remaining >= 0;
+  const isOver = remaining < 0;
+  const color = isOver
+    ? 'var(--accent-rose)'
+    : isWarn
+      ? 'var(--accent-gold)'
+      : 'var(--text-tertiary)';
+
+  return (
+    <p
+      style={{
+        marginTop: '0.25rem',
+        fontFamily: '"DM Sans", system-ui, sans-serif',
+        fontSize: '0.7rem',
+        letterSpacing: '0.04em',
+        color,
+        textAlign: 'right',
+        fontVariantNumeric: 'tabular-nums',
+        transition: 'color 0.2s ease',
+      }}
+      aria-live={isWarn || isOver ? 'polite' : 'off'}
+    >
+      {length} / {max}
+    </p>
   );
 }
 

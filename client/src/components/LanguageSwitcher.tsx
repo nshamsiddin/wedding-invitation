@@ -31,28 +31,47 @@ export default function LanguageSwitcher() {
 
   return (
     <div ref={ref} className="relative" style={{ zIndex: 500 }}>
-      {/* Collapsed trigger — always visible */}
+      {/* Collapsed trigger — globe icon + current language label. The icon
+          makes the affordance discoverable to international guests who
+          might otherwise miss a bare "EN" button. */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center justify-center rounded-full glass"
         style={{
           border: '1px solid var(--border-warm)',
           fontFamily: '"DM Sans", system-ui, sans-serif',
-          fontSize: '0.65rem',
+          fontSize: '0.78rem',
           fontWeight: 600,
           letterSpacing: '0.1em',
           color: 'var(--text-secondary)',
           background: 'none',
           outline: 'none',
-          minHeight: '32px',
-          minWidth: '44px',
-          padding: '0 0.6rem',
+          minHeight: '36px',
+          minWidth: '56px',
+          padding: '0 0.75rem',
           cursor: 'pointer',
           transition: 'border-color 0.2s, color 0.2s',
+          gap: '0.4rem',
         }}
         aria-label="Change language"
         aria-expanded={open}
       >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          style={{ flexShrink: 0, opacity: 0.85 }}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
         {language.toUpperCase()}
       </button>
 
@@ -77,14 +96,15 @@ export default function LanguageSwitcher() {
                   onClick={() => handleSelect(code)}
                   style={{
                     fontFamily: '"DM Sans", system-ui, sans-serif',
-                    fontSize: '0.65rem',
+                    fontSize: '0.78rem',
                     fontWeight: 600,
                     letterSpacing: '0.1em',
                     color: active ? 'var(--accent-gold)' : 'var(--text-secondary)',
                     background: active ? 'rgba(184,146,74,0.10)' : 'none',
                     border: 'none',
                     outline: 'none',
-                    padding: '0.55rem 0.75rem',
+                    padding: '0.65rem 0.85rem',
+                    minHeight: '36px',
                     cursor: 'pointer',
                     textAlign: 'center',
                     transition: 'background 0.15s, color 0.15s',

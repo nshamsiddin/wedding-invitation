@@ -5,13 +5,18 @@ export type AttendanceStatus = typeof attendanceStatus[number];
 
 // ─── RSVP (public) ───────────────────────────────────────────────────────────
 
+// Guest-facing RSVP forms intentionally expose only attending/declined.
+// The DB and admin tooling still accept the legacy `maybe` and `pending`
+// statuses (see `attendanceStatus`) — they are operationally useful for
+// historical rows and admin overrides — but the public form must commit
+// the guest to a definite answer so seating can be planned.
 export const rsvpFormSchema = z.object({
   name: z
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be under 100 characters')
     .trim(),
-  status: z.enum(['attending', 'declined', 'maybe'], {
+  status: z.enum(['attending', 'declined'], {
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
   guestCount: z
@@ -36,7 +41,7 @@ export type RSVPFormValues = z.infer<typeof rsvpFormSchema>;
 // Every personal RSVP must originate from a guest's unique personal link.
 export const rsvpSubmitSchema = z.object({
   token: z.string().uuid('Invalid invitation token'),
-  status: z.enum(['attending', 'declined', 'maybe']),
+  status: z.enum(['attending', 'declined']),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
   message: z.string().max(1000).trim().optional().default(''),
   // Optional name corrections: guests may fix a misspelling via the edit toggle
@@ -48,7 +53,7 @@ export const rsvpSubmitSchema = z.object({
 
 export const rsvpEntrySchema = z.object({
   eventId: z.number().int().positive(),
-  status: z.enum(['attending', 'declined', 'maybe']),
+  status: z.enum(['attending', 'declined']),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
   message: z.string().max(1000).trim().optional().default(''),
 });
@@ -265,7 +270,7 @@ export const publicPageRsvpSchema = z.object({
     .min(6, 'Phone number is too short')
     .max(30)
     .trim(),
-  status: z.enum(['attending', 'declined', 'maybe'], {
+  status: z.enum(['attending', 'declined'], {
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
@@ -288,7 +293,7 @@ export const publicRsvpSchema = z.object({
     .min(6, 'Phone number is too short')
     .max(30)
     .trim(),
-  status: z.enum(['attending', 'declined', 'maybe'], {
+  status: z.enum(['attending', 'declined'], {
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
   guestCount: z.number().int().min(1).max(5).optional().default(1),

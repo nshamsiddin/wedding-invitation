@@ -1,8 +1,20 @@
 import type { Language } from '../lib/i18n';
 
+// Couple names live in the config so the page is genuinely reusable across
+// future weddings without forking the PublicInvitePage component. Both names
+// are also surfaced as a monogram (initials + year) for the back-link.
+const COUPLE = {
+  first: 'Berfin',
+  second: 'Shamsiddin',
+  monogram: 'B & S · 2026',
+} as const;
+
 export const PUBLIC_EVENT_CONFIGS = {
   tashkent: {
     slug: 'tashkent' as const,
+    coupleFirst: COUPLE.first,
+    coupleSecond: COUPLE.second,
+    monogram: COUPLE.monogram,
     city: { en: 'Tashkent', tr: 'Taşkent', uz: 'Toshkent' },
     date: '2026-04-24',
     time: '18:00',
@@ -22,6 +34,9 @@ export const PUBLIC_EVENT_CONFIGS = {
   },
   ankara: {
     slug: 'ankara' as const,
+    coupleFirst: COUPLE.first,
+    coupleSecond: COUPLE.second,
+    monogram: COUPLE.monogram,
     city: { en: 'Ankara', tr: 'Ankara', uz: 'Ankara' },
     date: '2026-05-19',
     time: '18:30',

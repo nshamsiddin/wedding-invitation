@@ -45,7 +45,7 @@ export type {
 
 export interface RSVPSubmitBody {
   token: string;
-  status: 'attending' | 'declined' | 'maybe';
+  status: 'attending' | 'declined';
   guestCount?: number;
   message?: string;
   name?: string;

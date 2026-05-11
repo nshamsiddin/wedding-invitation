@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,7 +11,7 @@ import SuccessScreen from './SuccessScreen';
 import {
   FormCard, FormField, FormInput, FormTextarea,
   AttendancePicker, GuestCountSelect, FormSubmitButton,
-  formInputStyle,
+  FormCharCounter,
 } from './ui/FormPrimitives';
 
 interface PrefillData {
@@ -28,12 +28,32 @@ interface Props {
   partnerName?: string | null;
   /** Pre-built Google Calendar URL for the "Add to Calendar" CTA on the success screen */
   calendarUrl?: string;
+  /** Pre-built .ics blob URL (Apple Calendar) for the success screen */
+  icsUrl?: string;
+  /** Assigned table number — surfaced on the success screen as a gold pill */
+  tableNumber?: number | null;
+  /** Sharable URL of the current invitation — enables the share CTA on success */
+  shareUrl?: string;
+  /** Couple/event name used in the share text on the success screen */
+  shareCoupleName?: string;
 }
 
-export default function RSVPForm({ token, eventName = '', prefillData, partnerName, calendarUrl }: Props) {
+const MESSAGE_MAX = 1000;
+
+export default function RSVPForm({
+  token,
+  eventName = '',
+  prefillData,
+  partnerName,
+  calendarUrl,
+  icsUrl,
+  tableNumber,
+  shareUrl,
+  shareCoupleName,
+}: Props) {
   const [successResult, setSuccessResult] = useState<{
     name: string;
-    status: 'attending' | 'declined' | 'maybe';
+    status: 'attending' | 'declined';
     guestCount: number;
     updated: boolean;
   } | null>(null);
@@ -42,11 +62,20 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
   const showUpdateBanner = !!prefillData;
   const t = useTranslation();
 
+  // We intentionally do not pre-fill `status` from `prefillData` when it is
+  // `pending` or `maybe` — those are admin-only / legacy values and must
+  // force the guest to make a definite choice.
+  const prefillStatus: 'attending' | 'declined' | undefined =
+    prefillData?.status === 'attending' || prefillData?.status === 'declined'
+      ? prefillData.status
+      : undefined;
+
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    setFocus,
     formState: { errors },
   } = useForm<RSVPFormValues>({
     resolver: zodResolver(rsvpFormSchema),
@@ -54,7 +83,7 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
     defaultValues: prefillData
       ? {
           name:           prefillData.name,
-          status:         prefillData.status as 'attending' | 'declined' | 'maybe',
+          status:         prefillStatus,
           guestCount:     prefillData.guestCount,
           partnerName:    partnerName ?? '',
           message:        prefillData.message ?? '',
@@ -65,13 +94,19 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
   const watchedStatus      = watch('status');
   const watchedCount       = watch('guestCount') ?? 1;
   const watchedPartnerName = watch('partnerName');
+  const watchedMessage     = watch('message') ?? '';
 
-  // When a partner name is typed, bump guest count to 2; when cleared, drop back to 1
+  // When the guest types a partner name we bump the headcount to 2 the first
+  // time (so they don't have to manually flip the selector). We intentionally
+  // do NOT auto-decrement when the partner field is cleared — the previous
+  // behaviour silently dropped the guest's chosen count, which felt buggy.
+  const hasBumpedForPartner = useRef(false);
   useEffect(() => {
     if (watchedPartnerName?.trim()) {
-      if (watchedCount < 2) setValue('guestCount', 2);
-    } else {
-      if (watchedCount <= 2) setValue('guestCount', 1);
+      if (!hasBumpedForPartner.current && watchedCount < 2) {
+        setValue('guestCount', 2);
+      }
+      hasBumpedForPartner.current = true;
     }
   }, [watchedPartnerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -99,6 +134,17 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
   const onSubmit = (values: RSVPFormValues) => submitMutation.mutate(values);
 
+  // Move focus to the first invalid field on submit failure. On iOS the
+  // soft keyboard is already up; without this, validation errors can be
+  // hidden behind the keyboard or off-screen entirely.
+  const onInvalid = (errs: Record<string, unknown>) => {
+    const order = ['status', 'name', 'partnerName', 'message', 'guestCount'] as const;
+    const first = order.find((k) => k in errs);
+    if (first) {
+      try { setFocus(first as keyof RSVPFormValues); } catch { /* ignore */ }
+    }
+  };
+
   if (successResult) {
     return (
       <SuccessScreen
@@ -109,6 +155,10 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         eventName={eventName}
         isUpdate={successResult.updated}
         calendarUrl={calendarUrl}
+        icsUrl={icsUrl}
+        tableNumber={tableNumber}
+        shareUrl={shareUrl}
+        shareCoupleName={shareCoupleName}
         onUpdateRsvp={() => setSuccessResult(null)}
       />
     );
@@ -117,15 +167,21 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
   const attendanceLabels = {
     attending: t.attendingOption,
     declined:  t.decliningOption,
-    maybe:     t.maybeOption,
   };
+
+  // Editorial "Reserved for · {Name}" replaces the previously-disabled name
+  // input. The label is shown to anyone who isn't in edit mode and provides
+  // an obvious "Edit" affordance when name changes are desired.
+  const reservedDisplayName = partnerName
+    ? `${prefillData?.name ?? ''} & ${partnerName}`
+    : prefillData?.name ?? '';
 
   return (
     <motion.form
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      onSubmit={handleSubmit(onSubmit)}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       noValidate
       className="space-y-3"
       aria-label={t.rsvpHeading}
@@ -164,36 +220,50 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
 
       {/* ── WHO'S COMING ── */}
       <FormCard title={t.whosComing}>
-        {/* Name row */}
+        {/* Name row — editorial "Reserved for" line by default, inputs on edit */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-            <label style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              {partnerName ? t.guestsShortLabel : t.nameLabel}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+            <label style={{ fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+              {editingNames || !prefillData ? (partnerName ? t.guestsShortLabel : t.nameLabel) : t.reservedFor}
             </label>
-            <button
-              type="button"
-              onClick={() => setEditingNames((v) => !v)}
-              aria-label={editingNames ? 'Lock name fields' : 'Edit name'}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem', color: editingNames ? 'var(--accent-gold)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.3rem', transition: 'color 0.2s' }}
-            >
-              {editingNames ? (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-              ) : (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              )}
-              <span style={{ fontSize: '0.78rem', fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500, letterSpacing: '0.05em' }}>
-                {editingNames ? t.lockName : t.editName}
-              </span>
-            </button>
+            {prefillData && (
+              <button
+                type="button"
+                onClick={() => setEditingNames((v) => !v)}
+                aria-label={editingNames ? t.lockName : t.editName}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.2rem 0.4rem',
+                  color: editingNames ? 'var(--accent-gold)' : 'var(--text-tertiary)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  transition: 'color 0.2s',
+                  borderRadius: '999px',
+                  minHeight: '32px',
+                }}
+              >
+                {editingNames ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                )}
+                <span style={{ fontSize: '0.78rem', fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500, letterSpacing: '0.05em' }}>
+                  {editingNames ? t.lockName : t.editName}
+                </span>
+              </button>
+            )}
           </div>
 
-          {editingNames ? (
+          {editingNames || !prefillData ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               <FormInput id="rsvp-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
               {errors.name && <p style={{ fontSize: '0.78rem', color: 'var(--accent-rose)' }} role="alert">{errors.name.message}</p>}
@@ -201,19 +271,21 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
                 <FormInput id="rsvp-partner-name" type="text" autoComplete="off" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
               )}
             </div>
-          ) : partnerName ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-warm)', fontFamily: '"DM Sans", system-ui, sans-serif', fontSize: '0.9rem', color: 'var(--text-primary)', opacity: 0.85 }}
-              aria-label={`Guests: ${prefillData?.name} and ${partnerName}`}
-            >
-              <span>{prefillData?.name}</span>
-              <span style={{ color: 'var(--accent-rose)', fontSize: '0.75rem', flexShrink: 0 }}>&amp;</span>
-              <span>{partnerName}</span>
-            </div>
           ) : (
-            <input id="rsvp-name" type="text" autoComplete="name" {...register('name')} disabled
-              style={{ ...formInputStyle, opacity: 0.5 }}
-              placeholder={t.namePlaceholder}
-            />
+            <p
+              style={{
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontStyle: 'italic',
+                fontSize: 'clamp(1.15rem, 3.4vw, 1.4rem)',
+                color: 'var(--text-primary)',
+                margin: 0,
+                lineHeight: 1.3,
+                overflowWrap: 'anywhere',
+              }}
+              aria-label={`${t.reservedFor}: ${reservedDisplayName}`}
+            >
+              {reservedDisplayName}
+            </p>
           )}
         </div>
 
@@ -257,15 +329,24 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
       {/* ── A NOTE TO US ── */}
       <FormCard title={t.aNoteToUs}>
         <FormField htmlFor="rsvp-message" label={t.messageLabel} optional={t.messageOptional}>
-          <FormTextarea id="rsvp-message" rows={2} {...register('message')} placeholder={t.messagePlaceholder} />
+          <FormTextarea
+            id="rsvp-message"
+            rows={2}
+            maxLength={MESSAGE_MAX}
+            {...register('message')}
+            placeholder={t.messagePlaceholder}
+          />
+          <FormCharCounter value={watchedMessage} max={MESSAGE_MAX} />
         </FormField>
       </FormCard>
 
-      <FormSubmitButton
-        pending={submitMutation.isPending}
-        label={showUpdateBanner ? t.updateRsvp : t.sendRsvp}
-        pendingLabel={t.sending}
-      />
+      <div className="rsvp-submit-sticky">
+        <FormSubmitButton
+          pending={submitMutation.isPending}
+          label={showUpdateBanner ? t.updateRsvp : t.sendRsvp}
+          pendingLabel={t.sending}
+        />
+      </div>
 
       <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: '"DM Sans", system-ui, sans-serif', marginTop: '0.25rem' }}>
         {t.rsvpDeadlineHint}

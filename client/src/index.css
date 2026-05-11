@@ -539,8 +539,11 @@ body {
   position: relative;
 }
 
-/* ─── Invite dot nav — hide on narrow phones (content too tight) ──── */
-@media (max-width: 480px) {
+/* ─── Invite dot nav — hide on phones and small tablets (overlaps form) ─ */
+/* Threshold raised from 480 \u2192 600 px so that the form (max-width 38rem    */
+/* \u2248 608 px) is not visually obstructed by the right-rail dot column on   */
+/* portrait tablets in the 480\u2013600 px band.                                 */
+@media (max-width: 600px) {
   .invite-dot-nav { display: none; }
 }
 
@@ -596,6 +599,35 @@ body {
   .table-badge { display: none; }
 }
 
+/* ─── Invite back-link monogram ─────────────────────────────────────── */
+/* Unified across personal/open/public invite pages. The leading arrow */
+/* makes the affordance unambiguous (the previous personal-page version */
+/* relied on the monogram alone, which most guests did not realise was */
+/* clickable). Hover + focus colour transition lives here (not inline   */
+/* JS), so keyboard users see the same affordance as mouse users.       */
+.invite-monogram-link {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-secondary, rgba(26,18,16,0.55));
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.1rem;
+  border-radius: 2px;
+  transition: color 0.2s ease;
+}
+.invite-monogram-link:hover,
+.invite-monogram-link:focus-visible {
+  color: var(--accent-gold, #B8924A);
+}
+.invite-monogram-link:focus-visible {
+  outline: 2px solid var(--accent-gold, #B8924A);
+  outline-offset: 4px;
+}
+
 /* ─── Venue link — soft underline on hover/focus ──────────────────── */
 /* The hero venue is now an inline anchor (with a pin glyph) instead of a    */
 /* heavy "Open in Maps" pill. Reveal a thin gold underline on pointer hover  */
@@ -620,6 +652,199 @@ body {
   outline: 2px solid var(--accent-gold);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* ─── RSVP form — iOS keyboard / scroll-snap interaction ──────────── */
+/* The garden-wrap container uses `scroll-snap-type: y mandatory`.    */
+/* When the iOS soft keyboard opens, Safari auto-scrolls the focused  */
+/* control into view — but mandatory snap re-anchors the slide and    */
+/* the input ends up under the fixed top nav. `scroll-margin-top`    */
+/* tells the scroll engine to leave 6rem of headroom above the       */
+/* input, restoring keyboard visibility.                              */
+.form-input,
+.form-textarea,
+.form-select {
+  scroll-margin-top: 6rem;
+  scroll-margin-bottom: 6rem;
+}
+
+/* ─── Success screen pills — single source of truth for pill UI ──── */
+/* Replaces inline JS onMouseEnter/onMouseLeave handlers so the same  */
+/* affordance fires for keyboard focus and on touch devices, and so   */
+/* the styles can be themed centrally.                                */
+.success-pill,
+.success-pill--ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-warm);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  background: rgba(184,146,74,0.06);
+  color: var(--accent-gold);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.success-pill:hover,
+.success-pill:focus-visible {
+  background: rgba(184,146,74,0.14);
+  border-color: var(--accent-gold);
+}
+.success-pill:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+.success-pill:active {
+  transform: scale(0.98);
+}
+.success-pill--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.success-pill--ghost:hover,
+.success-pill--ghost:focus-visible {
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  background: rgba(184,146,74,0.08);
+}
+
+/* ─── Hero CTA — sticky on short phones so it always remains visible ─ */
+/* On viewports under 700 px tall the hero CTA is pulled out of normal */
+/* flow and pinned to the bottom of the hero slide.                    */
+@media (max-height: 700px) and (max-width: 600px) {
+  .hero-cta-sticky {
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+    z-index: 20;
+  }
+}
+
+/* ─── RSVP submit — sticky on short phones ──────────────────────────── */
+/* On short phones the submit button can fall below the message field   */
+/* once the textarea is expanded. Pin it to the bottom of the form so   */
+/* the guest never has to hunt for "Send" after typing a long message.  */
+@media (max-height: 700px) {
+  .rsvp-submit-sticky {
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+    z-index: 15;
+    background: linear-gradient(to top, var(--bg, #FAF7F2) 70%, rgba(250,247,242,0));
+    padding-top: 0.5rem;
+  }
+}
+
+/* ─── Soft bottom nudge ribbon ─────────────────────────────────────── */
+/* Replaces the previous full-screen blur modal. The ribbon sits above */
+/* the iOS home indicator and slides in 5 s after the hero loads,     */
+/* dismissable with Escape, the \u00d7 button, or by tapping the backdrop. */
+.nudge-ribbon {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  z-index: 550;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.65rem 0.75rem 0.65rem 1rem;
+  border-radius: 999px;
+  background: rgba(253,250,245,0.96);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid var(--border-warm);
+  box-shadow: 0 12px 32px rgba(42,31,26,0.15), 0 4px 12px rgba(42,31,26,0.08);
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+.nudge-ribbon__text {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+}
+.nudge-ribbon__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 36px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent-rose, #C4848C);
+  color: #FAF7F2;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+.nudge-ribbon__cta:hover,
+.nudge-ribbon__cta:focus-visible {
+  filter: brightness(1.05);
+}
+.nudge-ribbon__cta:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+.nudge-ribbon__cta:active {
+  transform: scale(0.97);
+}
+.nudge-ribbon__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.nudge-ribbon__close:hover,
+.nudge-ribbon__close:focus-visible {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-primary);
+}
+.nudge-ribbon__close:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+/* ─── Loading skeleton (hero shimmer) ────────────────────────────── */
+/* Shown in place of the spinner while the invite data resolves. Uses */
+/* the same parchment palette as the real hero so it doesn't feel    */
+/* like a mode flip on load.                                          */
+.invite-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(196,151,90,0.05) 0%,
+    rgba(196,151,90,0.18) 50%,
+    rgba(196,151,90,0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: invite-skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 12px;
+}
+@keyframes invite-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .invite-skeleton { animation: none; }
 }
 
 /* ─── Prefers-reduced-motion ─────────────────────────────────────── */

@@ -3,12 +3,15 @@ import type { CSSProperties } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import CountdownTimer from '../components/CountdownTimer';
 import RSVPForm from '../components/RSVPForm';
 import SuccessScreen from '../components/SuccessScreen';
+import ConfirmationPanel from '../components/ConfirmationPanel';
+import NudgeRibbon from '../components/NudgeRibbon';
+import InviteSkeleton from '../components/InviteSkeleton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { rsvpApi } from '../lib/api';
 import { useTranslation } from '../lib/i18n';
@@ -33,9 +36,11 @@ import {
   ROSE,
 } from '../garden/tokens';
 import { formatEventDate } from '../lib/formatDate';
+import { buildGoogleCalendarUrl, buildIcsBlobUrl } from '../lib/calendar';
 import {
   FormCard, FormField, FormInput, FormTextarea,
   GuestCountSelect, AttendancePicker, FormSubmitButton,
+  FormCharCounter,
 } from '../components/ui/FormPrimitives';
 
 const serif = 'var(--font-display)';
@@ -70,124 +75,19 @@ function buildMonogram(firstName: string, secondName: string | null): string {
   return firstName.length > 0 ? `${firstName[0]} · 2026` : '· 2026';
 }
 
-// ─── Nudge overlay — shown 3 s after landing on the hero slide ───────────────
-// Blurs the invitation behind a centred card explaining WHY attendance must be
-// confirmed (seating layout). One rose button scrolls straight to the form and
-// dismisses the overlay. The overlay never re-appears once dismissed.
-// The 3-second timer is cancelled if the guest scrolls before it fires.
-function NudgeOverlay({ onConfirm }: { onConfirm: () => void }) {
-  const t = useTranslation();
-  return (
-    <motion.div
-      key="nudge-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 600,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '1.5rem',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        background: 'rgba(42,31,26,0.35)',
-      }}
-      // Clicking the backdrop also confirms & scrolls, reducing accidental traps
-      onClick={onConfirm}
-    >
-      <motion.div
-        key="nudge-card"
-        initial={{ opacity: 0, scale: 0.92, y: 24 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 16 }}
-        transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t.seatingPreferenceNote}
-        style={{
-          background: PARCHMENT,
-          border: `1.5px solid ${GOLD_DIM}`,
-          borderRadius: '1.25rem',
-          padding: 'clamp(1.5rem, 5vw, 2rem)',
-          maxWidth: '22rem',
-          width: '100%',
-          boxShadow: '0 24px 80px rgba(42,31,26,0.22), 0 4px 16px rgba(42,31,26,0.1)',
-          textAlign: 'center',
-        }}
-      >
-        {/* Rose ring icon */}
-        <div
-          aria-hidden="true"
-          style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'rgba(196,132,140,0.12)',
-            border: `1.5px solid rgba(196,132,140,0.35)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 1.1rem',
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ROSE} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-        </div>
-
-        {/* Message */}
-        <p style={{
-          fontFamily: sans, fontSize: '1rem', lineHeight: 1.65,
-          color: ESPRESSO, fontWeight: 500, marginBottom: '0.6rem',
-        }}>
-          {t.seatingPreferenceNote}
-        </p>
-        <p style={{
-          fontFamily: sans, fontSize: '0.88rem', lineHeight: 1.55,
-          color: ESPRESSO_DIM, marginBottom: '1.5rem',
-        }}>
-          {t.nudgeSubtext}
-        </p>
-
-        {/* CTA */}
-        <motion.button
-          onClick={onConfirm}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          style={{
-            width: '100%',
-            padding: '0.9rem 1.5rem',
-            borderRadius: '999px',
-            background: ROSE,
-            color: '#FAF7F2',
-            fontFamily: sans,
-            fontSize: '0.88rem',
-            fontWeight: 700,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(196,132,140,0.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          }}
-        >
-          {t.rsvpButton}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M19 9l-7 7-7-7"/>
-          </svg>
-        </motion.button>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 // ─── Public RSVP form (permanent, reusable link) ─────────────────────────────
 interface PublicInviteFormProps {
   token: string;
   eventId: number;
+  calendarUrl?: string;
+  icsUrl?: string;
+  shareUrl?: string;
+  shareCoupleName?: string;
 }
 
-function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
+const PUBLIC_MESSAGE_MAX = 1000;
+
+function PublicInviteForm({ token, eventId, calendarUrl, icsUrl, shareUrl, shareCoupleName }: PublicInviteFormProps) {
   const t = useTranslation();
 
   const LS_KEY = `rsvp_pub_${eventId}`;
@@ -195,14 +95,21 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
   type SuccessResult = {
     name: string;
     partnerName?: string;
-    status: 'attending' | 'declined' | 'maybe';
+    status: 'attending' | 'declined';
     guestCount: number;
   };
 
   const [successResult, setSuccessResult] = useState<SuccessResult | null>(() => {
     try {
       const stored = localStorage.getItem(LS_KEY);
-      return stored ? (JSON.parse(stored) as SuccessResult) : null;
+      if (!stored) return null;
+      const parsed = JSON.parse(stored) as SuccessResult;
+      // Defensive: clamp legacy `maybe` rows to `attending` so the success
+      // screen doesn't fall through to the default copy on a revisit.
+      if ((parsed.status as string) !== 'attending' && (parsed.status as string) !== 'declined') {
+        return { ...parsed, status: 'attending' };
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -213,6 +120,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
     handleSubmit,
     watch,
     setValue,
+    setFocus,
     formState: { errors },
   } = useForm<PublicRsvpValues>({
     resolver: zodResolver(publicRsvpSchema),
@@ -223,13 +131,16 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
   const status          = watch('status') ?? 'attending';
   const guestCount      = watch('guestCount') ?? 1;
   const watchedPartner  = watch('partnerName');
+  const watchedMessage  = watch('message') ?? '';
 
-  // Auto-sync guest count with partner name: typing a name → 2, clearing it → 1
+  // Bump guest count to 2 the first time a partner name is typed. We never
+  // auto-decrement on clear — the previous behaviour silently overrode the
+  // guest's chosen count and felt like a bug.
+  const hasBumpedForPartner = useRef(false);
   useEffect(() => {
     if (watchedPartner?.trim()) {
-      if (guestCount < 2) setValue('guestCount', 2);
-    } else {
-      if (guestCount <= 2) setValue('guestCount', 1);
+      if (!hasBumpedForPartner.current && guestCount < 2) setValue('guestCount', 2);
+      hasBumpedForPartner.current = true;
     }
   }, [watchedPartner]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -248,7 +159,13 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
     onError: () => { toast.error(t.submitFailed); },
   });
 
-  const attendanceLabels = { attending: t.attendingOption, declined: t.decliningOption, maybe: t.maybeOption };
+  const onInvalid = (errs: Record<string, unknown>) => {
+    const order = ['name', 'phone', 'status', 'partnerName', 'message'] as const;
+    const first = order.find((k) => k in errs);
+    if (first) { try { setFocus(first as keyof PublicRsvpValues); } catch { /* ignore */ } }
+  };
+
+  const attendanceLabels = { attending: t.attendingOption, declined: t.decliningOption };
 
   if (successResult) {
     return (
@@ -258,6 +175,10 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
         status={successResult.status}
         guestCount={successResult.guestCount}
         isUpdate={false}
+        calendarUrl={calendarUrl}
+        icsUrl={icsUrl}
+        shareUrl={shareUrl}
+        shareCoupleName={shareCoupleName}
         onUpdateRsvp={() => { try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ } setSuccessResult(null); }}
       />
     );
@@ -265,10 +186,10 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
 
   return (
     <motion.form
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      onSubmit={handleSubmit((v) => submitMutation.mutate(v))}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      onSubmit={handleSubmit((v) => submitMutation.mutate(v), onInvalid)}
       noValidate
       className="space-y-3"
     >
@@ -286,7 +207,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
         </FormField>
 
         <FormField htmlFor="pub-phone" label={t.phoneLabel} required error={errors.phone?.message} hint={t.phoneHint}>
-          <FormInput id="pub-phone" type="tel" autoComplete="tel" {...register('phone')} placeholder="+1 555 000 0000" />
+          <FormInput id="pub-phone" type="tel" inputMode="tel" autoComplete="tel" {...register('phone')} placeholder={t.phonePlaceholder} />
         </FormField>
 
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
@@ -318,11 +239,20 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
       {/* A NOTE TO US */}
       <FormCard title={t.aNoteToUs}>
         <FormField htmlFor="pub-message" label={t.messageLabel} optional={t.messageOptional}>
-          <FormTextarea id="pub-message" rows={2} {...register('message')} placeholder={t.messagePlaceholder} />
+          <FormTextarea
+            id="pub-message"
+            rows={2}
+            maxLength={PUBLIC_MESSAGE_MAX}
+            {...register('message')}
+            placeholder={t.messagePlaceholder}
+          />
+          <FormCharCounter value={watchedMessage} max={PUBLIC_MESSAGE_MAX} />
         </FormField>
       </FormCard>
 
-      <FormSubmitButton pending={submitMutation.isPending} label={t.sendRsvp} pendingLabel={t.sending} />
+      <div className="rsvp-submit-sticky">
+        <FormSubmitButton pending={submitMutation.isPending} label={t.sendRsvp} pendingLabel={t.sending} />
+      </div>
     </motion.form>
   );
 }
@@ -332,14 +262,27 @@ interface OpenInviteFormProps {
   token: string;
   isPublic: boolean;
   events: Array<{ id: number; slug: string; name: string; date: string; time: string | null; venueName: string | null }>;
-  onSuccess: () => void;
+  onSuccess: (claimName: string) => void;
+  calendarUrl?: string;
+  icsUrl?: string;
+  shareUrl?: string;
+  shareCoupleName?: string;
 }
 
-function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormProps) {
+function OpenInviteForm({ token, isPublic, events, onSuccess, calendarUrl, icsUrl, shareUrl, shareCoupleName }: OpenInviteFormProps) {
   const t = useTranslation();
 
   if (isPublic) {
-    return <PublicInviteForm token={token} eventId={events[0]?.id ?? 0} />;
+    return (
+      <PublicInviteForm
+        token={token}
+        eventId={events[0]?.id ?? 0}
+        calendarUrl={calendarUrl}
+        icsUrl={icsUrl}
+        shareUrl={shareUrl}
+        shareCoupleName={shareCoupleName}
+      />
+    );
   }
 
   const {
@@ -347,6 +290,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
     handleSubmit,
     control,
     watch,
+    setFocus,
     formState: { errors },
   } = useForm<ClaimInvitationValues>({
     resolver: zodResolver(claimInvitationSchema),
@@ -368,18 +312,26 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
 
   const claimMutation = useMutation({
     mutationFn: rsvpApi.claim,
-    onSuccess: () => { toast.success(t.registrationComplete); onSuccess(); },
-    onError:   () => { toast.error(t.registerFailed); },
+    onSuccess: (_data, variables) => {
+      toast.success(t.registrationComplete);
+      onSuccess(variables.name);
+    },
+    onError: () => { toast.error(t.registerFailed); },
   });
 
-  const attendanceLabels = { attending: t.attendingOption, declined: t.decliningOption, maybe: t.maybeOption };
+  const onInvalid = (errs: Record<string, unknown>) => {
+    if ('name' in errs) { try { setFocus('name'); } catch { /* ignore */ } return; }
+    if ('phone' in errs) { try { setFocus('phone'); } catch { /* ignore */ } return; }
+  };
+
+  const attendanceLabels = { attending: t.attendingOption, declined: t.decliningOption };
 
   return (
     <motion.form
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      onSubmit={handleSubmit((v) => claimMutation.mutate(v))}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      onSubmit={handleSubmit((v) => claimMutation.mutate(v), onInvalid)}
       noValidate
       className="space-y-3"
     >
@@ -391,7 +343,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
           <FormInput id="claim-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
         </FormField>
         <FormField htmlFor="claim-phone" label={t.phoneLabel} optional={t.optionalLabel}>
-          <FormInput id="claim-phone" type="tel" {...register('phone')} placeholder="+1 555 000 0000" />
+          <FormInput id="claim-phone" type="tel" inputMode="tel" autoComplete="tel" {...register('phone')} placeholder={t.phonePlaceholder} />
         </FormField>
       </FormCard>
 
@@ -443,36 +395,10 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
         );
       })}
 
-      <FormSubmitButton pending={claimMutation.isPending} label={t.confirmRegistration} pendingLabel={t.registering} />
+      <div className="rsvp-submit-sticky">
+        <FormSubmitButton pending={claimMutation.isPending} label={t.confirmRegistration} pendingLabel={t.registering} />
+      </div>
     </motion.form>
-  );
-}
-
-// ─── Success screen ───────────────────────────────────────────────────────────
-function ClaimSuccessScreen() {
-  const t = useTranslation();
-  return (
-    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        style={{ marginBottom: '1rem' }}
-        aria-hidden="true"
-      >
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ margin: '0 auto' }}>
-          {[0, 60, 120, 180, 240, 300].map((angle, i) => (
-            <ellipse key={i} cx="24" cy="24" rx="10" ry="5" fill={ROSE} opacity="0.75" transform={`rotate(${angle} 24 24)`} />
-          ))}
-          <circle cx="24" cy="24" r="5" fill={GOLD} opacity="0.9" />
-        </svg>
-      </motion.div>
-      <h2 style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(1.8rem, 5vw, 2.5rem)', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-        {t.youreRegistered}
-      </h2>
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '24rem', margin: '0 auto' }}>
-        {t.thankYouRegistering}
-      </p>
-    </div>
   );
 }
 
@@ -541,7 +467,7 @@ function InviteNav({ monogram, scrolled }: { monogram: string; scrolled: boolean
     <motion.header
       initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 400,
         padding: '1rem clamp(1.5rem, 5vw, 3rem)',
@@ -553,14 +479,13 @@ function InviteNav({ monogram, scrolled }: { monogram: string; scrolled: boolean
         transition: 'background 0.4s, backdrop-filter 0.4s, border-color 0.4s',
       }}
     >
-      <Link to="/" style={{ textDecoration: 'none' }} aria-label={t.returnToHomepage}>
-        <p
-          style={{ fontFamily: sans, fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.25em', textTransform: 'uppercase', color: ESPRESSO_DIM, transition: 'color 0.2s' }}
-          onMouseEnter={e => (e.currentTarget.style.color = GOLD)}
-          onMouseLeave={e => (e.currentTarget.style.color = ESPRESSO_DIM)}
-        >
-          {monogram}
-        </p>
+      {/* Back link — unified with PublicInvitePage as `\u2190 {monogram}` so the
+          affordance is unambiguous on both flows. Hover/focus colour change
+          is delivered via CSS class to remain consistent across pointer +
+          keyboard users. */}
+      <Link to="/" className="invite-monogram-link" aria-label={t.returnToHomepage}>
+        <span aria-hidden="true" style={{ marginRight: '0.45rem' }}>←</span>
+        {monogram}
       </Link>
       <LanguageSwitcher />
     </motion.header>
@@ -568,40 +493,78 @@ function InviteNav({ monogram, scrolled }: { monogram: string; scrolled: boolean
 }
 
 // ─── Shared couple name block ─────────────────────────────────────────────────
+//
+// Animation budget compressed (was 1.3 s × 2 = 2.6 s end-to-end with stacking
+// delays from the hero, putting the countdown reveal near 2 s post-mount;
+// now bounded to ~400 ms with a 0.08 s stagger) and the blur+y choreography
+// is suppressed entirely when the guest prefers reduced motion.
+//
+// Long-name guard: compound names ("Shamsiddin", "Ekaterina-Alexandra") used
+// to overflow on a 320 px viewport because `clamp(4rem, 13vw, 8rem)` produces
+// 41.6 px on that width, multiplied by ~10 characters at ~0.6em that's the
+// full screen wide. We pick the script font size based on the longer of the
+// two names so the row breathes.
+function pickCoupleNameSize(longestLength: number): string {
+  // Below 8 chars: use the original cap. 8\u201312 chars: linear taper. 13+ chars:
+  // clamp the upper bound so the longest name still fits on a 320 px phone.
+  if (longestLength <= 7) return 'clamp(4rem, 13vw, 8rem)';
+  if (longestLength <= 10) return 'clamp(3.4rem, 11vw, 6.5rem)';
+  return 'clamp(2.8rem, 9vw, 5.25rem)';
+}
+
 function CoupleNames({ firstName, secondName, delayOffset = 0 }: { firstName: string; secondName: string | null; delayOffset?: number }) {
+  const reduce = useReducedMotion();
+  const longest = Math.max(firstName.length, secondName?.length ?? 0);
+  const nameSize = pickCoupleNameSize(longest);
+
+  const nameStyle: CSSProperties = {
+    fontFamily: serif,
+    fontStyle: serifStyle,
+    fontWeight: 400,
+    fontSize: nameSize,
+    lineHeight: 1.0,
+    letterSpacing: '-0.02em',
+    margin: 0,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    ...NAME_GRADIENT,
+  };
+
+  const nameTransition = (extra: number) => ({
+    duration: reduce ? 0 : 0.5,
+    delay: reduce ? 0 : 0.16 + delayOffset + extra,
+    ease: [0.22, 1, 0.36, 1] as const,
+  });
+
+  const nameInitial = reduce ? false : { opacity: 0, y: 16 };
+
   if (secondName) {
     return (
       <div style={{ padding: '0.2em 0' }}>
         <motion.h1
-          initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 1.3, delay: 0.5 + delayOffset, ease: [0.16, 1, 0.3, 1] }}
-          // Tighter line-height (1.0 vs 1.15) lets the script names embrace
-          // the ampersand instead of floating as three separate elements.
-          style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.0, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+          initial={nameInitial}
+          animate={{ opacity: 1, y: 0 }}
+          transition={nameTransition(0)}
+          style={nameStyle}
         >
           {firstName}
         </motion.h1>
         <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
+          initial={reduce ? false : { opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
-          transition={{ duration: 0.7, delay: 0.9 + delayOffset }}
-          // Tighter vertical margin pulls the names toward the ampersand.
-          // Shorter hairlines (4rem vs 6rem) let the larger '&' carry the row.
+          transition={{ duration: reduce ? 0 : 0.3, delay: reduce ? 0 : 0.24 + delayOffset }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', margin: 'clamp(0.05rem, 0.15vw, 0.15rem) 0', transformOrigin: 'center' }}
           aria-hidden="true"
         >
           <div style={{ flex: 1, maxWidth: '4rem', height: 1, background: GOLD_DIM }} />
-          {/* Ampersand is the emotional center — bumped from clamp(2,6vw,3.5)
-              to clamp(2.8,8vw,4.8) so it owns the row. */}
-          <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2.8rem, 8vw, 4.8rem)', color: GOLD, lineHeight: 1 }}>&</span>
+          <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2.8rem, 8vw, 4.8rem)', color: GOLD, lineHeight: 1 }}>&amp;</span>
           <div style={{ flex: 1, maxWidth: '4rem', height: 1, background: GOLD_DIM }} />
         </motion.div>
         <motion.h1
-          initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 1.3, delay: 0.7 + delayOffset, ease: [0.16, 1, 0.3, 1] }}
-          style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.0, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+          initial={nameInitial}
+          animate={{ opacity: 1, y: 0 }}
+          transition={nameTransition(0.08)}
+          style={nameStyle}
         >
           {secondName}
         </motion.h1>
@@ -611,10 +574,10 @@ function CoupleNames({ firstName, secondName, delayOffset = 0 }: { firstName: st
   return (
     <div style={{ padding: '0.2em 0' }}>
       <motion.h1
-        initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: 1.3, delay: 0.5 + delayOffset, ease: [0.16, 1, 0.3, 1] }}
-        style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.0, letterSpacing: '-0.02em', ...NAME_GRADIENT }}
+        initial={nameInitial}
+        animate={{ opacity: 1, y: 0 }}
+        transition={nameTransition(0)}
+        style={nameStyle}
       >
         {firstName}
       </motion.h1>
@@ -641,15 +604,30 @@ interface HeroSlideProps {
   tableNumber?: number | null;
   /** Compact layout for short-viewport devices (< 700 px tall) */
   isShortScreen?: boolean;
+  /** Click handler for the primary "Confirm Attendance" CTA */
+  onConfirmClick?: () => void;
+  /** When false, the primary CTA is hidden (e.g. pre-confirmed personal guests) */
+  showConfirmCta?: boolean;
 }
 
 function HeroSlide({
   heroRef, overline, guestName, firstName, secondName, cityPart,
   date, time, venueName, venueMapUrl, targetDateTime, tableNumber,
-  isShortScreen,
+  isShortScreen, onConfirmClick, showConfirmCta = true,
 }: HeroSlideProps) {
   const t = useTranslation();
+  const reduce = useReducedMotion();
   const hasEventDetails = !!(date && time && venueName);
+
+  // Animation budget capped at \u22640.4 s of stagger so the countdown is
+  // visible within ~600 ms of mount instead of the previous ~1.75 s.
+  // Reduced-motion users see content snap in instantly.
+  const fadeIn = (delay: number) => ({
+    initial: reduce ? false : { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: reduce ? 0 : 0.35, delay: reduce ? 0 : delay, ease: [0.22, 1, 0.36, 1] as const },
+  });
+
   return (
     <section
       ref={heroRef}
@@ -673,10 +651,8 @@ function HeroSlide({
       >
         {/* Overline */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: guestName ? '0.5rem' : '1rem' }}
+          {...fadeIn(0)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: guestName ? '0.3rem' : '1rem' }}
         >
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
           <span style={{ fontFamily: sans, fontSize: '0.85rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ROSE, fontWeight: 600 }}>
@@ -685,85 +661,54 @@ function HeroSlide({
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
         </motion.div>
 
-        {/* Guest greeting — collapsed into a single quiet line so the script
-            couple-names below own the page. The honorific (Sayın / Dear /
-            Hurmatli) is an inline rose caps prefix; the name itself is sans
-            medium-weight in espresso, intentionally smaller than before so
-            it reads as "to whom" — not as a competing display moment. */}
+        {/* Guest personalisation \u2014 louder than the previous tiny sans line:
+            honorific in caps + name in serif italic so the address line
+            visibly says "this is for you, by name". Compound names are
+            allowed to break onto multiple lines via overflow-wrap. */}
         {guestName && (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.42 }}
-              style={{
-                marginBottom: 'clamp(0.5rem, 1.2vh, 0.85rem)',
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'baseline',
-                justifyContent: 'center',
-                gap: '0.4rem 0.7rem',
-              }}
-            >
-              <span style={{
-                fontFamily: sans,
-                fontSize: '0.78rem',
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                color: ROSE,
-                fontWeight: 600,
-              }}>
-                {t.honorific}
-              </span>
-              <span style={{
-                fontFamily: sans,
-                fontSize: 'clamp(1.05rem, 2.4vw, 1.35rem)',
-                color: ESPRESSO,
-                fontWeight: 500,
-                letterSpacing: '0.01em',
-              }}>
-                {guestName}
-              </span>
-            </motion.div>
-
-            {/* Star separator before couple names — kept; the gold underline
-                under the previous guest-name block was redundant with this. */}
-            <motion.div
-              initial={{ scaleX: 0, opacity: 0 }}
-              animate={{ scaleX: 1, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: 'clamp(0.6rem, 1.5vh, 1rem)' }}
-              aria-hidden="true"
-            >
-              <div style={{ height: 1, width: 40, background: `linear-gradient(to right, transparent, ${GOLD_DIM})` }} />
-              <svg width="10" height="10" viewBox="0 0 10 10" fill={ROSE} opacity={0.55}>
-                <path d="M5 1 L6.2 3.8 L9.5 4.1 L7.2 6.3 L7.9 9.5 L5 7.9 L2.1 9.5 L2.8 6.3 L0.5 4.1 L3.8 3.8 Z" />
-              </svg>
-              <div style={{ height: 1, width: 40, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
-            </motion.div>
-          </>
+          <motion.div
+            {...fadeIn(0.04)}
+            style={{
+              marginBottom: 'clamp(0.65rem, 1.6vh, 1rem)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.2rem',
+              padding: '0 1rem',
+            }}
+          >
+            <span style={{
+              fontFamily: sans,
+              fontSize: '0.7rem',
+              letterSpacing: '0.28em',
+              textTransform: 'uppercase',
+              color: ROSE,
+              fontWeight: 600,
+            }}>
+              {t.honorific}
+            </span>
+            <span style={{
+              fontFamily: serif,
+              fontStyle: 'italic',
+              fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+              color: ESPRESSO,
+              fontWeight: 400,
+              letterSpacing: '0.01em',
+              lineHeight: 1.2,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+            }}>
+              {guestName}
+            </span>
+          </motion.div>
         )}
 
         {/* Couple names */}
-        <CoupleNames firstName={firstName} secondName={secondName} delayOffset={guestName ? 0.2 : 0} />
+        <CoupleNames firstName={firstName} secondName={secondName} delayOffset={guestName ? 0.04 : 0} />
 
-        {/* City */}
-        {cityPart && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: guestName ? 1.3 : 1.2, duration: 0.6 }}
-            style={{ fontFamily: sans, fontSize: '0.82rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.4rem, 1vh, 0.75rem)' }}
-          >
-            {cityPart}
-          </motion.p>
-        )}
-
-        {/* ♡ divider */}
+        {/* \u2661 divider */}
         <motion.div
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={{ scaleX: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: hasEventDetails ? 1.4 : 1.1 }}
+          {...fadeIn(reduce ? 0 : 0.28)}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: `clamp(${hasEventDetails ? '0.75rem' : '1.5rem'}, ${hasEventDetails ? '2' : '3'}vh, ${hasEventDetails ? '1.5rem' : '2rem'}) 0` }}
           aria-hidden="true"
         >
@@ -772,83 +717,91 @@ function HeroSlide({
           <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
         </motion.div>
 
-        {/* Date · Time · Venue — venue itself is the tap target for the map.
-            Removes the separate "Open in Maps" pill so the line reads as
-            one continuous reservation detail (Apple Wallet / Calendar style). */}
-        {hasEventDetails && (
+        {/* Single editorial microline: city \u00b7 date \u00b7 time \u00b7 venue.
+            The previous design had two separate rows for the city caps and
+            the date/time/venue triplet which double-named the city for
+            most venues. Combining them sharpens hierarchy without losing
+            information; the venue itself remains the map link. */}
+        {(hasEventDetails || cityPart) && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 1.5 }}
+            {...fadeIn(reduce ? 0 : 0.3)}
             style={{
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.5rem 1rem',
+              gap: '0.4rem 0.85rem',
               marginBottom: 'clamp(0.6rem, 1.6vh, 1rem)',
             }}
           >
-            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
-            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
-            {venueMapUrl ? (
-              <a
-                href={venueMapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="venue-link"
-                style={{
-                  fontFamily: sans,
-                  fontSize: '0.92rem',
-                  letterSpacing: '0.03em',
-                  color: ESPRESSO,
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  paddingBottom: 1,
-                  borderBottom: '1px solid transparent',
-                  transition: 'border-color 0.25s ease, color 0.25s ease',
-                }}
-                aria-label={`${venueName} — ${t.openInMaps}`}
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={GOLD}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  style={{ flexShrink: 0 }}
-                >
-                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                <span>{venueName}</span>
-              </a>
-            ) : (
-              <span style={{ fontFamily: sans, fontSize: '0.92rem', letterSpacing: '0.03em', color: ESPRESSO, fontWeight: 600 }}>
-                {venueName}
-              </span>
+            {cityPart && (
+              <>
+                <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD, fontWeight: 600 }}>{cityPart}</span>
+                {hasEventDetails && <span style={{ color: GOLD_DIM, fontSize: '0.6rem' }} aria-hidden="true">◆</span>}
+              </>
+            )}
+            {hasEventDetails && (
+              <>
+                <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
+                <span style={{ color: GOLD_DIM, fontSize: '0.6rem' }} aria-hidden="true">◆</span>
+                <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
+                <span style={{ color: GOLD_DIM, fontSize: '0.6rem' }} aria-hidden="true">◆</span>
+                {venueMapUrl ? (
+                  <a
+                    href={venueMapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="venue-link"
+                    style={{
+                      fontFamily: sans,
+                      fontSize: '0.92rem',
+                      letterSpacing: '0.03em',
+                      color: ESPRESSO,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      paddingBottom: 1,
+                      borderBottom: '1px solid transparent',
+                      transition: 'border-color 0.25s ease, color 0.25s ease',
+                    }}
+                    aria-label={`${venueName} — ${t.openInMaps}`}
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={GOLD}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span>{venueName}</span>
+                  </a>
+                ) : (
+                  <span style={{ fontFamily: sans, fontSize: '0.92rem', letterSpacing: '0.03em', color: ESPRESSO, fontWeight: 600 }}>
+                    {venueName}
+                  </span>
+                )}
+              </>
             )}
           </motion.div>
         )}
 
         {/* Assigned table number — restrained editorial caps line.
-            A pre-assigned seat is a confirmation, not an action, so it now
-            reads as quiet typography rather than a competing CTA pill.
-            Still hidden on short screens via the .table-badge media rule. */}
+            Quiet typography (the operational pill lives on the
+            ConfirmationPanel / SuccessScreen). Still hidden on short
+            screens via the .table-badge media rule. */}
         {tableNumber != null && (
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.6 }}
+            {...fadeIn(reduce ? 0 : 0.32)}
             className="table-badge"
             style={{ marginBottom: 'clamp(0.6rem, 1.6vh, 1rem)', display: 'flex', justifyContent: 'center' }}
           >
@@ -871,16 +824,63 @@ function HeroSlide({
         {/* Countdown — only when targetDateTime is available */}
         {targetDateTime && (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: tableNumber != null ? 1.75 : 1.65 }}
-            style={{ marginBottom: 'clamp(0.5rem, 1.5vh, 1.25rem)' }}
+            {...fadeIn(reduce ? 0 : 0.36)}
+            style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.5rem)' }}
           >
             <CountdownTimer targetDate={targetDateTime} compact={isShortScreen} />
           </motion.div>
         )}
 
+        {/* Primary CTA \u2014 unified across personal / open / public flows.
+            Previously the personal hero had no CTA at all, leaving guests
+            to discover the form via the dot nav (hidden under 600 px) or
+            scrolling. The button + bouncing chevron cue make the next
+            action explicit on every device size. */}
+        {showConfirmCta && onConfirmClick && (
+          <>
+            <motion.div
+              {...fadeIn(reduce ? 0 : 0.4)}
+              className="hero-cta-sticky"
+            >
+              <button
+                type="button"
+                onClick={onConfirmClick}
+                className="btn-primary"
+                aria-label={t.rsvpButton}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                {t.rsvpButton}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </motion.div>
 
+            {/* Scroll cue — bouncing chevrons + caption. Suppressed on
+                reduce-motion. */}
+            {!reduce && (
+              <motion.div
+                {...fadeIn(0.5)}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginTop: 'clamp(0.75rem, 2vh, 1.5rem)' }}
+                aria-hidden="true"
+              >
+                {[0, 1].map((i) => (
+                  <motion.svg
+                    key={i}
+                    width="16" height="10" viewBox="0 0 16 10" fill="none"
+                    animate={{ opacity: [0.2, 0.8, 0.2], y: [0, 4, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut', delay: i * 0.25 }}
+                  >
+                    <path d="M1 1L8 8L15 1" stroke={ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </motion.svg>
+                ))}
+                <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginTop: '0.1rem' }}>
+                  {t.scrollToRsvp}
+                </span>
+              </motion.div>
+            )}
+          </>
+        )}
       </div>
     </section>
   );
@@ -888,11 +888,18 @@ function HeroSlide({
 
 // ─── Shared RSVP slide ────────────────────────────────────────────────────────
 function RSVPSlide({
-  rsvpRef, rsvpInView, formContent,
+  rsvpRef, rsvpInView, formContent, hideHeader,
 }: {
   rsvpRef: React.RefObject<HTMLElement>;
   rsvpInView: boolean;
   formContent: React.ReactNode;
+  /**
+   * Pre-confirmed personal guests get the ConfirmationPanel which is its own
+   * self-contained heading + body. In that case we suppress the "Kindly reply"
+   * caps row + seating note since they conflict with the panel's "Your seat
+   * is reserved" framing.
+   */
+  hideHeader?: boolean;
 }) {
   const t = useTranslation();
   return (
@@ -901,7 +908,7 @@ function RSVPSlide({
       id="rsvp"
       className="garden-slide-tall"
       style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: CREAM }}
-      aria-label={t.kindlyReply}
+      aria-label={hideHeader ? t.preConfirmedOverline : t.kindlyReply}
     >
       <VineCornerBR inView={rsvpInView} />
       <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 60% 55% at 50% 50%, rgba(240,200,204,0.18) 0%, transparent 70%)' }} />
@@ -910,7 +917,6 @@ function RSVPSlide({
         maxWidth: '38rem',
         margin: '0 auto',
         width: '100%',
-        /* top: space below fixed nav bar; bottom: safe area + a little extra so iPhone home bar never overlaps */
         paddingTop: 'clamp(5rem, 9vh, 7rem)',
         paddingLeft: 'clamp(1rem, 4vw, 1.5rem)',
         paddingRight: 'clamp(1rem, 4vw, 1.5rem)',
@@ -918,47 +924,51 @@ function RSVPSlide({
         position: 'relative',
         zIndex: 5,
       }}>
-        {/* Compact header */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.5, delay: 0.05 }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
-        >
-          <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to right, transparent, ${ROSE})` }} aria-hidden="true" />
-          <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.26em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, whiteSpace: 'nowrap' }}>
-            {t.kindlyReply}
-          </span>
-          <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to left, transparent, ${ROSE})` }} aria-hidden="true" />
-        </motion.div>
+        {!hideHeader && (
+          <>
+            {/* Compact header */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.35, delay: 0.05 }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
+            >
+              <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to right, transparent, ${ROSE})` }} aria-hidden="true" />
+              <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.26em', textTransform: 'uppercase', color: ROSE, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {t.kindlyReply}
+              </span>
+              <div style={{ height: 1, flex: 1, maxWidth: '3rem', background: `linear-gradient(to left, transparent, ${ROSE})` }} aria-hidden="true" />
+            </motion.div>
 
-        {/* Seating preference note */}
-        <motion.p
+            {/* Seating preference note */}
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.35, delay: 0.08 }}
+              style={{
+                fontFamily: sans,
+                fontSize: '0.8rem',
+                lineHeight: 1.6,
+                letterSpacing: '0.02em',
+                color: ESPRESSO_DIM,
+                textAlign: 'center',
+                marginBottom: '1.25rem',
+                fontStyle: 'italic',
+              }}
+            >
+              {t.seatingPreferenceNote}
+            </motion.p>
+          </>
+        )}
+
+        {/* Form / confirmation panel */}
+        <motion.div
           initial={{ opacity: 0, y: 8 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.5, delay: 0.08 }}
-          style={{
-            fontFamily: sans,
-            fontSize: '0.8rem',
-            lineHeight: 1.6,
-            letterSpacing: '0.02em',
-            color: ESPRESSO_DIM,
-            textAlign: 'center',
-            marginBottom: '1.25rem',
-            fontStyle: 'italic',
-          }}
-        >
-          {t.seatingPreferenceNote}
-        </motion.p>
-
-        {/* Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
         >
           {formContent}
         </motion.div>
@@ -1014,18 +1024,18 @@ export default function InvitePage() {
   }, []);
 
   const t = useTranslation();
-  const { language, setLanguage } = useContext(LanguageContext);
+  const { language, setLanguageFromInvitation } = useContext(LanguageContext);
   const lang = language as Language;
 
-  const [claimSuccess, setClaimSuccess] = useState(false);
+  const [claimSuccess, setClaimSuccess] = useState<{ name: string } | null>(null);
   // Must be declared before early returns to satisfy React's Rules of Hooks
   const [showForm, setShowForm] = useState(false);
 
-  // Nudge overlay — shown 5 s after landing on the hero slide, but only if the
-  // guest has not yet responded (status === 'pending' for personal invites, or
-  // any open/public invite that has no prior response).
-  // A ref lets the timer callback read the latest query result without being
-  // added to the dependency array (which would restart the timer on every fetch).
+  // Soft nudge ribbon — shown ~5 s after landing on the hero slide, but only
+  // if the guest has not yet responded. Three dismiss paths: \u00d7, Escape, or the
+  // backdrop (= any tap outside the ribbon). Gated on sessionStorage so it
+  // only shows once per session. The previous full-screen blur modal counted
+  // a backdrop click as a confirm \u2014 a known anti-pattern that's been removed.
   const [nudgeShown, setNudgeShown] = useState(false);
   const nudgeDataRef = useRef<typeof data>(undefined);
 
@@ -1039,18 +1049,18 @@ export default function InvitePage() {
 
     const timerId = setTimeout(() => {
       fired = true;
+      try {
+        if (sessionStorage.getItem('invite-nudge-shown') === '1') return;
+      } catch { /* private mode */ }
       const d = nudgeDataRef.current;
-      // Skip if data hasn't loaded yet
       if (!d) return;
-      // Skip for personal invites where the guest already has a non-pending response
       if (d.type === 'personal' && d.invitation.status !== 'pending') return;
-      // Only show if the guest is still on the hero slide
       if (wrapRef.current && wrapRef.current.scrollTop < 50) {
         setNudgeShown(true);
+        try { sessionStorage.setItem('invite-nudge-shown', '1'); } catch { /* ignore */ }
       }
     }, 5000);
 
-    // Cancel if the guest scrolls manually before the timer fires
     wrap?.addEventListener('scroll', cancel, { once: true, passive: true });
     wrap?.addEventListener('touchstart', cancel, { once: true, passive: true });
 
@@ -1059,12 +1069,9 @@ export default function InvitePage() {
       wrap?.removeEventListener('scroll', cancel);
       wrap?.removeEventListener('touchstart', cancel);
     };
-  // Run once on mount — wrapRef and nudgeDataRef are stable refs
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Detect short-viewport devices (iPhone SE, small Androids) so the hero
-  // can compress the countdown and hide the table badge to keep the CTA visible.
   const [isShortScreen, setIsShortScreen] = useState(false);
   useEffect(() => {
     const check = () => setIsShortScreen(window.innerHeight < 700);
@@ -1086,25 +1093,29 @@ export default function InvitePage() {
     return () => window.removeEventListener('scroll', h);
   }, []);
 
-  const { data, isLoading, isError } = useQuery({
+  // Differentiate transient network errors (worth retrying) from a definite
+  // 404 / 410 (don't retry, just show the friendly "not found" copy).
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['invite', token],
     queryFn: () => rsvpApi.getByToken(token!),
     enabled: !!token,
     staleTime: 5 * 60 * 1000,
-    retry: false,
+    retry: (failureCount, err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || status === 410) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 600,
   });
 
-  // Keep nudgeDataRef in sync so the timer callback can read the latest data.
   useEffect(() => { nudgeDataRef.current = data; }, [data]);
 
-  // Apply the invitation's predefined language the first time the data loads.
-  // The guest can still switch language afterward via the LanguageSwitcher.
+  // Apply the invitation's predefined language the first time the data
+  // resolves \u2014 but only if the guest hasn't manually selected a language.
   useEffect(() => {
     if (data?.type === 'personal' && data.invitation.language) {
-      setLanguage(data.invitation.language as Language);
+      setLanguageFromInvitation(data.invitation.language as Language);
     }
-  // Run only once when data first resolves — intentionally exclude setLanguage
-  // to avoid re-running on every render when the context reference changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
@@ -1116,23 +1127,17 @@ export default function InvitePage() {
 
   // ── Loading ──
   if (isLoading) {
-    return (
-      <div style={{ minHeight: '100dvh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-          style={{ width: 40, height: 40, border: `2px solid ${GOLD_DIM}`, borderTopColor: GOLD, borderRadius: '50%' }}
-          aria-label={t.loadingInvitation}
-        />
-      </div>
-    );
+    return <InviteSkeleton />;
   }
 
   // ── Error / not found ──
   if (isError || !data || !token) {
+    // Detect transient (network / 5xx) vs definite (404 / 410) errors.
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    const isNotFound = status === 404 || status === 410;
     return (
       <div style={{ minHeight: '100dvh', background: PARCHMENT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: '24rem' }}>
           <svg width="40" height="40" viewBox="0 0 48 48" fill="none" style={{ margin: '0 auto 1rem' }} aria-hidden="true">
             {[0, 60, 120, 180, 240, 300].map((angle, i) => (
               <ellipse key={i} cx="24" cy="24" rx="10" ry="5" fill={ROSE} opacity="0.5" transform={`rotate(${angle} 24 24)`} />
@@ -1140,25 +1145,48 @@ export default function InvitePage() {
             <circle cx="24" cy="24" r="5" fill={GOLD} opacity="0.7" />
           </svg>
           <h1 style={{ fontFamily: sans, fontStyle: 'normal', fontSize: '1.5rem', fontWeight: 600, color: ESPRESSO, marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>
-            {t.invitationNotFound}
+            {isNotFound ? t.invitationNotFound : t.invitationOffline}
           </h1>
-          <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, maxWidth: '22rem', margin: '0 auto 1.5rem' }}>
-            {t.invitationExpired}
+          <p style={{ fontSize: '0.85rem', color: ESPRESSO_DIM, margin: '0 auto 1.5rem' }}>
+            {isNotFound ? t.invitationExpired : t.invitationOfflineSub}
           </p>
-          <Link
-            to="/"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.1em',
-              color: GOLD, textDecoration: 'none', fontWeight: 500,
-              padding: '0.75rem 1.6rem',
-              border: `1px solid ${GOLD_DIM}`,
-              borderRadius: '999px',
-              background: 'rgba(253,250,245,0.6)',
-            }}
-          >
-            ← {t.returnToHomepage}
-          </Link>
+          <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
+            {!isNotFound && (
+              <button
+                type="button"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                  fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.1em',
+                  textTransform: 'uppercase', fontWeight: 600,
+                  color: '#FAF7F2', background: GOLD,
+                  textDecoration: 'none',
+                  padding: '0.7rem 1.5rem', minHeight: '44px',
+                  border: 'none', borderRadius: '999px',
+                  cursor: isFetching ? 'wait' : 'pointer',
+                  opacity: isFetching ? 0.7 : 1,
+                }}
+              >
+                {t.retryAction}
+              </button>
+            )}
+            <Link
+              to="/"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.1em',
+                textTransform: 'uppercase', fontWeight: 600,
+                color: GOLD, textDecoration: 'none',
+                padding: '0.7rem 1.5rem', minHeight: '44px',
+                border: `1px solid ${GOLD_DIM}`,
+                borderRadius: '999px',
+                background: 'rgba(253,250,245,0.6)',
+              }}
+            >
+              ← {t.returnToHomepage}
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -1199,15 +1227,38 @@ export default function InvitePage() {
     const openDate       = openEvent ? formatEventDate(openEvent.date, lang) : null;
     const openTargetDT   = openEvent?.date && openEvent?.time ? `${openEvent.date}T${openEvent.time}:00` : null;
 
+    // Calendar + share affordances are derived from the first event in the
+    // open-invite payload (multi-event open invites are rare in practice).
+    const openCalendar = (openEvent?.date && openEvent?.time)
+      ? {
+          calendarUrl: buildGoogleCalendarUrl({
+            title: openCouplePart,
+            startDate: openEvent.date,
+            startTime: openEvent.time,
+            location: openEvent.venueName ?? null,
+          }),
+          icsUrl: buildIcsBlobUrl({
+            title: openCouplePart,
+            startDate: openEvent.date,
+            startTime: openEvent.time,
+            location: openEvent.venueName ?? null,
+          }),
+        }
+      : { calendarUrl: undefined, icsUrl: undefined };
+
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : undefined;
+
     return (
       <div ref={wrapRef} className="garden-wrap invite-page" style={{ background: PARCHMENT, color: ESPRESSO }}>
         <div className="grain-overlay" aria-hidden="true" />
         <SideVinesFirefly wrapRef={wrapRef} />
         <InviteNav monogram={openMonogram} scrolled={scrolled} />
         <InviteDotNav current={current} onDotClick={scrollToSlide} />
-        <AnimatePresence>
-          {nudgeShown && <NudgeOverlay onConfirm={() => { setNudgeShown(false); scrollToRSVP(); }} />}
-        </AnimatePresence>
+        <NudgeRibbon
+          open={nudgeShown}
+          onConfirm={() => { setNudgeShown(false); scrollToRSVP(); }}
+          onDismiss={() => setNudgeShown(false)}
+        />
 
         {/* ════════ HERO ════════ */}
         <HeroSlide
@@ -1222,6 +1273,8 @@ export default function InvitePage() {
           venueMapUrl={openEvent?.venueName ? `https://maps.google.com/?q=${encodeURIComponent(openEvent.venueName)}` : null}
           targetDateTime={openTargetDT}
           isShortScreen={isShortScreen}
+          onConfirmClick={scrollToRSVP}
+          showConfirmCta={!claimSuccess}
         />
 
         {/* ════════ RSVP ════════ */}
@@ -1230,8 +1283,31 @@ export default function InvitePage() {
           rsvpInView={rsvpInView}
           formContent={
             claimSuccess
-              ? <ClaimSuccessScreen />
-              : <OpenInviteForm token={data.token} isPublic={data.isPublic} events={data.events} onSuccess={() => setClaimSuccess(true)} />
+              ? (
+                <SuccessScreen
+                  guestName={claimSuccess.name}
+                  status="attending"
+                  guestCount={1}
+                  isUpdate={false}
+                  calendarUrl={openCalendar.calendarUrl}
+                  icsUrl={openCalendar.icsUrl}
+                  shareUrl={shareUrl}
+                  shareCoupleName={openCouplePart}
+                  onUpdateRsvp={() => setClaimSuccess(null)}
+                />
+              )
+              : (
+                <OpenInviteForm
+                  token={data.token}
+                  isPublic={data.isPublic}
+                  events={data.events}
+                  onSuccess={(name) => setClaimSuccess({ name })}
+                  calendarUrl={openCalendar.calendarUrl}
+                  icsUrl={openCalendar.icsUrl}
+                  shareUrl={shareUrl}
+                  shareCoupleName={openCouplePart}
+                />
+              )
           }
         />
       </div>
@@ -1250,26 +1326,31 @@ export default function InvitePage() {
   const monogram = buildMonogram(firstName, secondName);
   const partnerName = guest.partnerName ?? null;
 
-  // Google Calendar deep-link for post-RSVP "Add to Calendar" CTA
-  const calendarUrl = (() => {
-    if (!event.date || !event.time) return undefined;
-    const [y, mo, d] = event.date.split('-');
-    const [h, mi] = event.time.split(':');
-    const start = `${y}${mo}${d}T${h}${mi}00`;
-    const endHour = String(parseInt(h, 10) + 4).padStart(2, '0');
-    const end = `${y}${mo}${d}T${endHour}${mi}00`;
-    const qs = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: coupleName,
-      dates: `${start}/${end}`,
-      ...(event.venueName ? { location: event.venueName } : {}),
-    });
-    return `https://calendar.google.com/calendar/render?${qs.toString()}`;
-  })();
+  // Calendar export \u2014 Google deep-link + .ics blob (the latter covers Apple,
+  // Outlook, Fantastical, etc. natively).
+  const calendarUrl = (event.date && event.time)
+    ? buildGoogleCalendarUrl({
+        title: coupleName,
+        startDate: event.date,
+        startTime: event.time,
+        location: event.venueName ?? null,
+      })
+    : undefined;
+  const icsUrl = (event.date && event.time)
+    ? buildIcsBlobUrl({
+        title: coupleName,
+        startDate: event.date,
+        startTime: event.time,
+        location: event.venueName ?? null,
+      })
+    : undefined;
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : undefined;
 
   // When the admin pre-sets a guest as attending, skip the RSVP form and
-  // land directly on the confirmed success screen. The guest can still click
-  // "Update RSVP" to open the form and change their response.
+  // land directly on the ConfirmationPanel (purpose-built, not the generic
+  // SuccessScreen on a slide titled "Kindly reply"). The guest can still
+  // tap "Update RSVP" to open the form and change their response.
   const isPreConfirmed = invitation.status === 'attending';
 
   const prefill = {
@@ -1287,9 +1368,11 @@ export default function InvitePage() {
       <SideVinesFirefly wrapRef={wrapRef} />
       <InviteNav monogram={monogram} scrolled={scrolled} />
       <InviteDotNav current={current} onDotClick={scrollToSlide} />
-      <AnimatePresence>
-        {nudgeShown && <NudgeOverlay onConfirm={() => { setNudgeShown(false); scrollToRSVP(); }} />}
-      </AnimatePresence>
+      <NudgeRibbon
+        open={nudgeShown}
+        onConfirm={() => { setNudgeShown(false); scrollToRSVP(); }}
+        onDismiss={() => setNudgeShown(false)}
+      />
 
       {/* ════════ HERO ════════ */}
       <HeroSlide
@@ -1306,30 +1389,45 @@ export default function InvitePage() {
         targetDateTime={targetDateTime}
         tableNumber={tableNumber}
         isShortScreen={isShortScreen}
+        onConfirmClick={scrollToRSVP}
+        // Pre-confirmed guests don't need a "Confirm Attendance" CTA on the hero \u2014
+        // their next action is the confirmation panel below.
+        showConfirmCta={!isPreConfirmed}
       />
 
       {/* ════════ RSVP / Confirmation ════════ */}
       <RSVPSlide
         rsvpRef={rsvpRef as React.RefObject<HTMLElement>}
         rsvpInView={rsvpInView}
+        hideHeader={isPreConfirmed && !showForm}
         formContent={
           isPreConfirmed && !showForm
-            ? <SuccessScreen
+            ? (
+              <ConfirmationPanel
                 guestName={guest.name}
                 partnerName={partnerName}
-                status="attending"
                 guestCount={invitation.guestCount}
-                isUpdate={false}
+                tableNumber={tableNumber}
                 calendarUrl={calendarUrl}
+                icsUrl={icsUrl}
+                shareUrl={shareUrl}
+                shareCoupleName={coupleName}
                 onUpdateRsvp={() => setShowForm(true)}
               />
-            : <RSVPForm
+            )
+            : (
+              <RSVPForm
                 token={token}
                 eventName={event.name}
                 prefillData={prefill}
                 partnerName={partnerName}
                 calendarUrl={calendarUrl}
+                icsUrl={icsUrl}
+                tableNumber={tableNumber}
+                shareUrl={shareUrl}
+                shareCoupleName={coupleName}
               />
+            )
         }
       />
     </div>

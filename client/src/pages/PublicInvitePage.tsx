@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { useParams, useNavigate, Link, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import CountdownTimer from '../components/CountdownTimer';
@@ -37,13 +37,17 @@ import {
   GuestCountSelect,
   AttendancePicker,
   FormSubmitButton,
+  FormCharCounter,
 } from '../components/ui/FormPrimitives';
+import { buildGoogleCalendarUrl, buildIcsBlobUrl } from '../lib/calendar';
 import {
   PUBLIC_EVENT_CONFIGS,
   VALID_VENUES,
   VALID_LANGS,
   type VenueSlug,
 } from '../config/publicEvents';
+
+const PUBLIC_PAGE_MESSAGE_MAX = 1000;
 
 const sans = '"DM Sans", system-ui, sans-serif';
 
@@ -63,6 +67,158 @@ const NAME_GRADIENT: CSSProperties = {
 
 const HERO_PETALS = generatePetals(14, ['#F0C8CC', '#E8B4B8', '#F9EDE8', '#A8C4AB']);
 
+// ─── Hero block (refactored for animation budget + long-name guard) ──────────
+//
+// Animation choreography is bounded to ~500 ms (vs the previous 2.2 s
+// "delay: 2.2" on the scroll cue) and respects `useReducedMotion()` so
+// motion-reduced guests get content instantly.
+//
+// City + date + time + venue are collapsed into a single editorial microline
+// (the previous design had the city as a separate caps row directly above
+// the same triplet, which read as two rows of the same information).
+interface HeroBlockProps {
+  overline: string;
+  coupleFirst: string;
+  coupleSecond: string;
+  nameFontSize: string;
+  cityLabel: string;
+  date: string;
+  time: string;
+  venueName: string;
+  targetDateTime: string;
+  onCtaClick: () => void;
+  ctaLabel: string;
+  scrollCueLabel: string;
+}
+
+function HeroBlock({
+  overline, coupleFirst, coupleSecond, nameFontSize, cityLabel,
+  date, time, venueName, targetDateTime, onCtaClick, ctaLabel, scrollCueLabel,
+}: HeroBlockProps) {
+  const reduce = useReducedMotion();
+
+  const fadeIn = (delay: number) => ({
+    initial: reduce ? false : { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: reduce ? 0 : 0.35, delay: reduce ? 0 : delay, ease: [0.22, 1, 0.36, 1] as const },
+  });
+
+  const nameStyle: CSSProperties = {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'var(--font-display-style)' as 'normal' | 'italic',
+    fontSize: nameFontSize,
+    fontWeight: 400,
+    lineHeight: 1.0,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    ...NAME_GRADIENT,
+  };
+
+  return (
+    <>
+      {/* Overline */}
+      <motion.div
+        {...fadeIn(0)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
+      >
+        <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
+        <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ROSE, fontWeight: 600 }}>
+          {overline}
+        </span>
+        <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
+      </motion.div>
+
+      {/* Couple names */}
+      <motion.div {...fadeIn(reduce ? 0 : 0.08)}>
+        <h1 style={{ ...nameStyle, marginBottom: 0 }}>{coupleFirst}</h1>
+      </motion.div>
+
+      <motion.div
+        {...fadeIn(reduce ? 0 : 0.14)}
+        style={{ margin: 'clamp(0.4rem, 1vh, 0.75rem) 0', color: GOLD_DIM, fontSize: 'clamp(1.2rem, 4vw, 2rem)' }}
+        aria-hidden="true"
+      >
+        &amp;
+      </motion.div>
+
+      <motion.div {...fadeIn(reduce ? 0 : 0.18)}>
+        <h1 style={nameStyle}>{coupleSecond}</h1>
+      </motion.div>
+
+      {/* Divider */}
+      <motion.div
+        {...fadeIn(reduce ? 0 : 0.26)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: 'clamp(0.75rem, 2vh, 1.5rem) 0' }}
+        aria-hidden="true"
+      >
+        <div style={{ height: 1, width: 60, background: `linear-gradient(to right, transparent, ${GOLD_DIM})` }} />
+        <span style={{ color: ROSE, fontSize: '0.6rem' }}>♡</span>
+        <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
+      </motion.div>
+
+      {/* City · Date · Time · Venue — single microline */}
+      <motion.div
+        {...fadeIn(reduce ? 0 : 0.3)}
+        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.4rem 0.85rem', marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)' }}
+      >
+        <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD, fontWeight: 600 }}>{cityLabel}</span>
+        <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
+        <span style={{ fontFamily: sans, fontSize: '0.85rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
+        <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
+        <span style={{ fontFamily: sans, fontSize: '0.85rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
+        <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
+        <span style={{ fontFamily: sans, fontSize: '0.9rem', letterSpacing: '0.03em', color: ESPRESSO, fontWeight: 600 }}>{venueName}</span>
+      </motion.div>
+
+      {/* Countdown */}
+      <motion.div
+        {...fadeIn(reduce ? 0 : 0.34)}
+        style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.5rem)' }}
+      >
+        <CountdownTimer targetDate={targetDateTime} />
+      </motion.div>
+
+      {/* CTA */}
+      <motion.div {...fadeIn(reduce ? 0 : 0.38)} className="hero-cta-sticky">
+        <button
+          onClick={onCtaClick}
+          className="btn-primary"
+          aria-label={ctaLabel}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          {ctaLabel}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </motion.div>
+
+      {/* Scroll cue (suppressed under reduce-motion) */}
+      {!reduce && (
+        <motion.div
+          {...fadeIn(0.46)}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginTop: 'clamp(0.75rem, 2vh, 1.5rem)' }}
+          aria-hidden="true"
+        >
+          {[0, 1].map((i) => (
+            <motion.svg
+              key={i}
+              width="16" height="10" viewBox="0 0 16 10" fill="none"
+              animate={{ opacity: [0.2, 0.8, 0.2], y: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut', delay: i * 0.25 }}
+            >
+              <path d="M1 1L8 8L15 1" stroke={ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </motion.svg>
+          ))}
+          <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginTop: '0.1rem' }}>
+            {scrollCueLabel}
+          </span>
+        </motion.div>
+      )}
+    </>
+  );
+}
+
 // ─── Language switcher that navigates to the language-specific URL ────────────
 function PublicLanguageSwitcher({ venue, currentLang }: { venue: VenueSlug; currentLang: Language }) {
   const navigate = useNavigate();
@@ -81,11 +237,27 @@ function PublicLanguageSwitcher({ venue, currentLang }: { venue: VenueSlug; curr
 
   return (
     <div
-      className="flex items-center gap-0.5 p-1 rounded-full glass"
+      className="flex items-center gap-1 px-2 py-1 rounded-full glass"
       style={{ border: '1px solid var(--border-warm)' }}
       role="group"
       aria-label="Language selection"
     >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        style={{ flexShrink: 0, opacity: 0.6, color: 'var(--text-secondary)', marginRight: '0.15rem' }}
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      </svg>
       {langs.map(({ code, label }) => {
         const active = currentLang === code;
         return (
@@ -100,16 +272,18 @@ function PublicLanguageSwitcher({ venue, currentLang }: { venue: VenueSlug; curr
             )}
             <button
               onClick={() => handleSwitch(code)}
-              className="relative z-10 px-3 py-1 rounded-full transition-colors"
+              className="relative z-10 rounded-full transition-colors"
               style={{
                 fontFamily: sans,
-                fontSize: '0.6rem',
+                fontSize: '0.78rem',
                 fontWeight: 600,
                 letterSpacing: '0.1em',
                 color: active ? '#0C0A09' : 'var(--text-secondary)',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
+                padding: '0.45rem 0.7rem',
+                minHeight: '32px',
               }}
               aria-label={`Switch to ${label}`}
               aria-pressed={active}
@@ -126,9 +300,13 @@ function PublicLanguageSwitcher({ venue, currentLang }: { venue: VenueSlug; curr
 // ─── RSVP form ────────────────────────────────────────────────────────────────
 interface PublicPageFormProps {
   eventSlug: VenueSlug;
+  calendarUrl?: string;
+  icsUrl?: string;
+  shareUrl?: string;
+  shareCoupleName?: string;
 }
 
-function PublicPageForm({ eventSlug }: PublicPageFormProps) {
+function PublicPageForm({ eventSlug, calendarUrl, icsUrl, shareUrl, shareCoupleName }: PublicPageFormProps) {
   const t = useTranslation();
 
   const LS_KEY = `rsvp_page_${eventSlug}`;
@@ -136,14 +314,19 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
   type SuccessResult = {
     name: string;
     partnerName?: string;
-    status: 'attending' | 'declined' | 'maybe';
+    status: 'attending' | 'declined';
     guestCount: number;
   };
 
   const [successResult, setSuccessResult] = useState<SuccessResult | null>(() => {
     try {
       const stored = localStorage.getItem(LS_KEY);
-      return stored ? (JSON.parse(stored) as SuccessResult) : null;
+      if (!stored) return null;
+      const parsed = JSON.parse(stored) as SuccessResult;
+      if ((parsed.status as string) !== 'attending' && (parsed.status as string) !== 'declined') {
+        return { ...parsed, status: 'attending' };
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -154,6 +337,7 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
     handleSubmit,
     watch,
     setValue,
+    setFocus,
     formState: { errors },
   } = useForm<PublicPageRsvpValues>({
     resolver: zodResolver(publicPageRsvpSchema),
@@ -170,6 +354,7 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
 
   const status     = watch('status') ?? 'attending';
   const guestCount = watch('guestCount') ?? 1;
+  const watchedMessage = watch('message') ?? '';
 
   const submitMutation = useMutation({
     mutationFn: rsvpApi.submitPublicPage,
@@ -186,10 +371,15 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
     onError: () => { toast.error(t.submitFailed); },
   });
 
+  const onInvalid = (errs: Record<string, unknown>) => {
+    const order = ['name', 'phone', 'status', 'message'] as const;
+    const first = order.find((k) => k in errs);
+    if (first) { try { setFocus(first as keyof PublicPageRsvpValues); } catch { /* ignore */ } }
+  };
+
   const attendanceLabels = {
     attending: t.attendingOption,
     declined: t.decliningOption,
-    maybe: t.maybeOption,
   };
 
   if (successResult) {
@@ -200,6 +390,10 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
         status={successResult.status}
         guestCount={successResult.guestCount}
         isUpdate={false}
+        calendarUrl={calendarUrl}
+        icsUrl={icsUrl}
+        shareUrl={shareUrl}
+        shareCoupleName={shareCoupleName}
         onUpdateRsvp={() => {
           try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
           setSuccessResult(null);
@@ -210,10 +404,10 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
 
   return (
     <motion.form
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      onSubmit={handleSubmit((v) => submitMutation.mutate(v))}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      onSubmit={handleSubmit((v) => submitMutation.mutate(v), onInvalid)}
       noValidate
       className="space-y-3"
     >
@@ -241,9 +435,10 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
           <FormInput
             id="ppub-phone"
             type="tel"
+            inputMode="tel"
             autoComplete="tel"
             {...register('phone')}
-            placeholder="+1 555 000 0000"
+            placeholder={t.phonePlaceholder}
           />
         </FormField>
 
@@ -284,17 +479,21 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
           <FormTextarea
             id="ppub-message"
             rows={2}
+            maxLength={PUBLIC_PAGE_MESSAGE_MAX}
             {...register('message')}
             placeholder={t.messagePlaceholder}
           />
+          <FormCharCounter value={watchedMessage} max={PUBLIC_PAGE_MESSAGE_MAX} />
         </FormField>
       </FormCard>
 
-      <FormSubmitButton
-        pending={submitMutation.isPending}
-        label={t.confirmRegistration}
-        pendingLabel={t.registering}
-      />
+      <div className="rsvp-submit-sticky">
+        <FormSubmitButton
+          pending={submitMutation.isPending}
+          label={t.confirmRegistration}
+          pendingLabel={t.registering}
+        />
+      </div>
     </motion.form>
   );
 }
@@ -370,8 +569,36 @@ export default function PublicInvitePage() {
   // City label: capitalize first letter
   const cityLabel = cfg.city[currentLang as keyof typeof cfg.city] ?? cfg.city.en;
 
-  // Monogram in top-left
-  const monogram = 'B & S · 2026';
+  // Couple names + monogram are config-driven so the page is reusable
+  // across future weddings without touching JSX.
+  const coupleFirst = cfg.coupleFirst;
+  const coupleSecond = cfg.coupleSecond;
+  const monogram = cfg.monogram;
+  const longestNameLength = Math.max(coupleFirst.length, coupleSecond.length);
+  // Same heuristic as InvitePage CoupleNames: scale down when names get long
+  // so we don't overflow on 320 px viewports.
+  const nameFontSize = longestNameLength <= 7
+    ? 'clamp(5.5rem, 18vw, 10rem)'
+    : longestNameLength <= 10
+      ? 'clamp(4.2rem, 14vw, 8rem)'
+      : 'clamp(3.4rem, 11vw, 6.5rem)';
+
+  // Calendar + share affordances are wired through to SuccessScreen so the
+  // post-RSVP confirmation matches the personal-invite flow's polish.
+  const calendarUrl = buildGoogleCalendarUrl({
+    title: `${coupleFirst} & ${coupleSecond}`,
+    startDate: cfg.date,
+    startTime: cfg.time,
+    location: cfg.venueName,
+  });
+  const icsUrl = buildIcsBlobUrl({
+    title: `${coupleFirst} & ${coupleSecond}`,
+    startDate: cfg.date,
+    startTime: cfg.time,
+    location: cfg.venueName,
+  });
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : undefined;
+  const shareCoupleName = `${coupleFirst} & ${coupleSecond}`;
 
   return (
     <div
@@ -391,22 +618,16 @@ export default function PublicInvitePage() {
         }}
         aria-label="Page navigation"
       >
-        {/* Back link */}
+        {/* Back link — unified `\u2190 {monogram}` form with the personal/open
+            invite pages so the affordance is identical on every flow. */}
         <div style={{ pointerEvents: 'auto' }}>
           <Link
             to="/"
-            style={{
-              fontFamily: sans,
-              fontSize: '0.62rem',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: ESPRESSO_DIM,
-              textDecoration: 'none',
-              fontWeight: 500,
-            }}
+            className="invite-monogram-link"
             aria-label={t.returnToHomepage}
           >
-            ← {monogram}
+            <span aria-hidden="true" style={{ marginRight: '0.45rem' }}>←</span>
+            {monogram}
           </Link>
         </div>
 
@@ -464,158 +685,20 @@ export default function PublicInvitePage() {
           position: 'relative', zIndex: 10, width: '100%', maxWidth: '68rem', textAlign: 'center',
           padding: 'clamp(4.5rem, 9vh, 7rem) clamp(1.5rem, 6vw, 4rem) clamp(2rem, 5vh, 4rem)',
         }}>
-          {/* Overline */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}
-          >
-            <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
-            <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: ROSE, fontWeight: 500 }}>
-              {t.youveBeenInvited}
-            </span>
-            <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
-          </motion.div>
-
-          {/* Couple names */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h1
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontStyle: 'var(--font-display-style)' as 'normal' | 'italic',
-                fontSize: 'clamp(5.5rem, 18vw, 10rem)',
-                fontWeight: 400,
-                lineHeight: 1.0,
-                ...NAME_GRADIENT,
-                marginBottom: 0,
-              }}
-            >
-              Berfin
-            </h1>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.85 }}
-            style={{ margin: 'clamp(0.4rem, 1vh, 0.75rem) 0', color: GOLD_DIM, fontSize: 'clamp(1.2rem, 4vw, 2rem)' }}
-            aria-hidden="true"
-          >
-            &
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 1.0, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h1
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontStyle: 'var(--font-display-style)' as 'normal' | 'italic',
-                fontSize: 'clamp(5.5rem, 18vw, 10rem)',
-                fontWeight: 400,
-                lineHeight: 1.0,
-                ...NAME_GRADIENT,
-              }}
-            >
-              Shamsiddin
-            </h1>
-          </motion.div>
-
-          {/* City */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.6 }}
-            style={{ fontFamily: sans, fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD, marginTop: 'clamp(0.4rem, 1vh, 0.75rem)' }}
-          >
-            {cityLabel}
-          </motion.p>
-
-          {/* Divider */}
-          <motion.div
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: 1, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 1.35 }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: 'clamp(0.75rem, 2vh, 1.5rem) 0' }}
-            aria-hidden="true"
-          >
-            <div style={{ height: 1, width: 60, background: `linear-gradient(to right, transparent, ${GOLD_DIM})` }} />
-            <span style={{ color: ROSE, fontSize: '0.6rem' }}>♡</span>
-            <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
-          </motion.div>
-
-          {/* Date / time / venue */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 1.45 }}
-            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1rem', marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)' }}
-          >
-            <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{cfg.displayDate[currentLang as keyof typeof cfg.displayDate] ?? cfg.displayDate.en}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
-            <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{cfg.time}</span>
-            <span style={{ color: GOLD_DIM, fontSize: '0.5rem' }} aria-hidden="true">◆</span>
-            <span style={{ fontFamily: sans, fontSize: '0.78rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{cfg.venueName}</span>
-          </motion.div>
-
-          {/* Countdown */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1.6 }}
-            style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.5rem)' }}
-          >
-            <CountdownTimer targetDate={cfg.targetDateTime} />
-          </motion.div>
-
-          {/* CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 1.75 }}
-          >
-            <button
-              onClick={scrollToRsvp}
-              className="btn-primary"
-              aria-label={t.pleaseRegister}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              {t.pleaseRegister}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </motion.div>
-
-          {/* Scroll cue */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.2 }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginTop: 'clamp(1rem, 3vh, 2rem)' }}
-            aria-hidden="true"
-          >
-            {[0, 1].map((i) => (
-              <motion.svg
-                key={i}
-                width="16" height="10" viewBox="0 0 16 10" fill="none"
-                animate={{ opacity: [0.2, 0.8, 0.2], y: [0, 4, 0] }}
-                transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut', delay: i * 0.25 }}
-              >
-                <path d="M1 1L8 8L15 1" stroke={ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </motion.svg>
-            ))}
-            <span style={{ fontFamily: sans, fontSize: '0.65rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: ESPRESSO_DIM, marginTop: '0.1rem' }}>
-              {t.scrollToRsvp}
-            </span>
-          </motion.div>
+          <HeroBlock
+            overline={t.youveBeenInvited}
+            coupleFirst={coupleFirst}
+            coupleSecond={coupleSecond}
+            nameFontSize={nameFontSize}
+            cityLabel={cityLabel}
+            date={cfg.displayDate[currentLang as keyof typeof cfg.displayDate] ?? cfg.displayDate.en}
+            time={cfg.time}
+            venueName={cfg.venueName}
+            targetDateTime={cfg.targetDateTime}
+            onCtaClick={scrollToRsvp}
+            ctaLabel={t.pleaseRegister}
+            scrollCueLabel={t.scrollToRsvp}
+          />
         </div>
       </section>
 
@@ -678,12 +761,18 @@ export default function PublicInvitePage() {
 
           {/* Form */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            transition={{ duration: 0.35, delay: 0.1 }}
           >
-            <PublicPageForm eventSlug={eventSlug} />
+            <PublicPageForm
+              eventSlug={eventSlug}
+              calendarUrl={calendarUrl}
+              icsUrl={icsUrl}
+              shareUrl={shareUrl}
+              shareCoupleName={shareCoupleName}
+            />
           </motion.div>
 
           {/* Footer */}

@@ -27,7 +27,6 @@ export type Translations = {
   attendanceLabel: string;
   attendingOption: string;
   decliningOption: string;
-  maybeOption: string;
   guestCountLabel: string;
   guestCountHint: string;
   guestCountSingle: string;
@@ -49,8 +48,6 @@ export type Translations = {
   attendingSub: (count: number) => string;
   declinedHeadline: string;
   declinedSub: string;
-  maybeHeadline: string;
-  maybeSub: string;
   defaultHeadline: string;
   defaultSub: string;
   yourDetails: string;
@@ -126,10 +123,35 @@ export type Translations = {
   happyCoupleAlt: string;
   // Success screen — post-RSVP calendar CTA
   addToCalendar: string;
+  addToAppleCalendar: string;
+  addToGoogleCalendar: string;
+  // Success screen — share invitation with partner / family
+  shareInvitation: string;
+  shareCopied: string;
+  shareTitle: string;
+  shareText: (couple: string) => string;
+  // Success screen — table assignment subline
+  yourTableLabel: string;
   // RSVP slide — seating preference note
   seatingPreferenceNote: string;
-  // Nudge overlay — second sentence shown below the seating note
-  nudgeSubtext: string;
+  // Soft bottom ribbon shown after a few seconds on the hero
+  nudgeRibbonText: string;
+  nudgeRibbonCta: string;
+  nudgeRibbonDismiss: string;
+  // Phone field — placeholder localised per region
+  phonePlaceholder: string;
+  // Pre-confirmed (admin-marked attending) panel
+  preConfirmedOverline: string;
+  preConfirmedHeadline: string;
+  preConfirmedSub: string;
+  // Loading skeleton hint (sr-only)
+  loadingHint: string;
+  // Error: network vs not-found differentiation
+  invitationOffline: string;
+  invitationOfflineSub: string;
+  retryAction: string;
+  // Reserved-for editorial label on personal RSVP
+  reservedFor: string;
 };
 
 export const en: Translations = {
@@ -171,7 +193,6 @@ export const en: Translations = {
   attendanceLabel: 'Will you be attending?',
   attendingOption: 'Attending',
   decliningOption: 'Declining',
-  maybeOption: 'Maybe',
   guestCountLabel: 'Number of guests',
   guestCountHint: 'Guest count includes the invitee',
   guestCountSingle: 'guest',
@@ -202,8 +223,6 @@ export const en: Translations = {
     `You've confirmed attendance for ${count} ${count === 1 ? 'guest' : 'guests'}. We look forward to seeing you there!`,
   declinedHeadline: 'We will miss you!',
   declinedSub: "Thank you for letting us know. We'll miss having you there to celebrate.",
-  maybeHeadline: 'We hope you can make it!',
-  maybeSub: "We've noted your tentative response. Please update your response once you know for sure.",
   defaultHeadline: 'Response Received!',
   defaultSub: 'Thank you for your response.',
   yourDetails: 'Your Details',
@@ -280,7 +299,25 @@ export const en: Translations = {
   thankYouRegistering: 'Thank you for registering. We look forward to celebrating with you.',
   happyCoupleAlt: 'The happy couple',
   addToCalendar: 'Add to Calendar',
+  addToAppleCalendar: 'Apple Calendar',
+  addToGoogleCalendar: 'Google Calendar',
+  shareInvitation: 'Share invitation',
+  shareCopied: 'Link copied',
+  shareTitle: "You're invited",
+  shareText: (couple: string) => `You're invited to the wedding of ${couple}.`,
+  yourTableLabel: 'Your table',
   seatingPreferenceNote: 'We kindly request that you indicate attendance preference for the seating order in the wedding hall.',
-  nudgeSubtext: 'You can find the options below.',
+  nudgeRibbonText: 'Help us plan seating — kindly confirm your attendance.',
+  nudgeRibbonCta: 'Confirm',
+  nudgeRibbonDismiss: 'Dismiss',
+  phonePlaceholder: '+1 555 000 0000',
+  preConfirmedOverline: 'Your seat is reserved',
+  preConfirmedHeadline: "We can't wait to celebrate with you!",
+  preConfirmedSub: 'Your invitation is confirmed. Use the buttons below to add the day to your calendar, view your seating, or update your response.',
+  loadingHint: 'Preparing your invitation…',
+  invitationOffline: "Couldn't load invitation",
+  invitationOfflineSub: 'Please check your connection and try again.',
+  retryAction: 'Try again',
+  reservedFor: 'Reserved for',
 
 };
