@@ -577,7 +577,9 @@ function CoupleNames({ firstName, secondName, delayOffset = 0 }: { firstName: st
           initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 1.3, delay: 0.5 + delayOffset, ease: [0.16, 1, 0.3, 1] }}
-          style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+          // Tighter line-height (1.0 vs 1.15) lets the script names embrace
+          // the ampersand instead of floating as three separate elements.
+          style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.0, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
         >
           {firstName}
         </motion.h1>
@@ -585,18 +587,22 @@ function CoupleNames({ firstName, secondName, delayOffset = 0 }: { firstName: st
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
           transition={{ duration: 0.7, delay: 0.9 + delayOffset }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', margin: 'clamp(0.2rem, 0.6vw, 0.5rem) 0', transformOrigin: 'center' }}
+          // Tighter vertical margin pulls the names toward the ampersand.
+          // Shorter hairlines (4rem vs 6rem) let the larger '&' carry the row.
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', margin: 'clamp(0.05rem, 0.15vw, 0.15rem) 0', transformOrigin: 'center' }}
           aria-hidden="true"
         >
-          <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
-          <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2rem, 6vw, 3.5rem)', color: GOLD }}>&</span>
-          <div style={{ flex: 1, maxWidth: '6rem', height: 1, background: GOLD_DIM }} />
+          <div style={{ flex: 1, maxWidth: '4rem', height: 1, background: GOLD_DIM }} />
+          {/* Ampersand is the emotional center — bumped from clamp(2,6vw,3.5)
+              to clamp(2.8,8vw,4.8) so it owns the row. */}
+          <span style={{ fontFamily: serif, fontStyle: serifStyle, fontSize: 'clamp(2.8rem, 8vw, 4.8rem)', color: GOLD, lineHeight: 1 }}>&</span>
+          <div style={{ flex: 1, maxWidth: '4rem', height: 1, background: GOLD_DIM }} />
         </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 1.3, delay: 0.7 + delayOffset, ease: [0.16, 1, 0.3, 1] }}
-          style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
+          style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.0, letterSpacing: '-0.02em', margin: 0, ...NAME_GRADIENT }}
         >
           {secondName}
         </motion.h1>
@@ -609,7 +615,7 @@ function CoupleNames({ firstName, secondName, delayOffset = 0 }: { firstName: st
         initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 1.3, delay: 0.5 + delayOffset, ease: [0.16, 1, 0.3, 1] }}
-        style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.15, letterSpacing: '-0.02em', ...NAME_GRADIENT }}
+        style={{ fontFamily: serif, fontStyle: serifStyle, fontWeight: 400, fontSize: 'clamp(4rem, 13vw, 8rem)', lineHeight: 1.0, letterSpacing: '-0.02em', ...NAME_GRADIENT }}
       >
         {firstName}
       </motion.h1>
@@ -680,40 +686,53 @@ function HeroSlide({
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
         </motion.div>
 
-        {/* Guest name — only on personal invites */}
+        {/* Guest greeting — collapsed into a single quiet line so the script
+            couple-names below own the page. The honorific (Sayın / Dear /
+            Hurmatli) is an inline rose caps prefix; the name itself is sans
+            medium-weight in espresso, intentionally smaller than before so
+            it reads as "to whom" — not as a competing display moment. */}
         {guestName && (
           <>
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.42 }}
-              style={{ marginBottom: 'clamp(0.75rem, 2vh, 1.25rem)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}
+              style={{
+                marginBottom: 'clamp(0.5rem, 1.2vh, 0.85rem)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'baseline',
+                justifyContent: 'center',
+                gap: '0.4rem 0.7rem',
+              }}
             >
-              {/* Honorific label — small caps, rose */}
-              <span style={{ fontFamily: sans, fontSize: '1.25rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: ROSE, fontWeight: 600 }}>
+              <span style={{
+                fontFamily: sans,
+                fontSize: '0.78rem',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                color: ROSE,
+                fontWeight: 600,
+              }}>
                 {t.honorific}
               </span>
-
-              {/* Guest name — Cormorant Garamond for full Turkish/extended character support */}
-              <span style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(2rem, 6vw, 3.2rem)', color: ESPRESSO, display: 'block', fontWeight: 400, lineHeight: 1.2, letterSpacing: '0.01em' }}>
+              <span style={{
+                fontFamily: sans,
+                fontSize: 'clamp(1.05rem, 2.4vw, 1.35rem)',
+                color: ESPRESSO,
+                fontWeight: 500,
+                letterSpacing: '0.01em',
+              }}>
                 {guestName}
               </span>
-
-              {/* Gold accent underline */}
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.55, delay: 0.72, ease: [0.22, 1, 0.36, 1] }}
-                style={{ height: 1.5, width: '55%', maxWidth: '12rem', background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`, borderRadius: 2, transformOrigin: 'center' }}
-                aria-hidden="true"
-              />
             </motion.div>
 
-            {/* Separator between guest name and couple names */}
+            {/* Star separator before couple names — kept; the gold underline
+                under the previous guest-name block was redundant with this. */}
             <motion.div
               initial={{ scaleX: 0, opacity: 0 }}
               animate={{ scaleX: 1, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: 'clamp(0.6rem, 1.5vh, 1rem)' }}
               aria-hidden="true"
             >
@@ -754,97 +773,98 @@ function HeroSlide({
           <div style={{ height: 1, width: 60, background: `linear-gradient(to left, transparent, ${GOLD_DIM})` }} />
         </motion.div>
 
-        {/* Date / time / venue — only when event details are available */}
+        {/* Date · Time · Venue — venue itself is the tap target for the map.
+            Removes the separate "Open in Maps" pill so the line reads as
+            one continuous reservation detail (Apple Wallet / Calendar style). */}
         {hasEventDetails && (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 1.5 }}
-              style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1rem', marginBottom: '0.45rem' }}
-            >
-              <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
-              <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
-              <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
-              <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
-              <span style={{ fontFamily: sans, fontSize: '0.92rem', letterSpacing: '0.03em', color: ESPRESSO, fontWeight: 600 }}>{venueName}</span>
-            </motion.div>
-
-            {venueMapUrl && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.55, delay: 1.58 }}
-                style={{ display: 'flex', justifyContent: 'center', marginBottom: 'clamp(0.75rem, 1.8vh, 1.25rem)' }}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.5 }}
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem 1rem',
+              marginBottom: 'clamp(0.6rem, 1.6vh, 1rem)',
+            }}
+          >
+            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{date}</span>
+            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
+            <span style={{ fontFamily: sans, fontSize: '0.88rem', letterSpacing: '0.04em', color: ESPRESSO_DIM }}>{time}</span>
+            <span style={{ color: GOLD_DIM, fontSize: '0.65rem' }} aria-hidden="true">◆</span>
+            {venueMapUrl ? (
+              <a
+                href={venueMapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="venue-link"
+                style={{
+                  fontFamily: sans,
+                  fontSize: '0.92rem',
+                  letterSpacing: '0.03em',
+                  color: ESPRESSO,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  paddingBottom: 1,
+                  borderBottom: '1px solid transparent',
+                  transition: 'border-color 0.25s ease, color 0.25s ease',
+                }}
+                aria-label={`${venueName} — ${t.openInMaps}`}
               >
-                <a
-                  href={venueMapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    fontFamily: sans,
-                    fontSize: '0.84rem',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    textDecoration: 'none',
-                    color: '#2A1F1A',
-                    background: 'rgba(184,146,74,0.32)',
-                    border: `1.5px solid ${GOLD}`,
-                    borderRadius: '999px',
-                    padding: '0.48rem 1.2rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    fontWeight: 800,
-                    boxShadow: '0 6px 16px rgba(184,146,74,0.2)',
-                  }}
-                  aria-label={`${t.openInMaps}: ${venueName}`}
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={GOLD}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  style={{ flexShrink: 0 }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                  {t.openInMaps}
-                </a>
-              </motion.div>
+                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span>{venueName}</span>
+              </a>
+            ) : (
+              <span style={{ fontFamily: sans, fontSize: '0.92rem', letterSpacing: '0.03em', color: ESPRESSO, fontWeight: 600 }}>
+                {venueName}
+              </span>
             )}
-          </>
+          </motion.div>
         )}
 
-        {/* Assigned table number — hidden on short screens to protect CTA visibility */}
+        {/* Assigned table number — restrained editorial caps line.
+            A pre-assigned seat is a confirmation, not an action, so it now
+            reads as quiet typography rather than a competing CTA pill.
+            Still hidden on short screens via the .table-badge media rule. */}
         {tableNumber != null && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1.6 }}
             className="table-badge"
-            style={{ marginBottom: 'clamp(0.5rem, 1.5vh, 1rem)', display: 'flex', justifyContent: 'center' }}
+            style={{ marginBottom: 'clamp(0.6rem, 1.6vh, 1rem)', display: 'flex', justifyContent: 'center' }}
           >
             <span
               style={{
                 fontFamily: sans,
-                fontSize: '0.84rem',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                letterSpacing: '0.24em',
                 textTransform: 'uppercase',
-                color: '#6E4509',
-                background: 'linear-gradient(135deg, rgba(184,146,74,0.28), rgba(184,146,74,0.18))',
-                border: `1.5px solid ${GOLD}`,
-                borderRadius: '999px',
-                padding: '0.44rem 1.2rem',
-                boxShadow: '0 6px 18px rgba(184,146,74,0.24)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
+                color: ESPRESSO_DIM,
               }}
               aria-label={`${t.tableLabel} ${tableNumber}`}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.85 }}>
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-              </svg>
-              <span>{t.tableLabel} {tableNumber}</span>
+              {t.tableLabel} {tableNumber}
             </span>
           </motion.div>
         )}

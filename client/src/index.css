@@ -596,6 +596,22 @@ body {
   .table-badge { display: none; }
 }
 
+/* ─── Venue link — soft underline on hover/focus ──────────────────── */
+/* The hero venue is now an inline anchor (with a pin glyph) instead of a    */
+/* heavy "Open in Maps" pill. Reveal a thin gold underline on pointer hover  */
+/* and on keyboard focus so the affordance is discoverable without competing */
+/* with the date/time row. Touch users get the pin glyph as the cue.         */
+.venue-link:hover,
+.venue-link:focus-visible {
+  border-bottom-color: var(--accent-gold) !important;
+  color: #2A1F1A !important;
+}
+.venue-link:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 /* ─── RSVP form — accessible focus rings ────────────────────────── */
 /* Replaces the removed outline:none in FormPrimitives               */
 .form-input:focus-visible,
