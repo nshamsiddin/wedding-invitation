@@ -996,6 +996,31 @@ export default function DashboardPage() {
               <span className="hidden sm:inline">{at.openDuplicateDetector}</span>
             </button>
 
+            {/* Seating planner — link includes the active eventId so the
+                planner opens already focused on the event the admin was
+                looking at. */}
+            <button
+              onClick={() =>
+                navigate(
+                  selectedEventId != null
+                    ? `/admin/seating?eventId=${selectedEventId}`
+                    : '/admin/seating',
+                )
+              }
+              className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              aria-label={at.openSeatingPlanner}
+              title={at.openSeatingPlanner}
+            >
+              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span className="hidden sm:inline">{at.openSeatingPlanner}</span>
+            </button>
+
             {/* Language switcher — compact on mobile */}
             <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD_DIM}` }}>
               {LANGUAGES.map((l) => (

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const events = sqliteTable('events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -67,6 +67,32 @@ export const guestInvitations = sqliteTable('guest_invitations', {
   guestEventUnique: uniqueIndex('guest_event_unique').on(t.guestId, t.eventId),
 }));
 
+// First-class table entity for the seating planner. The link from an
+// invitation to a table is still by `(event_id, table_number)` — this row
+// only adds capacity + optional label metadata so the planner can show
+// "7 / 10 seats" indicators and over-capacity warnings.
+export const eventTables = sqliteTable(
+  'event_tables',
+  {
+    eventId: integer('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    tableNumber: integer('table_number').notNull(),
+    // Optional human-readable name (e.g. "Family", "Bridesmaids").
+    // Falls back to "Table N" in the UI when null.
+    label: text('label'),
+    capacity: integer('capacity').notNull().default(10),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.eventId, t.tableNumber] }),
+  }),
+);
+
 export type EventRow = typeof events.$inferSelect;
 export type GuestRow = typeof guests.$inferSelect;
 export type InvitationRow = typeof guestInvitations.$inferSelect;
+export type EventTableRow = typeof eventTables.$inferSelect;

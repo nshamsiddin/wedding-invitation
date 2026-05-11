@@ -18,6 +18,8 @@ import {
   updateInvitationSchema,
   addInvitationSchema,
   createOpenInvitationSchema,
+  createEventTableSchema,
+  updateEventTableSchema,
 } from '@invitation/shared';
 import { toAcceptedInvitationLinksCSV, toCSV, toEventTableCSV } from '../lib/csv.js';
 import type { AttendanceStatus } from '@invitation/shared';
@@ -467,6 +469,246 @@ router.get('/tables', requireAuth, async (req: Request, res: Response): Promise<
     res.status(500).json({ error: 'Failed to fetch table numbers' });
   }
 });
+
+// ─── Event tables (seating planner) ──────────────────────────────────────────
+// First-class table entities with capacity + optional label. Linked to
+// invitations implicitly via (event_id, table_number) — the same pair already
+// stored on `guest_invitations.table_number`.
+
+// GET /api/admin/event-tables?eventId= — list tables for an event with live
+// occupancy counts (total + attending) computed from invitations.
+router.get('/event-tables', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const rawEventId = req.query['eventId'];
+  // Validation — eventId is required and must be a positive integer.
+  // Refusing the request when eventId is missing prevents callers from
+  // accidentally listing tables across multiple events (capacity / occupancy
+  // would be meaningless when aggregated that way).
+  const eventId = typeof rawEventId === 'string' ? parseInt(rawEventId, 10) : NaN;
+  if (!Number.isInteger(eventId) || eventId <= 0) {
+    res.status(400).json({ error: 'eventId is required' });
+    return;
+  }
+
+  try {
+    const tables = await db
+      .select()
+      .from(schema.eventTables)
+      .where(eq(schema.eventTables.eventId, eventId))
+      .orderBy(schema.eventTables.sortOrder, schema.eventTables.tableNumber);
+
+    // Compute per-table occupancy in a single round trip rather than N+1.
+    type OccupancyRow = {
+      tableNumber: number;
+      occupancy: number;
+      attendingCount: number;
+    };
+    const occupancyRows = sqlite
+      .prepare(
+        `SELECT
+           table_number AS tableNumber,
+           COALESCE(SUM(guest_count), 0) AS occupancy,
+           COALESCE(SUM(CASE WHEN status = 'attending' THEN guest_count ELSE 0 END), 0) AS attendingCount
+         FROM guest_invitations
+         WHERE event_id = ? AND table_number IS NOT NULL AND guest_id IS NOT NULL
+         GROUP BY table_number`,
+      )
+      .all(eventId) as OccupancyRow[];
+
+    const occupancyMap = new Map<number, { occupancy: number; attendingCount: number }>();
+    for (const r of occupancyRows) {
+      occupancyMap.set(r.tableNumber, {
+        occupancy: r.occupancy,
+        attendingCount: r.attendingCount,
+      });
+    }
+
+    const enriched = tables.map((t) => ({
+      ...t,
+      occupancy: occupancyMap.get(t.tableNumber)?.occupancy ?? 0,
+      attendingCount: occupancyMap.get(t.tableNumber)?.attendingCount ?? 0,
+    }));
+
+    res.json({ tables: enriched });
+  } catch (error) {
+    logger.error({ err: error, eventId }, 'event tables list error');
+    res.status(500).json({ error: 'Failed to fetch event tables' });
+  }
+});
+
+// POST /api/admin/event-tables — create a new table for an event.
+// If `tableNumber` is omitted, the server picks the smallest unused integer
+// for the event so admins can spam "Add table" without thinking about IDs.
+router.post('/event-tables', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const parsed = createEventTableSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    return;
+  }
+  const { eventId, label, capacity, sortOrder } = parsed.data;
+  let { tableNumber } = parsed.data;
+
+  try {
+    // Resolve a table number if the client didn't pick one.
+    if (tableNumber == null) {
+      const existing = sqlite
+        .prepare('SELECT table_number FROM event_tables WHERE event_id = ?')
+        .all(eventId) as { table_number: number }[];
+      const used = new Set(existing.map((r) => r.table_number));
+      // Also consider numbers already in use on invitations even if there is
+      // no event_tables row yet — keeps numbering consistent with the legacy
+      // "just type a number" workflow.
+      const fromInvitations = sqlite
+        .prepare(
+          `SELECT DISTINCT table_number FROM guest_invitations
+           WHERE event_id = ? AND table_number IS NOT NULL`,
+        )
+        .all(eventId) as { table_number: number }[];
+      for (const r of fromInvitations) used.add(r.table_number);
+
+      let next = 1;
+      while (used.has(next) && next <= 500) next += 1;
+      if (next > 500) {
+        res.status(400).json({ error: 'No free table numbers (max 500)' });
+        return;
+      }
+      tableNumber = next;
+    }
+
+    // Default sortOrder to (current max + 1) so new tables append visually.
+    let finalSortOrder = sortOrder;
+    if (finalSortOrder == null) {
+      const maxRow = sqlite
+        .prepare('SELECT COALESCE(MAX(sort_order), -1) AS maxSort FROM event_tables WHERE event_id = ?')
+        .get(eventId) as { maxSort: number };
+      finalSortOrder = maxRow.maxSort + 1;
+    }
+
+    const created = sqlite
+      .prepare(
+        `INSERT INTO event_tables (event_id, table_number, label, capacity, sort_order)
+         VALUES (?, ?, ?, ?, ?)
+         RETURNING event_id AS eventId, table_number AS tableNumber, label, capacity, sort_order AS sortOrder, created_at AS createdAt`,
+      )
+      .get(eventId, tableNumber, label ?? null, capacity, finalSortOrder);
+
+    res.status(201).json({
+      ...(created as object),
+      occupancy: 0,
+      attendingCount: 0,
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      res.status(409).json({ error: `Table ${tableNumber} already exists for this event` });
+      return;
+    }
+    logger.error({ err: error, eventId, tableNumber }, 'event table create error');
+    res.status(500).json({ error: 'Failed to create event table' });
+  }
+});
+
+// PATCH /api/admin/event-tables/:eventId/:tableNumber — update label / capacity / sortOrder.
+router.patch(
+  '/event-tables/:eventId/:tableNumber',
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const eventId = parseInt(req.params['eventId'] ?? '', 10);
+    const tableNumber = parseInt(req.params['tableNumber'] ?? '', 10);
+    if (!Number.isInteger(eventId) || !Number.isInteger(tableNumber)) {
+      res.status(400).json({ error: 'Invalid eventId or tableNumber' });
+      return;
+    }
+
+    const parsed = updateEventTableSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() });
+      return;
+    }
+
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+    if (parsed.data.label !== undefined) {
+      updates.push('label = ?');
+      values.push(parsed.data.label);
+    }
+    if (parsed.data.capacity !== undefined) {
+      updates.push('capacity = ?');
+      values.push(parsed.data.capacity);
+    }
+    if (parsed.data.sortOrder !== undefined) {
+      updates.push('sort_order = ?');
+      values.push(parsed.data.sortOrder);
+    }
+
+    if (updates.length === 0) {
+      res.status(400).json({ error: 'No fields to update' });
+      return;
+    }
+
+    try {
+      values.push(eventId, tableNumber);
+      const updated = sqlite
+        .prepare(
+          `UPDATE event_tables SET ${updates.join(', ')}
+           WHERE event_id = ? AND table_number = ?
+           RETURNING event_id AS eventId, table_number AS tableNumber, label, capacity, sort_order AS sortOrder, created_at AS createdAt`,
+        )
+        .get(...values);
+
+      if (!updated) {
+        res.status(404).json({ error: 'Table not found' });
+        return;
+      }
+
+      res.json(updated);
+    } catch (error) {
+      logger.error({ err: error, eventId, tableNumber }, 'event table update error');
+      res.status(500).json({ error: 'Failed to update event table' });
+    }
+  },
+);
+
+// DELETE /api/admin/event-tables/:eventId/:tableNumber — remove the table
+// metadata and clear `tableNumber` on any linked invitations, atomically.
+router.delete(
+  '/event-tables/:eventId/:tableNumber',
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const eventId = parseInt(req.params['eventId'] ?? '', 10);
+    const tableNumber = parseInt(req.params['tableNumber'] ?? '', 10);
+    if (!Number.isInteger(eventId) || !Number.isInteger(tableNumber)) {
+      res.status(400).json({ error: 'Invalid eventId or tableNumber' });
+      return;
+    }
+
+    try {
+      // Wrapped in a transaction so a crash between the two statements cannot
+      // leave invitations pointing at a non-existent table.
+      const tx = sqlite.transaction(() => {
+        sqlite
+          .prepare(
+            `UPDATE guest_invitations SET table_number = NULL
+             WHERE event_id = ? AND table_number = ?`,
+          )
+          .run(eventId, tableNumber);
+        const result = sqlite
+          .prepare('DELETE FROM event_tables WHERE event_id = ? AND table_number = ?')
+          .run(eventId, tableNumber);
+        return result.changes;
+      });
+      const changes = tx();
+
+      if (changes === 0) {
+        res.status(404).json({ error: 'Table not found' });
+        return;
+      }
+
+      res.json({ ok: true });
+    } catch (error) {
+      logger.error({ err: error, eventId, tableNumber }, 'event table delete error');
+      res.status(500).json({ error: 'Failed to delete event table' });
+    }
+  },
+);
 
 router.post('/guests', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const parsed = addGuestSchema.safeParse(req.body);
@@ -1131,8 +1373,13 @@ router.get('/export/event-tables', requireAuth, async (req: Request, res: Respon
 // ─── Backup / Restore ────────────────────────────────────────────────────────
 // Allowlist of tables that are part of a full data snapshot. Hardcoded — never
 // derived from request input — so it's safe to interpolate into SQL.
-const BACKUP_TABLES = ['events', 'guests', 'guest_invitations', 'notifications'] as const;
+const BACKUP_TABLES = ['events', 'guests', 'guest_invitations', 'notifications', 'event_tables'] as const;
 type BackupTableName = typeof BACKUP_TABLES[number];
+
+// Tables added in later schema versions. When restoring an older backup that
+// predates these tables, a missing key is tolerated and treated as `[]` — the
+// restore proceeds rather than failing the whole import.
+const OPTIONAL_BACKUP_TABLES = new Set<BackupTableName>(['event_tables']);
 
 const BACKUP_VERSION = 1;
 const BACKUP_APP_ID = 'invitation';
@@ -1214,10 +1461,16 @@ router.post('/backup/restore', requireAuth, (req: Request, res: Response): void 
     return;
   }
 
-  // Validate every required table is an array of objects.
+  // Validate every required table is an array of objects. Tables in
+  // OPTIONAL_BACKUP_TABLES may be missing on backups taken before they were
+  // introduced — fill them in as empty arrays so the restore proceeds.
   for (const table of BACKUP_TABLES) {
     const rows = payload.data[table];
     if (!Array.isArray(rows)) {
+      if (OPTIONAL_BACKUP_TABLES.has(table)) {
+        payload.data[table] = [];
+        continue;
+      }
       res.status(400).json({ error: `Backup payload missing or invalid table "${table}"` });
       return;
     }

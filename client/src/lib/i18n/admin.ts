@@ -136,6 +136,35 @@ export interface AdminTranslations {
   undoRemove: string;
   guestRestored: (name: string) => string;
 
+  // Seating planner
+  seatingPlannerTitle: string;
+  seatingPlannerDesc: string;
+  openSeatingPlanner: string;
+  seatingPickEvent: string;
+  seatingPickEventHint: string;
+  seatingUnassigned: string;
+  seatingUnassignedCount: (count: number) => string;
+  seatingUnassignedEmpty: string;
+  seatingAddTable: string;
+  seatingCapacity: string;
+  seatingCapacityLabel: (filled: number, total: number) => string;
+  seatingOverCapacity: string;
+  seatingOverCapacityBy: (n: number) => string;
+  seatingTableLabel: (n: number) => string;
+  seatingTableLabelPlaceholder: string;
+  seatingEditTable: string;
+  seatingDeleteTable: string;
+  seatingDeleteTableConfirm: (label: string, count: number) => string;
+  seatingNoTablesYet: string;
+  seatingNoTablesHint: string;
+  seatingMobileBanner: string;
+  seatingMobileBackToList: string;
+  seatingSeatedAssignment: (name: string, table: string) => string;
+  seatingUnseatedAssignment: (name: string) => string;
+  seatingDragHint: string;
+  seatingFreeSeats: (n: number) => string;
+  seatingTotals: (seated: number, total: number) => string;
+
   // Data backup / restore
   backupTitle: string;
   backupDesc: string;
@@ -267,6 +296,37 @@ const adminEn: AdminTranslations = {
   undoRemove: 'Undo',
   guestRestored: (name) => `${name} restored. Update their RSVP in the table.`,
 
+  seatingPlannerTitle: 'Seating Plan',
+  seatingPlannerDesc: 'Drag guests onto tables to assign seats. Capacity and headcount update live.',
+  openSeatingPlanner: 'Seating Plan',
+  seatingPickEvent: 'Choose an event to plan seating',
+  seatingPickEventHint: 'Tables and assignments are per-event. Pick an event tab above to start.',
+  seatingUnassigned: 'Unassigned',
+  seatingUnassignedCount: (count) => `${count} ${count === 1 ? 'guest' : 'guests'} unassigned`,
+  seatingUnassignedEmpty: 'Everyone is seated.',
+  seatingAddTable: 'Add table',
+  seatingCapacity: 'Capacity',
+  seatingCapacityLabel: (filled, total) => `${filled} / ${total} seats`,
+  seatingOverCapacity: 'Over capacity',
+  seatingOverCapacityBy: (n) => `Over by ${n}`,
+  seatingTableLabel: (n) => `Table ${n}`,
+  seatingTableLabelPlaceholder: 'Optional name (e.g. Family)',
+  seatingEditTable: 'Edit table',
+  seatingDeleteTable: 'Delete table',
+  seatingDeleteTableConfirm: (label, count) =>
+    count === 0
+      ? `Delete ${label}? This cannot be undone.`
+      : `Delete ${label}? ${count} ${count === 1 ? 'guest will be' : 'guests will be'} unassigned.`,
+  seatingNoTablesYet: 'No tables yet',
+  seatingNoTablesHint: 'Add your first table to start seating guests.',
+  seatingMobileBanner: 'The seating planner works best on a tablet or larger. Use the dashboard list view to assign tables on mobile.',
+  seatingMobileBackToList: 'Back to dashboard',
+  seatingSeatedAssignment: (name, table) => `${name} seated at ${table}`,
+  seatingUnseatedAssignment: (name) => `${name} unassigned`,
+  seatingDragHint: 'Drag a guest onto a table to seat them.',
+  seatingFreeSeats: (n) => `${n} ${n === 1 ? 'seat' : 'seats'} free`,
+  seatingTotals: (seated, total) => `${seated} / ${total} guests seated`,
+
   backupTitle: 'Data Backup',
   backupDesc: 'Download a snapshot of every guest, invitation, event, and notification. Restore later to roll back any changes.',
   backupDownload: 'Download Backup',
@@ -397,6 +457,37 @@ const adminTr: AdminTranslations = {
   undoRemove: 'Geri al',
   guestRestored: (name) => `${name} geri yüklendi. Tabloda RSVP durumunu güncelleyin.`,
 
+  seatingPlannerTitle: 'Masa Düzeni',
+  seatingPlannerDesc: 'Misafirleri masalara sürükleyerek yer atayın. Kapasite ve kişi sayısı anlık güncellenir.',
+  openSeatingPlanner: 'Masa Düzeni',
+  seatingPickEvent: 'Masa düzenini planlamak için bir etkinlik seçin',
+  seatingPickEventHint: 'Masalar ve atamalar etkinliğe özeldir. Başlamak için yukarıdan bir etkinlik sekmesi seçin.',
+  seatingUnassigned: 'Atanmamış',
+  seatingUnassignedCount: (count) => `${count} misafir atanmamış`,
+  seatingUnassignedEmpty: 'Herkes oturtuldu.',
+  seatingAddTable: 'Masa ekle',
+  seatingCapacity: 'Kapasite',
+  seatingCapacityLabel: (filled, total) => `${filled} / ${total} kişi`,
+  seatingOverCapacity: 'Kapasite aşıldı',
+  seatingOverCapacityBy: (n) => `${n} fazla`,
+  seatingTableLabel: (n) => `Masa ${n}`,
+  seatingTableLabelPlaceholder: 'İsteğe bağlı ad (örn. Aile)',
+  seatingEditTable: 'Masayı düzenle',
+  seatingDeleteTable: 'Masayı sil',
+  seatingDeleteTableConfirm: (label, count) =>
+    count === 0
+      ? `${label} silinsin mi? Bu işlem geri alınamaz.`
+      : `${label} silinsin mi? ${count} misafir atanmamış duruma geçecek.`,
+  seatingNoTablesYet: 'Henüz masa yok',
+  seatingNoTablesHint: 'Misafirleri oturtmak için ilk masanızı ekleyin.',
+  seatingMobileBanner: 'Masa düzeni planlayıcısı tablet veya daha büyük ekranda en iyi çalışır. Mobilde masa atamak için liste görünümünü kullanın.',
+  seatingMobileBackToList: 'Panele dön',
+  seatingSeatedAssignment: (name, table) => `${name} ${table} masasına oturtuldu`,
+  seatingUnseatedAssignment: (name) => `${name} atamadan kaldırıldı`,
+  seatingDragHint: 'Bir misafiri masaya sürükleyerek oturtun.',
+  seatingFreeSeats: (n) => `${n} boş yer`,
+  seatingTotals: (seated, total) => `${seated} / ${total} misafir oturtuldu`,
+
   backupTitle: 'Veri Yedekleme',
   backupDesc: 'Tüm misafirler, davetler, etkinlikler ve bildirimlerin anlık görüntüsünü indirin. Daha sonra geri yükleyerek değişiklikleri geri alabilirsiniz.',
   backupDownload: 'Yedeği İndir',
@@ -526,6 +617,37 @@ const adminUz: AdminTranslations = {
   remove: "Olib tashlash",
   undoRemove: "Bekor qilish",
   guestRestored: (name) => `${name} tiklandi. Jadvaldagi RSVP holatini yangilang.`,
+
+  seatingPlannerTitle: 'Stol Joylashuvi',
+  seatingPlannerDesc: "Mehmonlarni stollarga olib o'tib joylashtiring. Sig'im va kishilar soni jonli yangilanadi.",
+  openSeatingPlanner: 'Stol Joylashuvi',
+  seatingPickEvent: 'Stol joylashuvini rejalashtirish uchun tadbirni tanlang',
+  seatingPickEventHint: "Stollar va biriktirishlar tadbirga xosdir. Boshlash uchun yuqoridan tadbir tanlang.",
+  seatingUnassigned: 'Biriktirilmagan',
+  seatingUnassignedCount: (count) => `${count} mehmon biriktirilmagan`,
+  seatingUnassignedEmpty: "Hamma o'tirgan.",
+  seatingAddTable: "Stol qo'shish",
+  seatingCapacity: "Sig'im",
+  seatingCapacityLabel: (filled, total) => `${filled} / ${total} kishi`,
+  seatingOverCapacity: "Sig'imdan oshdi",
+  seatingOverCapacityBy: (n) => `${n} ortiqcha`,
+  seatingTableLabel: (n) => `Stol ${n}`,
+  seatingTableLabelPlaceholder: "Ixtiyoriy nom (masalan, Oila)",
+  seatingEditTable: 'Stolni tahrirlash',
+  seatingDeleteTable: "Stolni o'chirish",
+  seatingDeleteTableConfirm: (label, count) =>
+    count === 0
+      ? `${label} o'chirilsinmi? Bu amalni bekor qilib bo'lmaydi.`
+      : `${label} o'chirilsinmi? ${count} mehmon biriktirilmagan holatga o'tadi.`,
+  seatingNoTablesYet: "Hali stol yo'q",
+  seatingNoTablesHint: "Mehmonlarni o'tqazish uchun birinchi stolingizni qo'shing.",
+  seatingMobileBanner: "Stol joylashuvini rejalashtirgich planshet yoki kattaroq ekranda yaxshiroq ishlaydi. Mobilda stol biriktirish uchun ro'yxat ko'rinishidan foydalaning.",
+  seatingMobileBackToList: 'Boshqaruvga qaytish',
+  seatingSeatedAssignment: (name, table) => `${name} ${table}ga o'tqazildi`,
+  seatingUnseatedAssignment: (name) => `${name} biriktirilmagan`,
+  seatingDragHint: "Mehmonni stol ustiga olib o'ting.",
+  seatingFreeSeats: (n) => `${n} ta bo'sh joy`,
+  seatingTotals: (seated, total) => `${seated} / ${total} mehmon o'tqazildi`,
 
   backupTitle: 'Maʼlumotlar Zaxirasi',
   backupDesc: "Barcha mehmonlar, takliflar, tadbirlar va bildirishnomalarning to'liq nusxasini yuklab oling. Keyinroq qayta tiklab o'zgarishlarni bekor qilishingiz mumkin.",

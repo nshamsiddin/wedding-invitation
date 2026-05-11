@@ -75,6 +75,15 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS inv_event_id_idx ON guest_invitations (event_id);
   CREATE INDEX IF NOT EXISTS inv_status_idx   ON guest_invitations (status);
+  CREATE TABLE IF NOT EXISTS event_tables (
+    event_id     INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    table_number INTEGER NOT NULL,
+    label        TEXT,
+    capacity     INTEGER NOT NULL DEFAULT 10,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (event_id, table_number)
+  );
 `);
 
 // Seed reference events (once per worker — INSERT OR IGNORE is idempotent)

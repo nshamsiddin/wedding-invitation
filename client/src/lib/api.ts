@@ -21,6 +21,9 @@ import type {
   PublicPageRsvpValues,
   BulkAddGuestsValues,
   BulkAddGuestsResult,
+  EventTableWithOccupancy,
+  CreateEventTableValues,
+  UpdateEventTableValues,
 } from '@invitation/shared';
 
 export type {
@@ -35,6 +38,9 @@ export type {
   RSVPSubmitResponse,
   ClaimInvitationResponse,
   BulkAddGuestsResult,
+  EventTableWithOccupancy,
+  CreateEventTableValues,
+  UpdateEventTableValues,
 };
 
 export interface RSVPSubmitBody {
@@ -207,6 +213,35 @@ export const adminApi = {
       payload,
     );
     return data;
+  },
+};
+
+// ─── Event tables (seating planner) ──────────────────────────────────────────
+export const eventTablesApi = {
+  list: async (eventId: number): Promise<EventTableWithOccupancy[]> => {
+    const { data } = await api.get<{ tables: EventTableWithOccupancy[] }>(
+      '/admin/event-tables',
+      { params: { eventId } },
+    );
+    return data.tables;
+  },
+  create: async (values: CreateEventTableValues): Promise<EventTableWithOccupancy> => {
+    const { data } = await api.post<EventTableWithOccupancy>('/admin/event-tables', values);
+    return data;
+  },
+  update: async (
+    eventId: number,
+    tableNumber: number,
+    values: UpdateEventTableValues,
+  ): Promise<EventTableWithOccupancy> => {
+    const { data } = await api.patch<EventTableWithOccupancy>(
+      `/admin/event-tables/${eventId}/${tableNumber}`,
+      values,
+    );
+    return data;
+  },
+  remove: async (eventId: number, tableNumber: number): Promise<void> => {
+    await api.delete(`/admin/event-tables/${eventId}/${tableNumber}`);
   },
 };
 

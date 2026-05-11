@@ -189,6 +189,22 @@ db.run(sql`
   )
 `);
 
+// event_tables: first-class table metadata for the seating planner.
+// Composite primary key (event_id, table_number) — the same pair already used
+// by `guest_invitations.table_number` as the implicit link, so we don't need
+// to add a foreign key column to invitations.
+db.run(sql`
+  CREATE TABLE IF NOT EXISTS event_tables (
+    event_id     INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    table_number INTEGER NOT NULL,
+    label        TEXT,
+    capacity     INTEGER NOT NULL DEFAULT 10,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (event_id, table_number)
+  )
+`);
+
 db.run(sql`
   CREATE TABLE IF NOT EXISTS notifications (
     id            INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -355,6 +371,25 @@ sqlite.prepare(
   if (!cols.some((c) => c.name === 'language')) {
     logger.info('[migration] Adding language column to guest_invitations…');
     sqlite.prepare("ALTER TABLE guest_invitations ADD COLUMN language TEXT NOT NULL DEFAULT 'en'").run();
+  }
+})();
+
+// Backfill event_tables from any (event_id, table_number) pairs already in
+// guest_invitations. Safe to run on every startup — INSERT OR IGNORE on the
+// composite primary key means rows admins have already customised (label,
+// capacity, sort_order) are never overwritten.
+(function backfillEventTables() {
+  try {
+    sqlite
+      .prepare(
+        `INSERT OR IGNORE INTO event_tables (event_id, table_number, capacity)
+         SELECT DISTINCT event_id, table_number, 10
+         FROM guest_invitations
+         WHERE table_number IS NOT NULL AND guest_id IS NOT NULL`,
+      )
+      .run();
+  } catch (err) {
+    logger.warn({ err }, '[migration] event_tables backfill skipped');
   }
 })();
 

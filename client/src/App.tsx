@@ -14,6 +14,7 @@ import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import GuestWishesPage from './pages/admin/GuestWishesPage';
 import DuplicateDetectorPage from './pages/admin/DuplicateDetectorPage';
+import SeatingPlannerPage from './pages/admin/SeatingPlannerPage';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 
 function InvitationChrome() {
@@ -86,6 +87,14 @@ function AppInner() {
             element={
               <ProtectedRoute>
                 <DuplicateDetectorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/seating"
+            element={
+              <ProtectedRoute>
+                <SeatingPlannerPage />
               </ProtectedRoute>
             }
           />

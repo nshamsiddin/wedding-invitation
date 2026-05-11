@@ -326,6 +326,51 @@ export const createOpenInvitationSchema = z.object({
 
 export type CreateOpenInvitationValues = z.infer<typeof createOpenInvitationSchema>;
 
+// ─── Event tables (seating planner) ──────────────────────────────────────────
+// A first-class table entity with capacity and optional label. The link from
+// an invitation to a table is still by `tableNumber` on the invitation row —
+// this schema only adds metadata for the seating planner UI.
+
+export const eventTableSchema = z.object({
+  eventId: z.number().int().positive(),
+  tableNumber: z.number().int().min(1).max(500),
+  label: z.string().max(100).nullable().optional(),
+  capacity: z.number().int().min(1).max(50),
+  sortOrder: z.number().int(),
+  createdAt: z.string(),
+});
+
+export type EventTableData = z.infer<typeof eventTableSchema>;
+
+// Server enrichment — table row + live occupancy aggregated from invitations.
+export const eventTableWithOccupancySchema = eventTableSchema.extend({
+  // Total guestCount across linked invitations regardless of RSVP status.
+  occupancy: z.number().int().min(0),
+  // Same but only counting RSVP status = 'attending'.
+  attendingCount: z.number().int().min(0),
+});
+
+export type EventTableWithOccupancy = z.infer<typeof eventTableWithOccupancySchema>;
+
+export const createEventTableSchema = z.object({
+  eventId: z.number().int().positive(),
+  // Optional — server picks the next free table number when not supplied.
+  tableNumber: z.number().int().min(1).max(500).optional(),
+  label: z.string().max(100).trim().nullable().optional(),
+  capacity: z.number().int().min(1).max(50).default(10),
+  sortOrder: z.number().int().optional(),
+});
+
+export type CreateEventTableValues = z.infer<typeof createEventTableSchema>;
+
+export const updateEventTableSchema = z.object({
+  label: z.string().max(100).trim().nullable().optional(),
+  capacity: z.number().int().min(1).max(50).optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+export type UpdateEventTableValues = z.infer<typeof updateEventTableSchema>;
+
 // Bulk guest import — admin uploads a plain-text list of names (one per line)
 export const bulkAddGuestsSchema = z.object({
   names: z
