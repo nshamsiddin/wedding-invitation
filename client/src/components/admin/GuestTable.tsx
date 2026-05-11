@@ -51,6 +51,151 @@ const STATUS_CONFIG: Record<
   },
 };
 
+// Status options offered in the inline editor. "maybe" is legacy — kept in
+// STATUS_CONFIG so existing records still render, but never offered as a
+// pickable option here, mirroring the StatusPicker form control.
+type EditableStatus = 'attending' | 'declined' | 'pending';
+const EDITABLE_STATUSES: readonly EditableStatus[] = ['attending', 'declined', 'pending'] as const;
+
+// ─── Inline status badge editor ──────────────────────────────────────────────
+// Click the badge → small popover anchored beneath it with the 3 status
+// options. Click outside or Escape to dismiss. When `onChange` is not
+// provided the badge renders as a plain (non-interactive) pill — that's used
+// in any future read-only contexts and lets us share one component path.
+function StatusBadgeEditor({
+  invitationId,
+  status,
+  onChange,
+  ariaLabelContext,
+}: {
+  invitationId: number;
+  status: string;
+  onChange?: (invitationId: number, next: EditableStatus) => void;
+  /** Extra context for screen readers, e.g. guest name + event name. */
+  ariaLabelContext?: string;
+}) {
+  const at = useAdminTranslation();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Close on outside click or Escape — restore focus to trigger on Escape so
+  // keyboard users don't get dumped at the document root.
+  useEffect(() => {
+    if (!open) return;
+    const handleDocPointer = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', handleDocPointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleDocPointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG['pending'];
+  const labels: Record<EditableStatus, string> = {
+    attending: at.statusAttending,
+    declined: at.statusDeclined,
+    pending: at.statusPending,
+  };
+
+  // Read-only fallback — keeps the component drop-in safe for callers that
+  // don't (yet) wire a mutation.
+  if (!onChange) {
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.classes}`}>
+        {config.icon}
+        {config.label}
+      </span>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative inline-block">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Status: ${config.label}${ariaLabelContext ? ` for ${ariaLabelContext}` : ''}. Click to change.`}
+        title="Click to change status"
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1 ${config.classes}`}
+      >
+        {config.icon}
+        {config.label}
+        {/* Chevron — universal "opens a menu" affordance */}
+        <svg className="w-2.5 h-2.5 opacity-60 -mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            role="listbox"
+            aria-label="Choose status"
+            className="absolute left-0 top-full mt-1 z-20 rounded-lg shadow-xl overflow-hidden py-1 min-w-[160px]"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
+          >
+            {EDITABLE_STATUSES.map((opt, idx) => {
+              const c = STATUS_CONFIG[opt];
+              const selected = status === opt;
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  // Autofocus the current option so keyboard users start from "their" position.
+                  // Fallback to first option if `status` is a legacy value (e.g. "maybe").
+                  autoFocus={selected || (idx === 0 && !(EDITABLE_STATUSES as readonly string[]).includes(status))}
+                  onClick={() => {
+                    if (!selected) onChange(invitationId, opt);
+                    setOpen(false);
+                    // Restore focus to trigger for screen reader continuity
+                    requestAnimationFrame(() => triggerRef.current?.focus());
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left transition-colors focus:outline-none focus:bg-[rgba(184,146,74,0.14)] hover:bg-[rgba(184,146,74,0.08)]"
+                >
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${c.classes}`}>
+                    {c.icon}
+                    {labels[opt]}
+                  </span>
+                  {selected && (
+                    <svg
+                      className="w-3.5 h-3.5 ml-auto flex-shrink-0"
+                      style={{ color: GOLD }}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      aria-hidden="true"
+                    >
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface Props {
   guests: AdminGuest[];
   events: AdminEvent[];
@@ -68,6 +213,11 @@ interface Props {
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
   onUpdateTableNumber?: (invitationId: number, tableNumber: number | null) => void;
+  /**
+   * Fired when the admin picks a new status from the inline status badge
+   * editor. When omitted, status badges render as static read-only pills.
+   */
+  onUpdateStatus?: (invitationId: number, status: EditableStatus) => void;
   /**
    * Tables already in use for the active event scope. Powers the smart-picker
    * suggestions inside `TableNumberCell` (existing tables shown as chips, plus
@@ -687,6 +837,7 @@ export default function GuestTable({
   onDeleteGuest,
   onDeleteInvitation,
   onUpdateTableNumber,
+  onUpdateStatus,
   existingTables = [],
   onFilterByTable,
   activeTableFilter = null,
@@ -883,10 +1034,12 @@ export default function GuestTable({
                           {getEventDisplayName(ev)}
                         </span>
                         {inv && config ? (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${config.classes}`}>
-                            {config.icon}
-                            {config.label}
-                          </span>
+                          <StatusBadgeEditor
+                            invitationId={inv.id}
+                            status={inv.status}
+                            onChange={onUpdateStatus}
+                            ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
+                          />
                         ) : (
                           <span className="text-[11px]" style={{ color: ESPRESSO_DIM }}>—</span>
                         )}
@@ -1108,10 +1261,12 @@ export default function GuestTable({
                       <>
                         <td className="px-3 py-3 whitespace-nowrap">
                           {inv && config ? (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.classes}`}>
-                              {config.icon}
-                              {config.label}
-                            </span>
+                            <StatusBadgeEditor
+                              invitationId={inv.id}
+                              status={inv.status}
+                              onChange={onUpdateStatus}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(singleEvent)}`}
+                            />
                           ) : (
                             <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
                           )}
@@ -1144,12 +1299,15 @@ export default function GuestTable({
                     return (
                       <td key={ev.id} className="px-4 py-3 min-w-[140px]">
                         {inv && config ? (
-                          <div className="flex flex-col gap-1.5">
-                            {/* Status badge with icon — WCAG 1.4.1 */}
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium self-start ${config.classes}`}>
-                              {config.icon}
-                              {config.label}
-                            </span>
+                          <div className="flex flex-col gap-1.5 items-start">
+                            {/* Status badge — interactive when onUpdateStatus is provided.
+                                WCAG 1.4.1: still uses icon + colour, not colour alone. */}
+                            <StatusBadgeEditor
+                              invitationId={inv.id}
+                              status={inv.status}
+                              onChange={onUpdateStatus}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
+                            />
                             <span className="text-[10px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
                               {at.partySizeLabel}: {inv.guestCount}
                             </span>

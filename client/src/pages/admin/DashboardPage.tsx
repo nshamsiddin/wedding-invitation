@@ -469,6 +469,25 @@ export default function DashboardPage() {
     },
   });
 
+  // Inline status change from the badge in the guest table. Separate from the
+  // full-form RSVP edit so we can show a focused, single-field success toast
+  // (and skip closing/reopening the EditInvitationModal).
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'attending' | 'declined' | 'pending' }) =>
+      adminApi.updateInvitation(id, { status }),
+    onError: () => toast.error('Failed to update status'),
+    onSuccess: (_data, { status }) => {
+      const label =
+        status === 'attending' ? at.statusAttending
+        : status === 'declined' ? at.statusDeclined
+        : at.statusPending;
+      toast.success(`Status: ${label}`);
+      // Refresh guests + events so the stats cards reflect the change.
+      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'events'] });
+    },
+  });
+
   // Bulk-assign the same table number to every selected guest's invitation for
   // the currently-active event tab. We resolve invitation IDs at submit time
   // rather than caching them so the list stays correct if the user changes
@@ -1277,6 +1296,9 @@ export default function DashboardPage() {
             onDeleteInvitation={setDeletingInvitation}
             onUpdateTableNumber={(invId, tableNumber) =>
               updateTableNumberMutation.mutate({ id: invId, tableNumber })
+            }
+            onUpdateStatus={(invId, status) =>
+              updateStatusMutation.mutate({ id: invId, status })
             }
             existingTables={availableTables}
             onFilterByTable={setTableFilter}
