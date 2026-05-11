@@ -1411,6 +1411,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0 flex justify-end">
                       <TablePicker
                         value={null}
+                        eventId={selectedEventId ?? undefined}
                         existingTables={availableTables}
                         onCommit={(next) =>
                           bulkAssignTableMutation.mutate({

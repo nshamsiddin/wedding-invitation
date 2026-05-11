@@ -1,7 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type {
+  AdminGuest, AdminInvitation, AdminEvent,
+  EventTableWithOccupancy,
+} from '../../lib/api';
+import { eventTablesApi } from '../../lib/api';
 import { PARCHMENT, CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM } from '../../garden/tokens';
 import { useAdminTranslation } from '../../lib/i18n/admin';
 import { getEventDisplayName } from './adminTokens';
@@ -239,54 +244,246 @@ interface Props {
   activeTableFilter?: number | null;
 }
 
-// ─── TablePicker — chip-driven seating editor ─────────────────────────────────
+// ─── TablePicker — visual seating matrix ──────────────────────────────────────
 // Shared by the inline cell editor and (re-exported below) by the dashboard's
-// bulk "Assign table" popover. Keeping a single visual treatment for assignment
-// means admins build muscle memory once.
+// bulk "Assign table" popover. Rather than a raw number input, this presents
+// every existing table as a tap-to-select card in a grid (the "matrix"),
+// followed by an inline "+ New table" affordance. A small "Type a number"
+// row is kept as an escape hatch for power users.
+//
+// Backward-compat: callers can keep passing only `existingTables: number[]`.
+// When an `eventId` is provided, the picker self-fetches rich table metadata
+// (label, capacity, occupancy) and enables true table creation via the
+// `event_tables` API. Without an eventId, it gracefully degrades to plain
+// number cards.
+
+interface TableOption {
+  tableNumber: number;
+  label: string | null;
+  capacity: number | null;
+  occupancy: number | null;
+}
+
+function TableCardChip({
+  option,
+  isCurrent,
+  onSelect,
+}: {
+  option: TableOption;
+  isCurrent: boolean;
+  onSelect: () => void;
+}) {
+  const { tableNumber, label, capacity, occupancy } = option;
+  const hasMeta = capacity != null;
+  const isFull = capacity != null && occupancy != null && occupancy >= capacity;
+  const isOver = capacity != null && occupancy != null && occupancy > capacity;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      role="option"
+      aria-selected={isCurrent}
+      aria-label={
+        label
+          ? `Table ${tableNumber} — ${label}${hasMeta ? `, ${occupancy ?? 0} of ${capacity} seats` : ''}`
+          : `Table ${tableNumber}${hasMeta ? `, ${occupancy ?? 0} of ${capacity} seats` : ''}`
+      }
+      title={label ? `${label} · #${tableNumber}` : `Table ${tableNumber}`}
+      className="group/tbl relative flex flex-col items-stretch justify-between text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+      style={{
+        padding: '0.4rem 0.5rem 0.35rem',
+        borderRadius: '0.5rem',
+        border: `1.5px solid ${isCurrent ? GOLD : isOver ? 'rgba(220,38,38,0.45)' : 'rgba(184,146,74,0.32)'}`,
+        background: isCurrent
+          ? GOLD
+          : isOver
+            ? 'rgba(220,38,38,0.06)'
+            : 'rgba(184,146,74,0.07)',
+        color: isCurrent ? '#FFFFFF' : ESPRESSO,
+        cursor: 'pointer',
+        minHeight: hasMeta ? '3.2rem' : '2.4rem',
+      }}
+    >
+      <span
+        className="font-sans tabular-nums"
+        style={{
+          fontSize: '0.95rem',
+          fontWeight: 700,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.05,
+          color: isCurrent ? '#FFFFFF' : '#7A4F10',
+        }}
+      >
+        #{tableNumber}
+      </span>
+      {label && (
+        <span
+          className="font-sans truncate"
+          style={{
+            fontSize: '0.65rem',
+            fontWeight: 500,
+            opacity: isCurrent ? 0.92 : 0.85,
+            marginTop: '0.1rem',
+          }}
+        >
+          {label}
+        </span>
+      )}
+      {hasMeta && (
+        <span
+          className="font-sans tabular-nums"
+          style={{
+            fontSize: '0.6rem',
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            marginTop: '0.15rem',
+            color: isCurrent
+              ? 'rgba(255,255,255,0.92)'
+              : isOver
+                ? '#B0203F'
+                : isFull
+                  ? '#7A4F10'
+                  : ESPRESSO_DIM,
+          }}
+        >
+          {occupancy ?? 0}/{capacity}
+          {isFull && !isOver ? ' · full' : ''}
+        </span>
+      )}
+      {isCurrent && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: 3,
+            right: 3,
+            width: 12,
+            height: 12,
+            borderRadius: '50%',
+            background: '#FFFFFF',
+            color: GOLD,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </span>
+      )}
+    </button>
+  );
+}
 
 export function TablePicker({
   value,
   existingTables,
+  eventId,
   onCommit,
   onCancel,
   showCancel = true,
   showClear = true,
-  inputAriaLabel = 'Table number',
-  /** When true, the input takes focus on mount. */
+  /** When true, the picker auto-focuses on mount (a11y / keyboard flow). */
   autoFocus = true,
-  /** Optional title shown above the input — used by the bulk popover. */
+  /** Optional title shown at the top — used by the bulk popover. */
   title,
+  /** Optional override for the description below the title. */
+  subtitle,
 }: {
   value: number | null;
   existingTables: number[];
+  /** When provided, the picker fetches event_tables for richer cards and
+   *  enables true "create new table" via the event_tables API. */
+  eventId?: number | null;
   onCommit: (next: number | null) => void;
   onCancel?: () => void;
   showCancel?: boolean;
   showClear?: boolean;
+  /** @deprecated kept for backward compat — the picker no longer leads with a
+   *  number input, so this label is unused. */
   inputAriaLabel?: string;
   autoFocus?: boolean;
   title?: string;
+  subtitle?: string;
 }) {
-  const [draft, setDraft] = useState(value != null ? String(value) : '');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!autoFocus) return;
-    const id = requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    });
-    return () => cancelAnimationFrame(id);
-  }, [autoFocus]);
+  // ── Rich event_tables (when eventId is provided) ───────────────────────────
+  const { data: eventTables = [] } = useQuery({
+    queryKey: ['admin', 'eventTables', eventId ?? null],
+    queryFn: () => eventTablesApi.list(eventId!),
+    enabled: eventId != null,
+    staleTime: 30_000,
+  });
+
+  // Merge two sources of truth: rich event_tables rows + legacy invitation
+  // tableNumbers that don't have a matching event_tables row yet. We want the
+  // matrix to surface every assignable table whether or not the host has
+  // formalised it via the seating planner.
+  const options: TableOption[] = useMemo(() => {
+    const byNumber = new Map<number, TableOption>();
+    for (const t of eventTables as EventTableWithOccupancy[]) {
+      byNumber.set(t.tableNumber, {
+        tableNumber: t.tableNumber,
+        label: t.label ?? null,
+        capacity: t.capacity,
+        occupancy: t.occupancy,
+      });
+    }
+    for (const n of existingTables) {
+      if (!byNumber.has(n)) {
+        byNumber.set(n, { tableNumber: n, label: null, capacity: null, occupancy: null });
+      }
+    }
+    return Array.from(byNumber.values()).sort((a, b) => a.tableNumber - b.tableNumber);
+  }, [eventTables, existingTables]);
 
   // Smallest positive integer not yet used — capped at the schema's 500 limit.
   const nextAvailable = useMemo(() => {
-    const used = new Set(existingTables);
+    const used = new Set<number>(options.map((o) => o.tableNumber));
     for (let n = 1; n <= 500; n += 1) {
       if (!used.has(n)) return n;
     }
     return null;
-  }, [existingTables]);
+  }, [options]);
+
+  // ── "Add new table" inline form state ──────────────────────────────────────
+  const [adding, setAdding] = useState(false);
+  const [newNumber, setNewNumber] = useState<number>(nextAvailable ?? 1);
+  const [newLabel, setNewLabel] = useState('');
+  const [newCapacity, setNewCapacity] = useState(10);
+  const newLabelRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!adding) setNewNumber(nextAvailable ?? 1);
+  }, [nextAvailable, adding]);
+
+  useEffect(() => {
+    if (adding) {
+      const id = requestAnimationFrame(() => newLabelRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+    return undefined;
+  }, [adding]);
+
+  // ── "Advanced: type a number" escape hatch ─────────────────────────────────
+  const [typingMode, setTypingMode] = useState(false);
+  const [draft, setDraft] = useState<string>(value != null ? String(value) : '');
+  const draftRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typingMode) {
+      const id = requestAnimationFrame(() => {
+        draftRef.current?.focus();
+        draftRef.current?.select();
+      });
+      return () => cancelAnimationFrame(id);
+    }
+    return undefined;
+  }, [typingMode]);
 
   const parseDraft = (raw: string): number | null => {
     const trimmed = raw.trim();
@@ -296,92 +493,138 @@ export function TablePicker({
     return parsed;
   };
 
-  const commit = () => onCommit(parseDraft(draft));
+  // ── Initial focus ──────────────────────────────────────────────────────────
+  // Land focus on the first interactive element of the picker — the first
+  // table card if any exist, else the "+ New table" trigger. Using a query
+  // against the container keeps this resilient to the matrix being empty.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const id = requestAnimationFrame(() => {
+      const root = containerRef.current;
+      if (!root) return;
+      const target = root.querySelector<HTMLButtonElement>(
+        '[role="option"], button[type="button"]',
+      );
+      target?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [autoFocus]);
 
-  // Quick-pick chips: existing tables sorted ascending, deduped.
-  const sortedExisting = useMemo(
-    () => Array.from(new Set(existingTables)).sort((a, b) => a - b),
-    [existingTables],
-  );
+  // ── Escape closes the picker ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!onCancel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        if (adding) { setAdding(false); return; }
+        if (typingMode) { setTypingMode(false); return; }
+        onCancel();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onCancel, adding, typingMode]);
 
-  // The "next available" chip is only meaningful if it's actually a *new*
-  // table — otherwise it just duplicates an existing chip.
-  const showNextChip = nextAvailable != null && !sortedExisting.includes(nextAvailable);
+  // ── Create a new event_table (only available with eventId) ─────────────────
+  const createMutation = useMutation({
+    mutationFn: eventTablesApi.create,
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'eventTables', eventId ?? null] });
+      qc.invalidateQueries({ queryKey: ['admin', 'tables'] });
+      toast.success(`Table ${created.tableNumber} created`);
+      setAdding(false);
+      setNewLabel('');
+      onCommit(created.tableNumber);
+    },
+    onError: () => toast.error('Failed to create table'),
+  });
+
+  const handleCreate = () => {
+    const n = Number.isFinite(newNumber) && newNumber > 0 ? Math.floor(newNumber) : (nextAvailable ?? 1);
+    const c = Number.isFinite(newCapacity) && newCapacity > 0 ? Math.floor(newCapacity) : 10;
+    if (eventId != null) {
+      createMutation.mutate({
+        eventId,
+        tableNumber: n,
+        label: newLabel.trim() || null,
+        capacity: c,
+      });
+    } else {
+      // No eventId — we can't create a real event_table row, so just commit
+      // the chosen number. The invitation will still link via tableNumber.
+      setAdding(false);
+      setNewLabel('');
+      onCommit(n);
+    }
+  };
+
+  const showClearButton = showClear && value != null;
 
   return (
     <div
-      className="inline-flex flex-col gap-1.5"
-      // Compact layout — the picker stays the width of its content so it
-      // doesn't stretch the cell column.
-      style={{ minWidth: '7rem' }}
-      // The cell-level outer button uses `onClick` to enter edit mode; once
-      // we're inside the picker, any clicks on the input/chips would bubble
-      // back to that parent and re-trigger edit. Stop them here.
+      ref={containerRef}
+      className="flex flex-col gap-2"
+      style={{
+        minWidth: '15rem',
+        maxWidth: '20rem',
+        padding: '0.65rem',
+        borderRadius: '0.6rem',
+        background: PARCHMENT,
+        border: `1px solid ${GOLD_DIM}`,
+        boxShadow: '0 10px 28px rgba(42,31,26,0.12), 0 2px 6px rgba(42,31,26,0.06)',
+      }}
+      role="dialog"
+      aria-label={title ?? 'Assign table'}
+      // The cell-level outer button uses onClick to enter edit mode; once
+      // we're inside the picker, any clicks would bubble back and re-trigger
+      // edit. Stop them here.
       onClick={(e) => e.stopPropagation()}
     >
-      {title && (
-        <p
-          className="text-[10px] font-sans font-semibold uppercase tracking-widest"
-          style={{ color: ESPRESSO_DIM }}
-        >
-          {title}
-        </p>
-      )}
-
-      <div className="flex items-center gap-1">
-        <input
-          ref={inputRef}
-          type="number"
-          min={1}
-          max={500}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); commit(); }
-            if (e.key === 'Escape' && onCancel) onCancel();
-          }}
-          placeholder="#"
-          aria-label={inputAriaLabel}
-          style={{
-            width: '3.25rem',
-            padding: '0.25rem 0.4rem',
-            borderRadius: '0.375rem',
-            fontSize: '0.78rem',
-            fontWeight: 700,
-            fontFamily: '"DM Sans", system-ui, sans-serif',
-            fontVariantNumeric: 'tabular-nums',
-            textAlign: 'center',
-            background: '#FDFAF5',
-            border: '1.5px solid rgba(184,146,74,0.7)',
-            color: ESPRESSO,
-            outline: 'none',
-            boxShadow: '0 0 0 3px rgba(184,146,74,0.12)',
-          }}
-        />
-        <button
-          onClick={commit}
-          type="button"
-          aria-label="Save table number"
-          style={{
-            width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(74,158,120,0.14)', border: '1px solid rgba(74,158,120,0.45)',
-            color: '#2D6B50', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M20 6L9 17l-5-5"/>
-          </svg>
-        </button>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p
+            className="font-sans uppercase"
+            style={{
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              color: ESPRESSO_DIM,
+              lineHeight: 1.1,
+            }}
+          >
+            {title ?? 'Select a table'}
+          </p>
+          <p
+            className="font-sans"
+            style={{
+              fontSize: '0.7rem',
+              color: ESPRESSO,
+              lineHeight: 1.35,
+              marginTop: '0.15rem',
+            }}
+          >
+            {subtitle ?? (
+              value != null
+                ? <>Currently <span className="tabular-nums font-semibold">#{value}</span>. Tap a card to reassign.</>
+                : options.length > 0
+                  ? <>Tap a card to seat this guest.</>
+                  : <>No tables yet — add the first one below.</>
+            )}
+          </p>
+        </div>
         {showCancel && onCancel && (
           <button
-            onClick={onCancel}
             type="button"
-            aria-label="Cancel"
+            onClick={onCancel}
+            aria-label="Close"
+            className="flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
             style={{
-              width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-              background: 'rgba(42,31,26,0.05)', border: '1px solid rgba(42,31,26,0.12)',
-              color: 'rgba(42,31,26,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 22, height: 22, borderRadius: '50%',
+              background: 'rgba(42,31,26,0.05)',
+              border: '1px solid rgba(42,31,26,0.12)',
+              color: 'rgba(42,31,26,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer',
             }}
           >
@@ -392,81 +635,367 @@ export function TablePicker({
         )}
       </div>
 
-      {(sortedExisting.length > 0 || showNextChip || (showClear && value != null)) && (
-        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Quick-pick tables">
-          {sortedExisting.map((n) => {
-            const isCurrent = n === value;
-            return (
-              <button
-                key={n}
-                type="button"
-                onClick={() => onCommit(n)}
-                aria-label={`Use table ${n}`}
-                aria-pressed={isCurrent}
-                className="font-sans tabular-nums focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+      {/* ── Matrix of existing tables ─────────────────────────────────────── */}
+      {options.length > 0 ? (
+        <div
+          role="listbox"
+          aria-label="Existing tables"
+          className="grid gap-1.5"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(4.2rem, 1fr))' }}
+        >
+          {options.map((opt) => (
+            <TableCardChip
+              key={opt.tableNumber}
+              option={opt}
+              isCurrent={opt.tableNumber === value}
+              onSelect={() => onCommit(opt.tableNumber)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p
+          className="font-sans italic"
+          style={{
+            fontSize: '0.72rem',
+            color: ESPRESSO_DIM,
+            padding: '0.4rem 0.1rem',
+            background: 'rgba(184,146,74,0.06)',
+            borderRadius: '0.4rem',
+            textAlign: 'center',
+          }}
+        >
+          No tables yet
+        </p>
+      )}
+
+      {/* ── Add-new-table affordance ──────────────────────────────────────── */}
+      <AnimatePresence initial={false} mode="wait">
+        {!adding ? (
+          <motion.button
+            key="add-trigger"
+            type="button"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            onClick={() => setAdding(true)}
+            aria-label={
+              nextAvailable != null
+                ? `Add a new table (next available is ${nextAvailable})`
+                : 'Add a new table'
+            }
+            className="font-sans inline-flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+            style={{
+              padding: '0.4rem 0.6rem',
+              borderRadius: '0.45rem',
+              border: `1.5px dashed ${GOLD_DIM}`,
+              background: 'transparent',
+              color: GOLD,
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(184,146,74,0.08)';
+              e.currentTarget.style.borderColor = GOLD;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = GOLD_DIM;
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            {eventId != null ? 'New table' : 'Use new number'}
+            {nextAvailable != null && (
+              <span
+                className="tabular-nums"
                 style={{
-                  padding: '0.1rem 0.4rem',
-                  borderRadius: '0.3rem',
-                  fontSize: '0.7rem',
+                  marginLeft: '0.15rem',
+                  padding: '0 0.3rem',
+                  borderRadius: '0.25rem',
+                  background: 'rgba(184,146,74,0.16)',
+                  color: '#7A4F10',
+                  fontSize: '0.65rem',
                   fontWeight: 700,
-                  background: isCurrent ? GOLD : 'rgba(184,146,74,0.11)',
-                  color: isCurrent ? '#FFFFFF' : '#7A4F10',
-                  border: `1px solid ${isCurrent ? GOLD : 'rgba(184,146,74,0.32)'}`,
+                }}
+              >
+                #{nextAvailable}
+              </span>
+            )}
+          </motion.button>
+        ) : (
+          <motion.div
+            key="add-form"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="flex flex-col gap-1.5"
+            style={{
+              padding: '0.55rem',
+              borderRadius: '0.5rem',
+              background: CREAM,
+              border: `1.5px solid ${GOLD}`,
+            }}
+          >
+            <p
+              className="font-sans uppercase"
+              style={{
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                letterSpacing: '0.14em',
+                color: GOLD,
+              }}
+            >
+              {eventId != null ? 'Create new table' : 'Use a new number'}
+            </p>
+
+            {/* Label — only meaningful when we can create a real event_table */}
+            {eventId != null && (
+              <input
+                ref={newLabelRef}
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
+                  if (e.key === 'Escape') { e.preventDefault(); setAdding(false); }
+                }}
+                maxLength={100}
+                placeholder="Optional name (e.g. Family)"
+                aria-label="Table label"
+                className="font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                style={{
+                  padding: '0.3rem 0.45rem',
+                  borderRadius: '0.35rem',
+                  border: `1px solid ${GOLD_DIM}`,
+                  background: '#FDFAF5',
+                  color: ESPRESSO,
+                  fontSize: '0.78rem',
+                }}
+              />
+            )}
+
+            <div className="flex gap-1.5">
+              <label className="flex flex-col gap-0.5 flex-1">
+                <span
+                  className="font-sans uppercase"
+                  style={{ fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em', color: ESPRESSO_DIM }}
+                >
+                  Table #
+                </span>
+                <input
+                  ref={eventId == null ? newLabelRef : undefined}
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={newNumber}
+                  onChange={(e) => setNewNumber(parseInt(e.target.value, 10) || (nextAvailable ?? 1))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
+                    if (e.key === 'Escape') { e.preventDefault(); setAdding(false); }
+                  }}
+                  aria-label="New table number"
+                  className="font-sans tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  style={{
+                    padding: '0.3rem 0.4rem',
+                    borderRadius: '0.35rem',
+                    border: `1px solid ${GOLD_DIM}`,
+                    background: '#FDFAF5',
+                    color: ESPRESSO,
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                  }}
+                />
+              </label>
+              {eventId != null && (
+                <label className="flex flex-col gap-0.5 flex-1">
+                  <span
+                    className="font-sans uppercase"
+                    style={{ fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em', color: ESPRESSO_DIM }}
+                  >
+                    Capacity
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={newCapacity}
+                    onChange={(e) => setNewCapacity(parseInt(e.target.value, 10) || 10)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
+                      if (e.key === 'Escape') { e.preventDefault(); setAdding(false); }
+                    }}
+                    aria-label="New table capacity"
+                    className="font-sans tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                    style={{
+                      padding: '0.3rem 0.4rem',
+                      borderRadius: '0.35rem',
+                      border: `1px solid ${GOLD_DIM}`,
+                      background: '#FDFAF5',
+                      color: ESPRESSO,
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="flex gap-1.5 mt-0.5">
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="flex-1 font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                style={{
+                  padding: '0.3rem 0.5rem',
+                  borderRadius: '0.35rem',
+                  border: `1px solid ${GOLD_DIM}`,
+                  background: 'transparent',
+                  color: ESPRESSO_DIM,
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
                   cursor: 'pointer',
                 }}
               >
-                {n}
+                Cancel
               </button>
-            );
-          })}
-          {showNextChip && (
-            <button
-              type="button"
-              onClick={() => onCommit(nextAvailable)}
-              title={`Use the next free table (${nextAvailable})`}
-              aria-label={`Use the next available table, number ${nextAvailable}`}
-              className="font-sans tabular-nums focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)] inline-flex items-center gap-0.5"
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={createMutation.isPending}
+                className="flex-1 font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  padding: '0.3rem 0.5rem',
+                  borderRadius: '0.35rem',
+                  border: `1px solid ${GOLD}`,
+                  background: GOLD,
+                  color: '#FFFFFF',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {createMutation.isPending ? 'Adding…' : (eventId != null ? 'Create & assign' : 'Assign')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Footer row: type-a-number escape hatch + clear ────────────────── */}
+      <div
+        className="flex items-center justify-between gap-2"
+        style={{ borderTop: `1px dashed ${GOLD_DIM}`, paddingTop: '0.45rem' }}
+      >
+        {typingMode ? (
+          <div className="flex items-center gap-1">
+            <input
+              ref={draftRef}
+              type="number"
+              min={1}
+              max={500}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); onCommit(parseDraft(draft)); }
+                if (e.key === 'Escape') { e.preventDefault(); setTypingMode(false); }
+              }}
+              placeholder="#"
+              aria-label="Type a table number"
+              className="font-sans tabular-nums focus:outline-none"
               style={{
-                padding: '0.1rem 0.4rem',
+                width: '3rem',
+                padding: '0.2rem 0.35rem',
                 borderRadius: '0.3rem',
-                fontSize: '0.7rem',
+                border: '1.5px solid rgba(184,146,74,0.7)',
+                background: '#FDFAF5',
+                color: ESPRESSO,
+                fontSize: '0.72rem',
                 fontWeight: 700,
-                background: 'transparent',
-                color: GOLD,
-                border: '1px dashed rgba(184,146,74,0.5)',
-                cursor: 'pointer',
+                textAlign: 'center',
+                boxShadow: '0 0 0 3px rgba(184,146,74,0.12)',
               }}
-            >
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-              {nextAvailable}
-            </button>
-          )}
-          {showClear && value != null && (
+            />
             <button
               type="button"
-              onClick={() => onCommit(null)}
-              aria-label="Clear table assignment"
-              className="font-sans focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              onClick={() => onCommit(parseDraft(draft))}
+              aria-label="Use this number"
               style={{
-                padding: '0.1rem 0.4rem',
-                borderRadius: '0.3rem',
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                background: 'transparent',
-                color: ESPRESSO_DIM,
-                border: '1px solid transparent',
+                width: 22, height: 22, borderRadius: '50%',
+                background: 'rgba(74,158,120,0.14)', border: '1px solid rgba(74,158,120,0.45)',
+                color: '#2D6B50', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer',
-                textDecoration: 'underline',
-                textUnderlineOffset: '2px',
               }}
             >
-              Clear
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
             </button>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setTypingMode(false)}
+              aria-label="Cancel typing"
+              style={{
+                width: 22, height: 22, borderRadius: '50%',
+                background: 'rgba(42,31,26,0.05)', border: '1px solid rgba(42,31,26,0.12)',
+                color: 'rgba(42,31,26,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setDraft(value != null ? String(value) : ''); setTypingMode(true); }}
+            className="font-sans focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+            style={{
+              fontSize: '0.68rem',
+              color: ESPRESSO_DIM,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              textDecoration: 'underline',
+              textUnderlineOffset: '2px',
+            }}
+          >
+            Type a number
+          </button>
+        )}
+
+        {showClearButton && !typingMode && (
+          <button
+            type="button"
+            onClick={() => onCommit(null)}
+            aria-label="Clear table assignment"
+            className="font-sans inline-flex items-center gap-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+            style={{
+              fontSize: '0.68rem',
+              color: '#B0203F',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              fontWeight: 600,
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+            Unassign
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -485,6 +1014,7 @@ export function TablePicker({
 
 function TableNumberCell({
   invitationId,
+  eventId,
   tableNumber,
   onUpdate,
   existingTables = [],
@@ -492,6 +1022,8 @@ function TableNumberCell({
   activeTableFilter = null,
 }: {
   invitationId: number;
+  /** When provided, the picker fetches event_tables and can create new ones. */
+  eventId?: number | null;
   tableNumber: number | null | undefined;
   onUpdate: (invitationId: number, value: number | null) => void;
   existingTables?: number[];
@@ -499,6 +1031,7 @@ function TableNumberCell({
   activeTableFilter?: number | null;
 }) {
   const [editing, setEditing] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const startEdit = () => setEditing(true);
 
@@ -507,15 +1040,32 @@ function TableNumberCell({
     setEditing(false);
   };
 
+  // Close the picker when the admin clicks outside it. Without this, the
+  // floating panel sat on the page indefinitely after a successful select —
+  // pleasant only by accident.
+  useEffect(() => {
+    if (!editing) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setEditing(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [editing]);
+
   // ── Edit mode ──────────────────────────────────────────────────────────────
   if (editing) {
     return (
-      <TablePicker
-        value={tableNumber ?? null}
-        existingTables={existingTables}
-        onCommit={commitFromPicker}
-        onCancel={() => setEditing(false)}
-      />
+      <div ref={wrapRef} className="relative inline-block" style={{ zIndex: 30 }}>
+        <TablePicker
+          value={tableNumber ?? null}
+          eventId={eventId ?? undefined}
+          existingTables={existingTables}
+          onCommit={commitFromPicker}
+          onCancel={() => setEditing(false)}
+        />
+      </div>
     );
   }
 
@@ -1054,6 +1604,7 @@ export default function GuestTable({
                             {onUpdateTableNumber && (
                               <TableNumberCell
                                 invitationId={inv.id}
+                                eventId={inv.eventId}
                                 tableNumber={inv.tableNumber}
                                 onUpdate={onUpdateTableNumber}
                                 existingTables={existingTables}
@@ -1278,6 +1829,7 @@ export default function GuestTable({
                           {inv && onUpdateTableNumber ? (
                             <TableNumberCell
                               invitationId={inv.id}
+                              eventId={inv.eventId}
                               tableNumber={inv.tableNumber}
                               onUpdate={onUpdateTableNumber}
                               existingTables={existingTables}
@@ -1316,6 +1868,7 @@ export default function GuestTable({
                             {onUpdateTableNumber && (
                               <TableNumberCell
                                 invitationId={inv.id}
+                                eventId={inv.eventId}
                                 tableNumber={inv.tableNumber}
                                 onUpdate={onUpdateTableNumber}
                                 existingTables={existingTables}
