@@ -17,7 +17,7 @@ import { LANGUAGES, LANGUAGE_LABELS } from '../../lib/i18n';
 import { useAdminTranslation } from '../../lib/i18n/admin';
 import { getEventDisplayName } from '../../components/admin/adminTokens';
 import StatsCards from '../../components/admin/StatsCards';
-import GuestTable from '../../components/admin/GuestTable';
+import GuestTable, { TablePicker } from '../../components/admin/GuestTable';
 import AddGuestModal from '../../components/admin/AddGuestModal';
 import BulkAddGuestsModal from '../../components/admin/BulkAddGuestsModal';
 import EditGuestModal from '../../components/admin/EditGuestModal';
@@ -289,6 +289,11 @@ export default function DashboardPage() {
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
   const [selectedGuestIds, setSelectedGuestIds] = useState<Set<number>>(new Set());
 
+  // ── Bulk "Assign table" popover ─────────────────────────────────────────────
+  // Toggled from the selection toolbar — only meaningful when a single event
+  // tab is active, since table numbers belong to per-event invitations.
+  const [showBulkTablePopover, setShowBulkTablePopover] = useState(false);
+
   // Undo delete: store a snapshot of the guest before deletion for 5s
   const deletedGuestRef = useRef<AdminGuest | null>(null);
 
@@ -460,8 +465,85 @@ export default function DashboardPage() {
     onSuccess: (_data, { tableNumber }) => {
       toast.success(tableNumber != null ? `Table set to #${tableNumber}` : 'Table number cleared');
       qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'tables'] });
     },
   });
+
+  // Bulk-assign the same table number to every selected guest's invitation for
+  // the currently-active event tab. We resolve invitation IDs at submit time
+  // rather than caching them so the list stays correct if the user changes
+  // selection mid-popover.
+  const bulkAssignTableMutation = useMutation({
+    mutationFn: async ({
+      invitationIds,
+      tableNumber,
+    }: {
+      invitationIds: number[];
+      tableNumber: number | null;
+    }) => {
+      // Sequential rather than Promise.all to keep the server load light if
+      // someone bulk-assigns several hundred guests. Failures of individual
+      // requests are caught and reported as a partial-success toast.
+      const successes: number[] = [];
+      const failures: number[] = [];
+      for (const id of invitationIds) {
+        try {
+          await adminApi.updateInvitation(id, { tableNumber });
+          successes.push(id);
+        } catch {
+          failures.push(id);
+        }
+      }
+      return { successes, failures, tableNumber };
+    },
+    onSuccess: ({ successes, failures, tableNumber }) => {
+      const verb = tableNumber != null ? `assigned to Table ${tableNumber}` : 'cleared';
+      if (failures.length === 0) {
+        toast.success(`${successes.length} ${successes.length === 1 ? 'invitation' : 'invitations'} ${verb}`);
+      } else if (successes.length === 0) {
+        toast.error(`Failed to update ${failures.length} ${failures.length === 1 ? 'invitation' : 'invitations'}`);
+      } else {
+        toast(`${successes.length} ${verb}, ${failures.length} failed`, { icon: '⚠️' });
+      }
+      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'tables'] });
+      setShowBulkTablePopover(false);
+    },
+  });
+
+  /**
+   * Returns the invitation IDs that the bulk action would target — selected
+   * guests' invitations for the currently-active event tab. Empty when no
+   * event tab is active (table numbers are per-event so multi-event bulk
+   * assignment isn't a meaningful operation).
+   */
+  const bulkAssignableInvitationIds = useMemo<number[]>(() => {
+    if (selectedEventId == null) return [];
+    const ids: number[] = [];
+    for (const g of selectedGuests) {
+      const inv = g.invitations.find((i) => i.eventId === selectedEventId);
+      if (inv) ids.push(inv.id);
+    }
+    return ids;
+  }, [selectedGuests, selectedEventId]);
+
+  // Per-table attending headcount for the overview strip. Computed from the
+  // currently-loaded guests; intentionally suppressed when a single-table
+  // filter is active (otherwise every non-selected chip would read "0" and
+  // mislead the admin).
+  const tableHeadcountMap = useMemo<Map<number, number>>(() => {
+    const m = new Map<number, number>();
+    if (tableFilter != null) return m;
+    for (const g of filteredGuests) {
+      for (const inv of g.invitations) {
+        if (selectedEventId != null && inv.eventId !== selectedEventId) continue;
+        if (inv.tableNumber == null) continue;
+        if (inv.status !== 'attending') continue;
+        m.set(inv.tableNumber, (m.get(inv.tableNumber) ?? 0) + inv.guestCount);
+      }
+    }
+    return m;
+  }, [filteredGuests, selectedEventId, tableFilter]);
 
   const addInvitationMutation = useMutation({
     mutationFn: adminApi.addInvitation,
@@ -924,76 +1006,245 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {/* Row 2: status pills + table filter */}
+              {/* Row 2: status pills.
+                  Table filtering is handled by the Tables overview strip
+                  rendered just above the guest list — having two equivalent
+                  filter controls is visual noise. */}
               <div className="flex flex-wrap items-center gap-2">
                 <StatusPills selected={statusFilters} onChange={setStatusFilters} />
-
-                {/* Table number filter */}
-                {availableTables.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <select
-                      value={tableFilter ?? ''}
-                      onChange={(e) => setTableFilter(e.target.value === '' ? null : Number(e.target.value))}
-                      className="px-2.5 py-1 rounded-full text-xs font-sans font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
-                      style={{
-                        background: tableFilter != null ? GOLD : PARCHMENT,
-                        color: tableFilter != null ? ESPRESSO : ESPRESSO_DIM,
-                        border: `1px solid ${tableFilter != null ? GOLD : GOLD_DIM}`,
-                        appearance: 'none',
-                        paddingRight: '1.25rem',
-                        cursor: 'pointer',
-                      }}
-                      aria-label="Filter by table number"
-                    >
-                      <option value="">Table #</option>
-                      {availableTables.map((n) => (
-                        <option key={n} value={n}>Table {n}</option>
-                      ))}
-                    </select>
-                    {tableFilter != null && tableHeadcount != null && (
-                      <span
-                        className="px-2.5 py-1 rounded-full text-xs font-sans font-medium"
-                        style={{ background: 'rgba(184,146,74,0.12)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
-                      >
-                        {tableHeadcount} {tableHeadcount === 1 ? 'guest' : 'guests'} attending
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           <div
-            className="mb-4 rounded-xl border p-3.5 flex flex-wrap items-center justify-between gap-3"
+            className="mb-4 rounded-xl border"
             style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
           >
-            <div>
-              <p className="text-xs font-sans font-semibold uppercase tracking-widest" style={{ color: ESPRESSO_DIM }}>
-                {at.verificationTitle}
-              </p>
-              <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
-                {at.verificationHint}
-              </p>
+            <div className="p-3.5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-sans font-semibold uppercase tracking-widest" style={{ color: ESPRESSO_DIM }}>
+                  {at.verificationTitle}
+                </p>
+                <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
+                  {at.verificationHint}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 text-xs font-sans" style={{ color: ESPRESSO }}>
+                <span className="px-2.5 py-1 rounded-full" style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}` }}>
+                  {selectedGuestIds.size} {at.verificationSelected}
+                </span>
+                <span>{selectedInvitationCount} {selectedInvitationCount === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}</span>
+                <span>{selectedPeopleCount} {selectedPeopleCount === 1 ? at.personUnitSingular : at.personUnitPlural}</span>
+                <span>{at.statsAttending}: {selectedAttendingPeople} {at.personUnitPlural}</span>
+
+                {/* Bulk "Assign table" — only meaningful on a single-event tab
+                    because table numbers belong to per-event invitations. We
+                    surface the button regardless of event scope so admins can
+                    discover it, but disable it (with a clear reason) when no
+                    event tab is active. */}
+                <button
+                  type="button"
+                  disabled={selectedGuestIds.size === 0 || bulkAssignableInvitationIds.length === 0}
+                  onClick={() => setShowBulkTablePopover((v) => !v)}
+                  aria-expanded={showBulkTablePopover}
+                  aria-controls="bulk-table-popover"
+                  title={
+                    selectedGuestIds.size === 0
+                      ? 'Select guests first'
+                      : selectedEventId == null
+                        ? 'Choose an event tab to assign a table'
+                        : bulkAssignableInvitationIds.length === 0
+                          ? 'None of the selected guests have an invitation for this event'
+                          : `Assign a table to ${bulkAssignableInvitationIds.length} invitation${bulkAssignableInvitationIds.length === 1 ? '' : 's'}`
+                  }
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-sans font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  style={{
+                    background: showBulkTablePopover ? GOLD : 'rgba(184,146,74,0.12)',
+                    border: `1px solid ${showBulkTablePopover ? GOLD : GOLD_DIM}`,
+                    color: showBulkTablePopover ? '#FFFFFF' : ESPRESSO,
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  Assign table
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: showBulkTablePopover ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={selectedGuestIds.size === 0}
+                  onClick={() => setSelectedGuestIds(new Set())}
+                  className="px-2.5 py-1 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  style={{ border: `1px solid ${GOLD_DIM}`, color: ESPRESSO_DIM }}
+                >
+                  {at.clearSelection}
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2.5 text-xs font-sans" style={{ color: ESPRESSO }}>
-              <span className="px-2.5 py-1 rounded-full" style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}` }}>
-                {selectedGuestIds.size} {at.verificationSelected}
-              </span>
-              <span>{selectedInvitationCount} {selectedInvitationCount === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}</span>
-              <span>{selectedPeopleCount} {selectedPeopleCount === 1 ? at.personUnitSingular : at.personUnitPlural}</span>
-              <span>{at.statsAttending}: {selectedAttendingPeople} {at.personUnitPlural}</span>
-              <button
-                type="button"
-                disabled={selectedGuestIds.size === 0}
-                onClick={() => setSelectedGuestIds(new Set())}
-                className="px-2.5 py-1 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
-                style={{ border: `1px solid ${GOLD_DIM}`, color: ESPRESSO_DIM }}
-              >
-                {at.clearSelection}
-              </button>
-            </div>
+
+            {/* Bulk assign popover — inline expansion keeps it visually
+                anchored to the trigger without absolute-positioning gymnastics
+                and works gracefully on narrow viewports. */}
+            <AnimatePresence initial={false}>
+              {showBulkTablePopover && bulkAssignableInvitationIds.length > 0 && (
+                <motion.div
+                  key="bulk-table-popover"
+                  id="bulk-table-popover"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.15 }}
+                  style={{ overflow: 'hidden', borderTop: `1px solid ${GOLD_DIM}` }}
+                >
+                  <div className="p-3.5 flex flex-wrap items-start gap-4" style={{ background: CREAM }}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-sans font-semibold uppercase tracking-widest" style={{ color: ESPRESSO_DIM }}>
+                        Assign table
+                      </p>
+                      <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO }}>
+                        Pick a table for{' '}
+                        <span className="font-semibold tabular-nums">{bulkAssignableInvitationIds.length}</span>{' '}
+                        {bulkAssignableInvitationIds.length === 1 ? 'invitation' : 'invitations'} on this event.
+                      </p>
+                    </div>
+                    <div className="flex-1 min-w-0 flex justify-end">
+                      <TablePicker
+                        value={null}
+                        existingTables={availableTables}
+                        onCommit={(next) =>
+                          bulkAssignTableMutation.mutate({
+                            invitationIds: bulkAssignableInvitationIds,
+                            tableNumber: next,
+                          })
+                        }
+                        onCancel={() => setShowBulkTablePopover(false)}
+                        showClear
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
+          {/* ── Tables overview strip ─────────────────────────────────────────
+              Replaces the previous native <select> with a glanceable, tactile
+              row of pill chips — one per table currently in use, with the
+              attending headcount when computable. Click toggles the filter;
+              the same pill in the guest table is highlighted so the active
+              filter context is visible both in the toolbar and inline.
+
+              We don't render this when there are no tables in play — the
+              empty state is more useful as silence than as a visual block. */}
+          {availableTables.length > 0 && (
+            <div
+              className="mb-4 rounded-xl border"
+              style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
+              role="region"
+              aria-label="Tables overview"
+            >
+              <div className="p-3 flex flex-wrap items-center gap-2">
+                <span
+                  className="text-[10px] font-sans font-bold uppercase tracking-widest flex-shrink-0"
+                  style={{ color: ESPRESSO_DIM }}
+                >
+                  Tables
+                </span>
+
+                {/* "All" chip clears the table filter. Always present so the
+                    chip pattern is consistent — when nothing is filtered, it
+                    holds the "selected" state. */}
+                <button
+                  type="button"
+                  onClick={() => setTableFilter(null)}
+                  aria-pressed={tableFilter === null}
+                  className="font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  style={{
+                    padding: '0.25rem 0.7rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    background: tableFilter === null ? GOLD : 'transparent',
+                    color: tableFilter === null ? '#FFFFFF' : ESPRESSO_DIM,
+                    border: `1px solid ${tableFilter === null ? GOLD : GOLD_DIM}`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  All
+                </button>
+
+                {availableTables.map((n) => {
+                  const isActive = tableFilter === n;
+                  const headcount = tableHeadcountMap.get(n);
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setTableFilter(isActive ? null : n)}
+                      aria-pressed={isActive}
+                      aria-label={
+                        headcount != null
+                          ? `Table ${n}, ${headcount} attending. ${isActive ? 'Currently filtered.' : 'Click to filter.'}`
+                          : `Table ${n}. ${isActive ? 'Currently filtered.' : 'Click to filter.'}`
+                      }
+                      title={isActive ? 'Click to clear filter' : `Show only guests at Table ${n}`}
+                      className="inline-flex items-center gap-1.5 font-sans tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                      style={{
+                        padding: '0.25rem 0.7rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        background: isActive ? GOLD : 'rgba(184,146,74,0.11)',
+                        color: isActive ? '#FFFFFF' : '#7A4F10',
+                        border: `1px solid ${isActive ? GOLD : 'rgba(184,146,74,0.32)'}`,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span>{n}</span>
+                      {headcount != null && headcount > 0 && (
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            fontWeight: 500,
+                            opacity: isActive ? 0.9 : 0.7,
+                          }}
+                        >
+                          · {headcount}
+                        </span>
+                      )}
+                      {isActive && (
+                        <svg
+                          width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                          style={{ marginLeft: '0.1rem' }}
+                        >
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* Right-aligned summary of the active filter — keeps context
+                    visible even after scrolling within the strip on long lists. */}
+                {tableFilter != null && tableHeadcount != null && (
+                  <span
+                    className="ml-auto px-2.5 py-1 rounded-full text-xs font-sans font-medium tabular-nums"
+                    style={{ background: 'rgba(184,146,74,0.12)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
+                    aria-live="polite"
+                  >
+                    {tableHeadcount} {tableHeadcount === 1 ? 'guest' : 'guests'} attending
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <GuestTable
             guests={filteredGuests}
@@ -1027,6 +1278,9 @@ export default function DashboardPage() {
             onUpdateTableNumber={(invId, tableNumber) =>
               updateTableNumberMutation.mutate({ id: invId, tableNumber })
             }
+            existingTables={availableTables}
+            onFilterByTable={setTableFilter}
+            activeTableFilter={tableFilter}
           />
 
         </section>

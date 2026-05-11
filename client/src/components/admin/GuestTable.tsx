@@ -68,43 +68,117 @@ interface Props {
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
   onUpdateTableNumber?: (invitationId: number, tableNumber: number | null) => void;
+  /**
+   * Tables already in use for the active event scope. Powers the smart-picker
+   * suggestions inside `TableNumberCell` (existing tables shown as chips, plus
+   * a "next available" hint).
+   */
+  existingTables?: number[];
+  /**
+   * Optional handler that lets the dashboard filter the guest list to a single
+   * table. When provided, clicking a "Table N" pill body fires this and the
+   * tiny pencil icon becomes the only way to enter edit mode — separating the
+   * "find people seated together" intent from the "edit assignment" intent.
+   */
+  onFilterByTable?: (tableNumber: number | null) => void;
+  /**
+   * The currently-active table filter. Used purely for visual state — pills
+   * matching this number render as "selected" so the active filter is obvious
+   * inside the table itself.
+   */
+  activeTableFilter?: number | null;
 }
 
-// ─── Inline table-number editor ───────────────────────────────────────────────
+// ─── TablePicker — chip-driven seating editor ─────────────────────────────────
+// Shared by the inline cell editor and (re-exported below) by the dashboard's
+// bulk "Assign table" popover. Keeping a single visual treatment for assignment
+// means admins build muscle memory once.
 
-function TableNumberCell({
-  invitationId,
-  tableNumber,
-  onUpdate,
+export function TablePicker({
+  value,
+  existingTables,
+  onCommit,
+  onCancel,
+  showCancel = true,
+  showClear = true,
+  inputAriaLabel = 'Table number',
+  /** When true, the input takes focus on mount. */
+  autoFocus = true,
+  /** Optional title shown above the input — used by the bulk popover. */
+  title,
 }: {
-  invitationId: number;
-  tableNumber: number | null | undefined;
-  onUpdate: (invitationId: number, value: number | null) => void;
+  value: number | null;
+  existingTables: number[];
+  onCommit: (next: number | null) => void;
+  onCancel?: () => void;
+  showCancel?: boolean;
+  showClear?: boolean;
+  inputAriaLabel?: string;
+  autoFocus?: boolean;
+  title?: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(value != null ? String(value) : '');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const startEdit = () => {
-    setDraft(tableNumber != null ? String(tableNumber) : '');
-    setEditing(true);
-    requestAnimationFrame(() => { inputRef.current?.focus(); inputRef.current?.select(); });
+  useEffect(() => {
+    if (!autoFocus) return;
+    const id = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [autoFocus]);
+
+  // Smallest positive integer not yet used — capped at the schema's 500 limit.
+  const nextAvailable = useMemo(() => {
+    const used = new Set(existingTables);
+    for (let n = 1; n <= 500; n += 1) {
+      if (!used.has(n)) return n;
+    }
+    return null;
+  }, [existingTables]);
+
+  const parseDraft = (raw: string): number | null => {
+    const trimmed = raw.trim();
+    if (trimmed === '') return null;
+    const parsed = parseInt(trimmed, 10);
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > 500) return null;
+    return parsed;
   };
 
-  const commit = () => {
-    const raw = draft.trim();
-    const parsed = raw === '' ? null : parseInt(raw, 10);
-    const next = parsed !== null && !isNaN(parsed) && parsed >= 1 && parsed <= 500 ? parsed : null;
-    if (next !== (tableNumber ?? null)) onUpdate(invitationId, next);
-    setEditing(false);
-  };
+  const commit = () => onCommit(parseDraft(draft));
 
-  const cancel = () => setEditing(false);
+  // Quick-pick chips: existing tables sorted ascending, deduped.
+  const sortedExisting = useMemo(
+    () => Array.from(new Set(existingTables)).sort((a, b) => a - b),
+    [existingTables],
+  );
 
-  // ── Edit mode ──────────────────────────────────────────────────────────────
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1" style={{ width: 'fit-content' }}>
+  // The "next available" chip is only meaningful if it's actually a *new*
+  // table — otherwise it just duplicates an existing chip.
+  const showNextChip = nextAvailable != null && !sortedExisting.includes(nextAvailable);
+
+  return (
+    <div
+      className="inline-flex flex-col gap-1.5"
+      // Compact layout — the picker stays the width of its content so it
+      // doesn't stretch the cell column.
+      style={{ minWidth: '7rem' }}
+      // The cell-level outer button uses `onClick` to enter edit mode; once
+      // we're inside the picker, any clicks on the input/chips would bubble
+      // back to that parent and re-trigger edit. Stop them here.
+      onClick={(e) => e.stopPropagation()}
+    >
+      {title && (
+        <p
+          className="text-[10px] font-sans font-semibold uppercase tracking-widest"
+          style={{ color: ESPRESSO_DIM }}
+        >
+          {title}
+        </p>
+      )}
+
+      <div className="flex items-center gap-1">
         <input
           ref={inputRef}
           type="number"
@@ -114,10 +188,10 @@ function TableNumberCell({
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') { e.preventDefault(); commit(); }
-            if (e.key === 'Escape') cancel();
+            if (e.key === 'Escape' && onCancel) onCancel();
           }}
-          placeholder="–"
-          aria-label="Table number"
+          placeholder="#"
+          aria-label={inputAriaLabel}
           style={{
             width: '3.25rem',
             padding: '0.25rem 0.4rem',
@@ -125,15 +199,15 @@ function TableNumberCell({
             fontSize: '0.78rem',
             fontWeight: 700,
             fontFamily: '"DM Sans", system-ui, sans-serif',
+            fontVariantNumeric: 'tabular-nums',
             textAlign: 'center',
             background: '#FDFAF5',
             border: '1.5px solid rgba(184,146,74,0.7)',
-            color: '#2A1F1A',
+            color: ESPRESSO,
             outline: 'none',
             boxShadow: '0 0 0 3px rgba(184,146,74,0.12)',
           }}
         />
-        {/* Confirm */}
         <button
           onClick={commit}
           type="button"
@@ -149,60 +223,255 @@ function TableNumberCell({
             <path d="M20 6L9 17l-5-5"/>
           </svg>
         </button>
-        {/* Cancel */}
-        <button
-          onClick={cancel}
-          type="button"
-          aria-label="Cancel"
-          style={{
-            width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(42,31,26,0.05)', border: '1px solid rgba(42,31,26,0.12)',
-            color: 'rgba(42,31,26,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
+        {showCancel && onCancel && (
+          <button
+            onClick={onCancel}
+            type="button"
+            aria-label="Cancel"
+            style={{
+              width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(42,31,26,0.05)', border: '1px solid rgba(42,31,26,0.12)',
+              color: 'rgba(42,31,26,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        )}
       </div>
+
+      {(sortedExisting.length > 0 || showNextChip || (showClear && value != null)) && (
+        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Quick-pick tables">
+          {sortedExisting.map((n) => {
+            const isCurrent = n === value;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onCommit(n)}
+                aria-label={`Use table ${n}`}
+                aria-pressed={isCurrent}
+                className="font-sans tabular-nums focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                style={{
+                  padding: '0.1rem 0.4rem',
+                  borderRadius: '0.3rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  background: isCurrent ? GOLD : 'rgba(184,146,74,0.11)',
+                  color: isCurrent ? '#FFFFFF' : '#7A4F10',
+                  border: `1px solid ${isCurrent ? GOLD : 'rgba(184,146,74,0.32)'}`,
+                  cursor: 'pointer',
+                }}
+              >
+                {n}
+              </button>
+            );
+          })}
+          {showNextChip && (
+            <button
+              type="button"
+              onClick={() => onCommit(nextAvailable)}
+              title={`Use the next free table (${nextAvailable})`}
+              aria-label={`Use the next available table, number ${nextAvailable}`}
+              className="font-sans tabular-nums focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)] inline-flex items-center gap-0.5"
+              style={{
+                padding: '0.1rem 0.4rem',
+                borderRadius: '0.3rem',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                background: 'transparent',
+                color: GOLD,
+                border: '1px dashed rgba(184,146,74,0.5)',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              {nextAvailable}
+            </button>
+          )}
+          {showClear && value != null && (
+            <button
+              type="button"
+              onClick={() => onCommit(null)}
+              aria-label="Clear table assignment"
+              className="font-sans focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{
+                padding: '0.1rem 0.4rem',
+                borderRadius: '0.3rem',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                background: 'transparent',
+                color: ESPRESSO_DIM,
+                border: '1px solid transparent',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: '2px',
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Inline table-number cell ─────────────────────────────────────────────────
+// The filled pill is a dual-purpose affordance:
+//   • Clicking the body filters the whole guest list to that table — the most
+//     common follow-up action when an admin sees "Table 5" on a row is "OK so
+//     who else is at this table?".
+//   • A tiny pencil icon (visible on hover or focus) enters edit mode. The
+//     edit mode shows existing tables as quick-pick chips, plus a "next free
+//     table" suggestion and a one-tap Clear.
+// When the active table filter matches the pill's number, the pill is rendered
+// in its "selected" state so an admin can see the filter context from inside
+// the table itself, not just the toolbar.
+
+function TableNumberCell({
+  invitationId,
+  tableNumber,
+  onUpdate,
+  existingTables = [],
+  onFilterByTable,
+  activeTableFilter = null,
+}: {
+  invitationId: number;
+  tableNumber: number | null | undefined;
+  onUpdate: (invitationId: number, value: number | null) => void;
+  existingTables?: number[];
+  onFilterByTable?: (tableNumber: number | null) => void;
+  activeTableFilter?: number | null;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  const startEdit = () => setEditing(true);
+
+  const commitFromPicker = (next: number | null) => {
+    if (next !== (tableNumber ?? null)) onUpdate(invitationId, next);
+    setEditing(false);
+  };
+
+  // ── Edit mode ──────────────────────────────────────────────────────────────
+  if (editing) {
+    return (
+      <TablePicker
+        value={tableNumber ?? null}
+        existingTables={existingTables}
+        onCommit={commitFromPicker}
+        onCancel={() => setEditing(false)}
+      />
     );
   }
 
   // ── Filled display ─────────────────────────────────────────────────────────
   if (tableNumber != null) {
+    const isActiveFilter = activeTableFilter === tableNumber;
+    const canFilter = typeof onFilterByTable === 'function';
+
+    // Primary click: filter (when available) or edit (fallback when no filter
+    // handler was passed). The pencil icon always enters edit mode so the two
+    // intents are never ambiguous on touch devices.
+    const onPrimaryClick = () => {
+      if (canFilter) {
+        onFilterByTable!(isActiveFilter ? null : tableNumber);
+      } else {
+        startEdit();
+      }
+    };
+
     return (
-      <button
-        onClick={startEdit}
-        title="Edit table number"
-        className="group/tn inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+      <span
+        className="inline-flex items-stretch rounded-md overflow-hidden"
         style={{
-          padding: '0.22rem 0.55rem',
-          borderRadius: '0.375rem',
-          background: 'rgba(184,146,74,0.11)',
-          border: '1px solid rgba(184,146,74,0.32)',
-          color: '#7A4F10',
-          fontSize: '0.72rem',
-          fontWeight: 700,
-          fontFamily: '"DM Sans", system-ui, sans-serif',
-          letterSpacing: '0.02em',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
+          // Two-segment pill: body (filter) + edge button (edit).
+          border: `1px solid ${isActiveFilter ? GOLD : 'rgba(184,146,74,0.32)'}`,
+          background: isActiveFilter ? GOLD : 'rgba(184,146,74,0.11)',
           transition: 'background 0.15s, border-color 0.15s',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.2)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.55)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(184,146,74,0.11)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.32)'; }}
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.6 }}>
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-        </svg>
-        Table {tableNumber}
-        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="opacity-0 group-hover/tn:opacity-50 transition-opacity">
-          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-      </button>
+        <button
+          type="button"
+          onClick={onPrimaryClick}
+          title={
+            canFilter
+              ? (isActiveFilter ? 'Clear table filter' : `Show everyone at Table ${tableNumber}`)
+              : 'Edit table number'
+          }
+          aria-label={
+            canFilter
+              ? (isActiveFilter
+                ? `Clear filter (currently showing Table ${tableNumber})`
+                : `Filter list to Table ${tableNumber}`)
+              : `Edit table number (currently ${tableNumber})`
+          }
+          aria-pressed={isActiveFilter}
+          className="group/tn inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+          style={{
+            padding: '0.22rem 0.55rem',
+            color: isActiveFilter ? '#FFFFFF' : '#7A4F10',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            letterSpacing: '0.02em',
+            fontVariantNumeric: 'tabular-nums',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            background: 'transparent',
+            border: 'none',
+          }}
+        >
+          <svg
+            width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+            style={{ opacity: isActiveFilter ? 0.9 : 0.6 }}
+          >
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Table {tableNumber}
+          {canFilter && isActiveFilter && (
+            // Tiny "x" appears when the pill IS the active filter — making it
+            // a single-click way to drop the filter.
+            <svg
+              width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+              style={{ marginLeft: '0.1rem', opacity: 0.85 }}
+            >
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          )}
+        </button>
+        {/* Edit affordance — segment styled like a divider so it reads as a
+            secondary action on the same control. Always tappable on touch
+            (no opacity-0 hover gating), but visually quiet at rest. */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); startEdit(); }}
+          title="Edit table number"
+          aria-label={`Edit table ${tableNumber}`}
+          className="focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+          style={{
+            padding: '0 0.4rem',
+            display: 'flex',
+            alignItems: 'center',
+            background: isActiveFilter ? 'rgba(255,255,255,0.18)' : 'rgba(184,146,74,0.06)',
+            borderLeft: `1px solid ${isActiveFilter ? 'rgba(255,255,255,0.35)' : 'rgba(184,146,74,0.25)'}`,
+            color: isActiveFilter ? '#FFFFFF' : ESPRESSO_DIM,
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+      </span>
     );
   }
 
@@ -216,7 +485,7 @@ function TableNumberCell({
         padding: '0.2rem 0.45rem',
         borderRadius: '0.375rem',
         border: '1px dashed rgba(184,146,74,0.3)',
-        color: 'rgba(184,146,74,0.45)',
+        color: 'rgba(184,146,74,0.55)',
         fontSize: '0.68rem',
         fontWeight: 600,
         fontFamily: '"DM Sans", system-ui, sans-serif',
@@ -227,7 +496,7 @@ function TableNumberCell({
         transition: 'color 0.15s, border-color 0.15s',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.borderColor = GOLD; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(184,146,74,0.45)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.3)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(184,146,74,0.55)'; e.currentTarget.style.borderColor = 'rgba(184,146,74,0.3)'; }}
     >
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 5v14M5 12h14"/>
@@ -418,6 +687,9 @@ export default function GuestTable({
   onDeleteGuest,
   onDeleteInvitation,
   onUpdateTableNumber,
+  existingTables = [],
+  onFilterByTable,
+  activeTableFilter = null,
 }: Props) {
   // Default to "newest first" so freshly added guests stay visible.
   // Sorting by name is the only user-toggleable option below.
@@ -620,6 +892,9 @@ export default function GuestTable({
                                 invitationId={inv.id}
                                 tableNumber={inv.tableNumber}
                                 onUpdate={onUpdateTableNumber}
+                                existingTables={existingTables}
+                                onFilterByTable={onFilterByTable}
+                                activeTableFilter={activeTableFilter}
                               />
                             )}
                           </div>
@@ -819,6 +1094,9 @@ export default function GuestTable({
                               invitationId={inv.id}
                               tableNumber={inv.tableNumber}
                               onUpdate={onUpdateTableNumber}
+                              existingTables={existingTables}
+                              onFilterByTable={onFilterByTable}
+                              activeTableFilter={activeTableFilter}
                             />
                           )}
 
