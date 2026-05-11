@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import type { AdminGuest, AdminInvitation } from '../../lib/api';
+import type { AdminGuest, AdminInvitation, FuzzyGuestMatch } from '../../lib/api';
 import type {
   AddGuestValues,
   UpdateGuestContactValues,
@@ -265,6 +265,12 @@ export default function DashboardPage() {
 
   // ── Filter state ────────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [duplicateSearchInput, setDuplicateSearchInput] = useState('');
+  const [duplicateSearchTerm, setDuplicateSearchTerm] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setDuplicateSearchTerm(duplicateSearchInput.trim()), 250);
+    return () => clearTimeout(id);
+  }, [duplicateSearchInput]);
 
   // Search: controlled input value with 300 ms debounce before hitting the API
   const [searchInput, setSearchInput] = useState('');
@@ -313,6 +319,14 @@ export default function DashboardPage() {
   });
   const guests    = guestsData?.guests ?? [];
   const guestTotal = guestsData?.total ?? 0;
+
+  const { data: duplicateData, isFetching: duplicateLoading } = useQuery({
+    queryKey: ['admin', 'fuzzy-duplicates', duplicateSearchTerm],
+    queryFn: () => adminApi.getFuzzyGuestMatches(duplicateSearchTerm),
+    enabled: duplicateSearchTerm.length >= 2,
+    staleTime: 10_000,
+  });
+  const duplicateMatches: FuzzyGuestMatch[] = duplicateData?.matches ?? [];
 
   const { data: availableTables = [] } = useQuery({
     queryKey: ['admin', 'tables', selectedEventId],
@@ -966,6 +980,74 @@ export default function DashboardPage() {
               >
                 {at.clearSelection}
               </button>
+            </div>
+          </div>
+
+          <div
+            className="mb-4 rounded-xl border p-3.5"
+            style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
+          >
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-xs font-sans font-semibold uppercase tracking-widest" style={{ color: ESPRESSO_DIM }}>
+                  {at.duplicateDetectorTitle}
+                </p>
+                <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
+                  {at.duplicateDetectorHint}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="search"
+                  value={duplicateSearchInput}
+                  onChange={(e) => setDuplicateSearchInput(e.target.value)}
+                  placeholder={at.duplicateDetectorPlaceholder}
+                  aria-label={at.duplicateDetectorPlaceholder}
+                  className="w-full sm:w-80 px-3 py-2 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                  style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                />
+                {duplicateLoading && (
+                  <span
+                    className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: `${GOLD} transparent transparent transparent` }}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              {duplicateSearchTerm.length < 2 ? (
+                <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
+                  {at.duplicateDetectorTooShort}
+                </p>
+              ) : duplicateMatches.length === 0 ? (
+                <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
+                  {at.duplicateDetectorNoMatches}
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {duplicateMatches.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2.5 py-2"
+                      style={{ background: CREAM, border: `1px solid ${GOLD_DIM}` }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-sans font-semibold truncate" style={{ color: ESPRESSO }}>
+                          {m.name}
+                        </p>
+                        <p className="text-[11px] font-sans truncate" style={{ color: ESPRESSO_DIM }}>
+                          {m.partnerName ? `& ${m.partnerName}` : '—'} · {m.phone ?? 'no phone'} · {m.matchedOn}
+                        </p>
+                      </div>
+                      <span
+                        className="text-[11px] font-sans font-semibold tabular-nums px-2 py-1 rounded-full whitespace-nowrap"
+                        style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                      >
+                        {Math.round(m.score * 100)}% {at.duplicateDetectorScore}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

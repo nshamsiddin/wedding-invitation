@@ -69,6 +69,12 @@ export interface AdminTranslations {
   verificationHint: string;
   verificationSelected: string;
   clearSelection: string;
+  duplicateDetectorTitle: string;
+  duplicateDetectorHint: string;
+  duplicateDetectorPlaceholder: string;
+  duplicateDetectorScore: string;
+  duplicateDetectorNoMatches: string;
+  duplicateDetectorTooShort: string;
 
   // Add Guest modal
   addGuestTitle: string;
@@ -187,6 +193,12 @@ const adminEn: AdminTranslations = {
   verificationHint: 'Select entries to verify totals from only those rows.',
   verificationSelected: 'selected',
   clearSelection: 'Clear selection',
+  duplicateDetectorTitle: 'Duplicate detector',
+  duplicateDetectorHint: 'Type a name to find likely duplicate guests using fuzzy matching.',
+  duplicateDetectorPlaceholder: 'Search possible duplicate name…',
+  duplicateDetectorScore: 'match',
+  duplicateDetectorNoMatches: 'No likely duplicates found',
+  duplicateDetectorTooShort: 'Type at least 2 characters',
 
   addGuestTitle: 'Add Guest',
   fullName: 'Full Name',
@@ -293,6 +305,12 @@ const adminTr: AdminTranslations = {
   verificationHint: 'Sadece seçilen satırlardan toplamları doğrulamak için girişleri seçin.',
   verificationSelected: 'seçili',
   clearSelection: 'Seçimi temizle',
+  duplicateDetectorTitle: 'Yinelenen kayıt bulucu',
+  duplicateDetectorHint: 'Benzer isimli misafirleri bulanık eşleştirme ile bulun.',
+  duplicateDetectorPlaceholder: 'Olası yinelenen isim ara…',
+  duplicateDetectorScore: 'eşleşme',
+  duplicateDetectorNoMatches: 'Olası yinelenen kayıt bulunamadı',
+  duplicateDetectorTooShort: 'En az 2 karakter yazın',
 
   addGuestTitle: 'Misafir Ekle',
   fullName: 'Ad Soyad',
@@ -399,6 +417,12 @@ const adminUz: AdminTranslations = {
   verificationHint: "Faqat tanlangan qatorlardan jami sonlarni tekshirish uchun tanlang.",
   verificationSelected: 'tanlangan',
   clearSelection: 'Tanlovni tozalash',
+  duplicateDetectorTitle: 'Dublikat aniqlagich',
+  duplicateDetectorHint: "O'xshash ismlarni noaniq moslash orqali toping.",
+  duplicateDetectorPlaceholder: 'Ehtimoliy dublikat ismni qidiring…',
+  duplicateDetectorScore: 'moslik',
+  duplicateDetectorNoMatches: 'Ehtimoliy dublikat topilmadi',
+  duplicateDetectorTooShort: 'Kamida 2 ta belgi kiriting',
 
   addGuestTitle: "Mehmon Qo'shish",
   fullName: "To'liq Ism",

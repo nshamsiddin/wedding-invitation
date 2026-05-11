@@ -36,6 +36,66 @@ function isUniqueConstraintError(error: unknown): boolean {
   );
 }
 
+function normalizeGuestName(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function bigrams(value: string): string[] {
+  if (value.length < 2) return value.length === 1 ? [value] : [];
+  const pairs: string[] = [];
+  for (let i = 0; i < value.length - 1; i += 1) {
+    pairs.push(value.slice(i, i + 2));
+  }
+  return pairs;
+}
+
+function diceCoefficient(a: string, b: string): number {
+  if (a === b) return 1;
+  const aPairs = bigrams(a);
+  const bPairs = bigrams(b);
+  if (aPairs.length === 0 || bPairs.length === 0) return 0;
+
+  const counts = new Map<string, number>();
+  for (const p of aPairs) counts.set(p, (counts.get(p) ?? 0) + 1);
+  let matches = 0;
+  for (const p of bPairs) {
+    const c = counts.get(p) ?? 0;
+    if (c > 0) {
+      matches += 1;
+      counts.set(p, c - 1);
+    }
+  }
+  return (2 * matches) / (aPairs.length + bPairs.length);
+}
+
+function tokenJaccard(a: string, b: string): number {
+  const aTokens = new Set(a.split(' ').filter(Boolean));
+  const bTokens = new Set(b.split(' ').filter(Boolean));
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+
+  let intersection = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) intersection += 1;
+  }
+  const union = aTokens.size + bTokens.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function fuzzyNameSimilarity(query: string, candidate: string): number {
+  if (!query || !candidate) return 0;
+  if (query === candidate) return 1;
+  const dice = diceCoefficient(query, candidate);
+  const jaccard = tokenJaccard(query, candidate);
+  // Weighted blend: character similarity first, token overlap second.
+  return (dice * 0.7) + (jaccard * 0.3);
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 router.post('/login', loginRateLimit, async (req: Request, res: Response): Promise<void> => {
@@ -374,6 +434,65 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
   } catch (error) {
     logger.error({ err: error }, 'guest list error');
     res.status(500).json({ error: 'Failed to fetch guests' });
+  }
+});
+
+// GET /api/admin/guests/fuzzy-match?name=...
+// Returns likely duplicate guest records by fuzzy name similarity.
+router.get('/guests/fuzzy-match', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const rawName = String(req.query['name'] ?? '');
+  const normalizedQuery = normalizeGuestName(rawName);
+  if (normalizedQuery.length < 2) {
+    res.status(400).json({ error: 'Name must be at least 2 characters' });
+    return;
+  }
+
+  const threshold = 0.45;
+  const limit = 12;
+
+  try {
+    const rows = await db
+      .select({
+        id: schema.guests.id,
+        name: schema.guests.name,
+        partnerName: schema.guests.partnerName,
+        phone: schema.guests.phone,
+        createdAt: schema.guests.createdAt,
+      })
+      .from(schema.guests)
+      .orderBy(desc(schema.guests.createdAt));
+
+    const matches = rows
+      .map((row) => {
+        const normalizedName = normalizeGuestName(row.name);
+        const normalizedPartner = normalizeGuestName(row.partnerName ?? '');
+        const nameScore = fuzzyNameSimilarity(normalizedQuery, normalizedName);
+        const partnerScore = normalizedPartner ? fuzzyNameSimilarity(normalizedQuery, normalizedPartner) : 0;
+        const score = Math.max(nameScore, partnerScore);
+        const matchedOn = partnerScore > nameScore ? 'partnerName' : 'name';
+        return {
+          ...row,
+          score,
+          matchedOn,
+        };
+      })
+      .filter((row) => row.score >= threshold)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        partnerName: row.partnerName,
+        phone: row.phone,
+        createdAt: row.createdAt,
+        score: Number(row.score.toFixed(3)),
+        matchedOn: row.matchedOn,
+      }));
+
+    res.json({ query: rawName, normalizedQuery, threshold, matches });
+  } catch (error) {
+    logger.error({ err: error }, 'fuzzy guest match error');
+    res.status(500).json({ error: 'Failed to run fuzzy duplicate detection' });
   }
 });
 

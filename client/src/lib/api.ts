@@ -48,6 +48,16 @@ export interface RSVPSubmitBody {
   partnerName?: string;
 }
 
+export interface FuzzyGuestMatch {
+  id: number;
+  name: string;
+  partnerName: string | null;
+  phone: string | null;
+  createdAt: string;
+  score: number;
+  matchedOn: 'name' | 'partnerName';
+}
+
 export const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
@@ -130,6 +140,13 @@ export const adminApi = {
     eventId?: number;
   }): Promise<{ messages: AdminGuestMessage[]; total: number }> => {
     const { data } = await api.get<{ messages: AdminGuestMessage[]; total: number }>('/admin/messages', { params });
+    return data;
+  },
+  getFuzzyGuestMatches: async (name: string): Promise<{ query: string; normalizedQuery: string; threshold: number; matches: FuzzyGuestMatch[] }> => {
+    const { data } = await api.get<{ query: string; normalizedQuery: string; threshold: number; matches: FuzzyGuestMatch[] }>(
+      '/admin/guests/fuzzy-match',
+      { params: { name } },
+    );
     return data;
   },
   getTableNumbers: async (eventId?: number): Promise<number[]> => {
