@@ -661,10 +661,13 @@ function HeroSlide({
           <div style={{ width: 36, height: 1, background: ROSE, opacity: 0.6 }} aria-hidden="true" />
         </motion.div>
 
-        {/* Guest personalisation \u2014 louder than the previous tiny sans line:
-            honorific in caps + name in serif italic so the address line
-            visibly says "this is for you, by name". Compound names are
-            allowed to break onto multiple lines via overflow-wrap. */}
+        {/* Guest personalisation \u2014 honorific in caps + guest name in
+            an italic serif. Routed explicitly to --font-script-i18n
+            (Cormorant Garamond italic) rather than --font-display so
+            Turkish characters in guest names (İ ı Ş ş Ğ ğ \u2026)
+            render consistently in the same typeface as the rest of
+            the line. The display script (GlossilyEnigmatic) lacks
+            Latin Extended-A and is reserved for the couple names. */}
         {guestName && (
           <motion.div
             {...fadeIn(0.04)}
@@ -688,12 +691,12 @@ function HeroSlide({
               {t.honorific}
             </span>
             <span style={{
-              fontFamily: serif,
+              fontFamily: 'var(--font-script-i18n)',
               fontStyle: 'italic',
-              fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+              fontSize: 'clamp(1.5rem, 4.4vw, 2.15rem)',
               color: ESPRESSO,
-              fontWeight: 400,
-              letterSpacing: '0.01em',
+              fontWeight: 500,
+              letterSpacing: '0.005em',
               lineHeight: 1.2,
               overflowWrap: 'anywhere',
               wordBreak: 'break-word',

@@ -11,17 +11,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Garden system fonts:
-         · Sacramento (display script for couple names — proper Latin
-           Extended-A coverage incl. Turkish İıŞşĞğÇçÖöÜü with
-           well-designed glyphs, not just unicode-range coverage)
-         · Cormorant Garamond (digits + serif italic accents)
+         · Cormorant Garamond (digits, serif italic accents, and the
+           guest personalisation line where Turkish coverage matters)
          · DM Sans (UI text)
-         Previously tried: Glossily Enigmatic (no Latin Extended-A) and
-         Allura (advertises latin-ext but capital İ falls through to
-         Cormorant). Sacramento is from Astigmatic — a foundry known
-         for proper diacritic design. -->
+         The display script for couple names is the self-hosted
+         GlossilyEnigmatic (see @font-face in index.css). It has no
+         Latin Extended-A, but couple names are typically Latin-only;
+         anything with Turkish characters (the personalisation line)
+         is explicitly routed to Cormorant Garamond italic instead. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Sacramento&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300..600;1,9..40,300..500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300..600;1,9..40,300..500&display=swap"
       rel="stylesheet"
     />
     <!-- Legacy design fonts (used by /legacy/* routes) -->

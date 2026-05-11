@@ -3,28 +3,29 @@
 @tailwind utilities;
 
 /* ─── Custom Fonts ───────────────────────────────────────────────── */
-/* The display script font is Sacramento (loaded via Google Fonts in
-   index.html). Sacramento is by Astigmatic — a foundry with a strong
-   reputation for proper diacritic design — and ships with well-designed
-   Turkish glyphs (İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü) that match the script style
-   rather than per-glyph-falling-back to Cormorant Garamond.
+/* The display script font is GlossilyEnigmatic — a self-hosted wedding
+   script used exclusively for couple names ("Berfin" & "Shamsiddin").
+   It deliberately has no Latin Extended-A coverage, so any element
+   that needs Turkish characters (İ ı Ş ş Ğ ğ etc.) — most notably the
+   guest personalisation line ("Mahmut Kasar ve Ailesi", "Sayın …") —
+   uses Cormorant Garamond italic instead. That keeps the original
+   wedding-script aesthetic for the names while guaranteeing consistent
+   rendering for guest names in any language.
 
-   Previous attempts:
-     · GlossilyEnigmatic — no Latin Extended-A at all.
-     · Allura — advertises latin-ext but its capital İ glyph triggers
-       fallback to Cormorant, producing mixed rendering. */
-
-/* GlossilyEnigmatic — retained for fast rollback only. The file lives
-   under public/fonts/ but is no longer referenced by --font-display.
+   Prior experiments that didn't land:
+     · Allura — advertises latin-ext but İ falls back to Cormorant
+       normal-style, producing the upright serif İ against script
+       lowercase.
+     · Sacramento — disliked aesthetically by stakeholder. */
 @font-face {
   font-family: 'GlossilyEnigmatic';
   src: url('/fonts/GlossilyEnigmatic.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  /* Skip digits so countdown numbers fall through to Cormorant. */
   unicode-range: U+0000-002F, U+003A-10FFFF;
 }
-*/
 
 /* ─── CSS Custom Properties ─────────────────────────────────────── */
 :root {
@@ -44,14 +45,16 @@
   --shadow-sm: 0 2px 12px rgba(0,0,0,0.06);
   --shadow-md: 0 8px 32px rgba(0,0,0,0.08);
   --shadow-lg: 0 24px 80px rgba(0,0,0,0.10);
-  /* ── Display font: Sacramento (script) for couple names & headings.
-       Sacramento has properly-designed Latin Extended-A glyphs so
-       Turkish characters render in the script itself, not as a per-
-       glyph Cormorant fallback. Cormorant Garamond stays in the chain
-       as a safety net for any glyph the script can't render; DM Sans
-       is the final fallback. ── */
-  --font-display: 'Sacramento', 'Cormorant Garamond', 'DM Sans', cursive;
+  /* ── Display font: GlossilyEnigmatic (wedding script) for couple
+       names. Latin-only — any Turkish-bearing copy must opt-in to
+       --font-script-i18n (Cormorant Garamond italic) instead. ── */
+  --font-display: 'GlossilyEnigmatic', 'Cormorant Garamond', 'DM Sans', cursive;
   --font-display-style: normal;
+  /* ── Personalisation script (Turkish-safe): used on the guest-name
+       line ("Mahmut Kasar ve Ailesi"). Cormorant Garamond italic at
+       large sizes has the elegant copperplate feel that suits a wedding
+       invitation while guaranteeing consistent rendering for İıŞşĞğÇçÖöÜü. ── */
+  --font-script-i18n: 'Cormorant Garamond', Georgia, serif;
   /* ── Digits: Cormorant Garamond for elegant countdown numbers ── */
   --font-digits: 'Cormorant Garamond', Georgia, serif;
 }
