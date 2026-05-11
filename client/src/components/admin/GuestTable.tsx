@@ -201,6 +201,187 @@ function StatusBadgeEditor({
   );
 }
 
+// ─── Inline guest-count editor ───────────────────────────────────────────────
+// Click the count pill → small popover anchored beneath it with a 1-10 listbox.
+// Mirrors StatusBadgeEditor so admins build one interaction model for
+// in-place edits across the row. When `onChange` is omitted the count
+// renders as a plain non-interactive pill — useful for any future read-only
+// surfaces and keeps the call sites tidy with one component.
+const GUEST_COUNT_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1);
+
+function GuestCountEditor({
+  invitationId,
+  guestCount,
+  onChange,
+  ariaLabelContext,
+  /** When true, the trigger renders in the smaller "uppercase caps" treatment
+   *  used on mobile cards and per-event grid cells. */
+  compact = false,
+}: {
+  invitationId: number;
+  guestCount: number;
+  onChange?: (invitationId: number, next: number) => void;
+  ariaLabelContext?: string;
+  compact?: boolean;
+}) {
+  const at = useAdminTranslation();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleDocPointer = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', handleDocPointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleDocPointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  // Read-only fallback — drop-in safe for callers that don't wire a mutation.
+  if (!onChange) {
+    return compact ? (
+      <span
+        className="text-[10px] font-sans uppercase tracking-wide"
+        style={{ color: ESPRESSO_DIM }}
+      >
+        {at.partySizeLabel}: <span className="tabular-nums" style={{ color: ESPRESSO }}>{guestCount}</span>
+      </span>
+    ) : (
+      <span className="text-sm tabular-nums" style={{ color: ESPRESSO }}>
+        {guestCount}
+      </span>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative inline-block">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={
+          `${at.partySizeLabel}: ${guestCount}${ariaLabelContext ? ` for ${ariaLabelContext}` : ''}. Click to change.`
+        }
+        title="Click to change party size"
+        className={
+          compact
+            ? 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-sans uppercase tracking-wide transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]'
+            : 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-sm font-sans transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] focus-visible:ring-offset-1'
+        }
+        style={{
+          background: 'rgba(184,146,74,0.08)',
+          border: `1px solid ${GOLD_DIM}`,
+          color: ESPRESSO,
+        }}
+      >
+        {compact ? (
+          <>
+            <span style={{ color: ESPRESSO_DIM }}>{at.partySizeLabel}:</span>
+            <span className="tabular-nums font-semibold" style={{ color: ESPRESSO }}>{guestCount}</span>
+          </>
+        ) : (
+          <>
+            {/* People icon — keeps the affordance recognisable when the cell
+                is dense with other tabular numbers (table #, sort #, etc.) */}
+            <svg
+              className="w-3 h-3 opacity-60 flex-shrink-0"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span className="tabular-nums font-semibold">{guestCount}</span>
+          </>
+        )}
+        <svg className="w-2.5 h-2.5 opacity-60 -mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            role="listbox"
+            aria-label="Choose party size"
+            className="absolute left-0 top-full mt-1 z-20 rounded-lg shadow-xl overflow-hidden py-1"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, minWidth: '6rem' }}
+          >
+            {GUEST_COUNT_OPTIONS.map((n) => {
+              const selected = n === guestCount;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  autoFocus={selected}
+                  onClick={() => {
+                    if (!selected) onChange(invitationId, n);
+                    setOpen(false);
+                    requestAnimationFrame(() => triggerRef.current?.focus());
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left transition-colors focus:outline-none focus:bg-[rgba(184,146,74,0.14)] hover:bg-[rgba(184,146,74,0.08)]"
+                >
+                  <span
+                    className="font-sans tabular-nums"
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: selected ? 700 : 500,
+                      color: selected ? '#7A4F10' : ESPRESSO,
+                      minWidth: '1.25rem',
+                    }}
+                  >
+                    {n}
+                  </span>
+                  <span
+                    className="font-sans"
+                    style={{ fontSize: '0.7rem', color: ESPRESSO_DIM }}
+                  >
+                    {n === 1 ? 'guest' : 'guests'}
+                  </span>
+                  {selected && (
+                    <svg
+                      className="w-3.5 h-3.5 ml-auto flex-shrink-0"
+                      style={{ color: GOLD }}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      aria-hidden="true"
+                    >
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface Props {
   guests: AdminGuest[];
   events: AdminEvent[];
@@ -223,6 +404,11 @@ interface Props {
    * editor. When omitted, status badges render as static read-only pills.
    */
   onUpdateStatus?: (invitationId: number, status: EditableStatus) => void;
+  /**
+   * Fired when the admin picks a new party size from the inline guest-count
+   * editor. When omitted, the count renders as a plain non-interactive pill.
+   */
+  onUpdateGuestCount?: (invitationId: number, guestCount: number) => void;
   /**
    * Tables already in use for the active event scope. Powers the smart-picker
    * suggestions inside `TableNumberCell` (existing tables shown as chips, plus
@@ -1551,6 +1737,7 @@ export default function GuestTable({
   onDeleteInvitation,
   onUpdateTableNumber,
   onUpdateStatus,
+  onUpdateGuestCount,
   existingTables = [],
   onFilterByTable,
   activeTableFilter = null,
@@ -1761,9 +1948,13 @@ export default function GuestTable({
                       {inv && config ? (
                         <>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
-                            <span className="text-[11px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
-                              {at.partySizeLabel}: <span className="font-semibold" style={{ color: ESPRESSO }}>{inv.guestCount}</span>
-                            </span>
+                            <GuestCountEditor
+                              invitationId={inv.id}
+                              guestCount={inv.guestCount}
+                              onChange={onUpdateGuestCount}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
+                              compact
+                            />
                             {onUpdateTableNumber && (
                               <TableNumberCell
                                 invitationId={inv.id}
@@ -1985,8 +2176,17 @@ export default function GuestTable({
                             <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
                           )}
                         </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm tabular-nums" style={{ color: ESPRESSO }}>
-                          {inv ? inv.guestCount : <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>}
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          {inv ? (
+                            <GuestCountEditor
+                              invitationId={inv.id}
+                              guestCount={inv.guestCount}
+                              onChange={onUpdateGuestCount}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(singleEvent)}`}
+                            />
+                          ) : (
+                            <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
+                          )}
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap">
                           {inv && onUpdateTableNumber ? (
@@ -2023,9 +2223,13 @@ export default function GuestTable({
                               onChange={onUpdateStatus}
                               ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
                             />
-                            <span className="text-[10px] font-sans uppercase tracking-wide" style={{ color: ESPRESSO_DIM }}>
-                              {at.partySizeLabel}: {inv.guestCount}
-                            </span>
+                            <GuestCountEditor
+                              invitationId={inv.id}
+                              guestCount={inv.guestCount}
+                              onChange={onUpdateGuestCount}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
+                              compact
+                            />
 
                             {/* Inline table number */}
                             {onUpdateTableNumber && (

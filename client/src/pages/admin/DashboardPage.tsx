@@ -738,6 +738,21 @@ export default function DashboardPage() {
     },
   });
 
+  // Inline party-size edits use the same single-field PATCH pattern as
+  // status/table updates. The stats cards aggregate guestCount for attending
+  // invitations, so we must also invalidate the `events` query to keep the
+  // "attending people" total in sync after a change.
+  const updateGuestCountMutation = useMutation({
+    mutationFn: ({ id, guestCount }: { id: number; guestCount: number }) =>
+      adminApi.updateInvitation(id, { guestCount }),
+    onError: () => toast.error('Failed to update party size'),
+    onSuccess: (_data, { guestCount }) => {
+      toast.success(guestCount === 1 ? 'Party size: 1 guest' : `Party size: ${guestCount} guests`);
+      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'events'] });
+    },
+  });
+
   // Bulk-assign the same table number to every selected guest's invitation for
   // the currently-active event tab. We resolve invitation IDs at submit time
   // rather than caching them so the list stays correct if the user changes
@@ -1578,6 +1593,9 @@ export default function DashboardPage() {
             }
             onUpdateStatus={(invId, status) =>
               updateStatusMutation.mutate({ id: invId, status })
+            }
+            onUpdateGuestCount={(invId, guestCount) =>
+              updateGuestCountMutation.mutate({ id: invId, guestCount })
             }
             existingTables={availableTables}
             onFilterByTable={setTableFilter}
