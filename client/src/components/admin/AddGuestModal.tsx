@@ -63,7 +63,6 @@ export default function AddGuestModal({
       status: isTashkentDefault ? 'attending' : 'pending',
       eventStatuses: defaultEventId ? buildInitialStatuses([defaultEventId]) : {},
       guestCount: 1,
-      dietary: '',
       message: '',
       eventIds: defaultEventId ? [defaultEventId] : [],
       partnerName: '',
@@ -82,7 +81,6 @@ export default function AddGuestModal({
         eventStatuses: buildInitialStatuses(ids),
         tableNumbers: {},
         guestCount: 1,
-        dietary: '',
         message: '',
         eventIds: ids,
         partnerName: '',
@@ -286,18 +284,6 @@ export default function AddGuestModal({
               <option key={n} value={n}>{n}</option>
             ))}
           </select>
-        </div>
-
-        {/* Dietary */}
-        <div>
-          <label htmlFor="add-dietary" className={ADMIN_LABEL_CLASS}>{at.dietaryLabel}</label>
-          <input
-            id="add-dietary"
-            type="text"
-            {...register('dietary')}
-            className={ADMIN_INPUT_CLASS}
-            placeholder="Optional"
-          />
         </div>
 
         {/* Note */}

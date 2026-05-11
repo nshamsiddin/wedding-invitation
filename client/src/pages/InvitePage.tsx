@@ -281,7 +281,7 @@ function PublicInviteForm({ token, eventId }: PublicInviteFormProps) {
           <FormInput id="pub-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
         </FormField>
 
-        <FormField htmlFor="pub-partner" label={t.partnerNameLabel} optional={t.dietaryOptional}>
+        <FormField htmlFor="pub-partner" label={t.partnerNameLabel} optional={t.optionalLabel}>
           <FormInput id="pub-partner" type="text" {...register('partnerName')} placeholder={t.partnerNamePlaceholder} />
         </FormField>
 
@@ -359,7 +359,6 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
         eventId: ev.id,
         status: 'attending' as const,
         guestCount: 1,
-        dietary: '',
         message: '',
       })),
     },
@@ -391,7 +390,7 @@ function OpenInviteForm({ token, isPublic, events, onSuccess }: OpenInviteFormPr
         <FormField htmlFor="claim-name" label={t.nameLabel} required error={errors.name?.message}>
           <FormInput id="claim-name" type="text" autoComplete="name" {...register('name')} placeholder={t.namePlaceholder} />
         </FormField>
-        <FormField htmlFor="claim-phone" label={t.phoneLabel} optional={t.dietaryOptional}>
+        <FormField htmlFor="claim-phone" label={t.phoneLabel} optional={t.optionalLabel}>
           <FormInput id="claim-phone" type="tel" {...register('phone')} placeholder="+1 555 000 0000" />
         </FormField>
       </FormCard>
@@ -1277,8 +1276,6 @@ export default function InvitePage() {
     name:           guest.name,
     status:         invitation.status,
     guestCount:     invitation.guestCount,
-    dietary:        invitation.dietary,
-    partnerDietary: invitation.partnerDietary ?? null,
     message:        invitation.message,
   };
 

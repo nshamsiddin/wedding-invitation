@@ -176,9 +176,7 @@ db.run(sql`
     status      TEXT NOT NULL DEFAULT 'pending'
                 CHECK(status IN ('attending','declined','maybe','pending')),
     guest_count INTEGER NOT NULL DEFAULT 1,
-    dietary         TEXT,
     message         TEXT,
-    partner_dietary TEXT,
     source      TEXT NOT NULL DEFAULT 'admin',
     is_open         INTEGER NOT NULL DEFAULT 0,
     is_public       INTEGER NOT NULL DEFAULT 0,
@@ -245,6 +243,12 @@ sqlite.prepare(
     logger.info('[migration] Recreating guest_invitations with nullable guest_id…');
     sqlite.pragma('foreign_keys = OFF');
     sqlite.transaction(() => {
+      // The recreate-table flow is only entered on legacy installs that still
+      // have NOT NULL on guest_id. We still carry the dietary column here so
+      // the SELECT below doesn't fail on those old rows. A later migration
+      // (migrateDropDietary) unconditionally drops dietary + partner_dietary
+      // once the table is in its final shape, so we don't bother removing
+      // dietary from this transitional table.
       sqlite.prepare(`
         CREATE TABLE IF NOT EXISTS guest_invitations_v2 (
           id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -277,7 +281,10 @@ sqlite.prepare(
     sqlite.pragma('foreign_keys = ON');
     logger.info('[migration] guest_invitations migration complete.');
   } else {
-    // Table exists with nullable guest_id — just add any missing columns
+    // Table exists with nullable guest_id — just add any missing columns.
+    // Note: we no longer back-fill `partner_dietary` here because that column
+    // is being retired; the migrateDropDietary block below removes it
+    // unconditionally if it still exists.
     if (!hasIsOpen) {
       logger.info('[migration] Adding is_open column to guest_invitations…');
       sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN is_open INTEGER NOT NULL DEFAULT 0').run();
@@ -285,11 +292,6 @@ sqlite.prepare(
     if (!hasClaimedAt) {
       logger.info('[migration] Adding claimed_at column to guest_invitations…');
       sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN claimed_at TEXT').run();
-    }
-    const hasPartnerDietary = cols.some((c) => c.name === 'partner_dietary');
-    if (!hasPartnerDietary) {
-      logger.info('[migration] Adding partner_dietary column to guest_invitations…');
-      sqlite.prepare('ALTER TABLE guest_invitations ADD COLUMN partner_dietary TEXT').run();
     }
   }
 })();
@@ -372,6 +374,26 @@ sqlite.prepare(
     logger.info('[migration] Adding language column to guest_invitations…');
     sqlite.prepare("ALTER TABLE guest_invitations ADD COLUMN language TEXT NOT NULL DEFAULT 'en'").run();
   }
+})();
+
+// Drop the dietary + partner_dietary columns now that the product no longer
+// surfaces them anywhere. SQLite (>=3.35.0) supports ALTER TABLE DROP COLUMN
+// directly. The columns are nullable text and not part of any index, so the
+// drops are O(1) on the schema side and SQLite rewrites the table internally
+// in a single VACUUM-style pass. Both drops are wrapped in a transaction so
+// a crash between them leaves the schema consistent.
+(function migrateDropDietary() {
+  type ColInfo = { name: string };
+  const cols = sqlite.prepare('PRAGMA table_info(guest_invitations)').all() as ColInfo[];
+  if (cols.length === 0) return; // Table was just created above with the final schema.
+  const hasDietary = cols.some((c) => c.name === 'dietary');
+  const hasPartnerDietary = cols.some((c) => c.name === 'partner_dietary');
+  if (!hasDietary && !hasPartnerDietary) return;
+  logger.info('[migration] Dropping dietary columns from guest_invitations…');
+  sqlite.transaction(() => {
+    if (hasDietary) sqlite.prepare('ALTER TABLE guest_invitations DROP COLUMN dietary').run();
+    if (hasPartnerDietary) sqlite.prepare('ALTER TABLE guest_invitations DROP COLUMN partner_dietary').run();
+  })();
 })();
 
 // Backfill event_tables from any (event_id, table_number) pairs already in

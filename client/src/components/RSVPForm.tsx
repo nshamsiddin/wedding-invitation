@@ -18,8 +18,6 @@ interface PrefillData {
   name: string;
   status: AttendanceStatus;
   guestCount: number;
-  dietary: string | null;
-  partnerDietary?: string | null;
   message: string | null;
 }
 
@@ -58,12 +56,10 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
           name:           prefillData.name,
           status:         prefillData.status as 'attending' | 'declined' | 'maybe',
           guestCount:     prefillData.guestCount,
-          dietary:        prefillData.dietary ?? '',
-          partnerDietary: prefillData.partnerDietary ?? '',
           partnerName:    partnerName ?? '',
           message:        prefillData.message ?? '',
         }
-      : { guestCount: 1, dietary: '', partnerDietary: '', partnerName: '', message: '' },
+      : { guestCount: 1, partnerName: '', message: '' },
   });
 
   const watchedStatus      = watch('status');
@@ -85,8 +81,6 @@ export default function RSVPForm({ token, eventName = '', prefillData, partnerNa
         token,
         status: values.status,
         guestCount: values.guestCount,
-        dietary: values.dietary,
-        partnerDietary: values.partnerDietary,
         message: values.message,
         ...(editingNames && values.name ? { name: values.name } : {}),
         ...(editingNames && partnerName !== undefined && values.partnerName !== undefined

@@ -88,7 +88,6 @@ export interface AdminTranslations {
   inviteTo: string;
   statusLabel: string;
   guestCountLabel: string;
-  dietaryLabel: string;
   noteLabel: string;
   tableNumberLabel: string;
   cancel: string;
@@ -101,7 +100,6 @@ export interface AdminTranslations {
   saveContact: string;
   saving: string;
   saveRsvp: string;
-  partnerDietaryLabel: string;
   messageLabel: string;
 
   // Edit Invitation modal
@@ -259,7 +257,6 @@ const adminEn: AdminTranslations = {
   inviteTo: 'Invite to',
   statusLabel: 'Status',
   guestCountLabel: 'Guest Count',
-  dietaryLabel: 'Dietary Restrictions',
   noteLabel: 'Note',
   tableNumberLabel: 'Table Number',
   cancel: 'Cancel',
@@ -271,7 +268,6 @@ const adminEn: AdminTranslations = {
   saveContact: 'Save Contact',
   saving: 'Saving…',
   saveRsvp: 'Save RSVP',
-  partnerDietaryLabel: 'Partner Dietary',
   messageLabel: 'Message',
 
   editRsvpTitle: 'Edit RSVP',
@@ -420,7 +416,6 @@ const adminTr: AdminTranslations = {
   inviteTo: 'Davet et',
   statusLabel: 'Durum',
   guestCountLabel: 'Misafir Sayısı',
-  dietaryLabel: 'Beslenme Kısıtlamaları',
   noteLabel: 'Not',
   tableNumberLabel: 'Masa Numarası',
   cancel: 'İptal',
@@ -432,7 +427,6 @@ const adminTr: AdminTranslations = {
   saveContact: 'Kaydet',
   saving: 'Kaydediliyor…',
   saveRsvp: 'RSVP Kaydet',
-  partnerDietaryLabel: 'Eş Diyeti',
   messageLabel: 'Mesaj',
 
   editRsvpTitle: 'RSVP Düzenle',
@@ -581,7 +575,6 @@ const adminUz: AdminTranslations = {
   inviteTo: 'Taklif qilish',
   statusLabel: 'Holat',
   guestCountLabel: 'Mehmon Soni',
-  dietaryLabel: 'Ovqatlanish Cheklovlari',
   noteLabel: 'Izoh',
   tableNumberLabel: 'Stol Raqami',
   cancel: 'Bekor qilish',
@@ -593,7 +586,6 @@ const adminUz: AdminTranslations = {
   saveContact: 'Saqlash',
   saving: 'Saqlanmoqda…',
   saveRsvp: 'RSVP Saqlash',
-  partnerDietaryLabel: 'Hamkor Diyetasi',
   messageLabel: 'Xabar',
 
   editRsvpTitle: 'RSVP Tahrirlash',

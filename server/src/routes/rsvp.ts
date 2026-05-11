@@ -38,8 +38,6 @@ router.get('/token/:token', tokenLookupRateLimit, async (req: Request, res: Resp
         invToken: schema.guestInvitations.token,
         invStatus: schema.guestInvitations.status,
         invGuestCount: schema.guestInvitations.guestCount,
-        invDietary: schema.guestInvitations.dietary,
-        invPartnerDietary: schema.guestInvitations.partnerDietary,
         invMessage: schema.guestInvitations.message,
         invTableNumber: schema.guestInvitations.tableNumber,
         invLanguage: schema.guestInvitations.language,
@@ -134,8 +132,6 @@ router.get('/token/:token', tokenLookupRateLimit, async (req: Request, res: Resp
         token: r.invToken,
         status: r.invStatus,
         guestCount: r.invGuestCount,
-        dietary: r.invDietary,
-        partnerDietary: r.invPartnerDietary ?? null,
         message: r.invMessage,
         tableNumber: r.invTableNumber ?? null,
         language: r.invLanguage ?? 'en',
@@ -218,8 +214,6 @@ router.post('/', rsvpRateLimit, async (req: Request, res: Response): Promise<voi
       .set({
         status: data.status,
         guestCount: data.status === 'attending' ? (data.guestCount ?? 1) : 1,
-        dietary: data.dietary ?? null,
-        partnerDietary: data.partnerDietary ?? null,
         message: data.message ?? null,
         updatedAt: now,
       })
@@ -310,7 +304,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         )
         .get(token) as {
           id: number; guest_id: number | null; event_id: number; token: string;
-          status: string; guest_count: number; dietary: string | null;
+          status: string; guest_count: number;
           message: string | null; is_open: number; claimed_at: string | null;
           created_at: string; updated_at: string; event_date: string | null;
         } | undefined;
@@ -345,7 +339,7 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         .prepare(
           `UPDATE guest_invitations
            SET guest_id = ?, claimed_at = ?, status = ?, guest_count = ?,
-               dietary = ?, partner_dietary = ?, message = ?, updated_at = ?
+               message = ?, updated_at = ?
            WHERE id = ?`
         )
         .run(
@@ -353,8 +347,6 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
           now,
           entry.status,
           entry.status === 'attending' ? (entry.guestCount ?? 1) : 1,
-          entry.dietary ?? null,
-          entry.partnerDietary ?? null,
           entry.message ?? null,
           now,
           invRow.id
@@ -376,9 +368,9 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
         const newInv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, partner_dietary, message)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             RETURNING id, token, status, guest_count, dietary, partner_dietary, message, updated_at`
+               (guest_id, event_id, token, status, guest_count, message)
+             VALUES (?, ?, ?, ?, ?, ?)
+             RETURNING id, token, status, guest_count, message, updated_at`
           )
           .get(
             guest.id,
@@ -386,12 +378,9 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
             randomUUID(),
             rsvpEntry.status,
             rsvpEntry.status === 'attending' ? (rsvpEntry.guestCount ?? 1) : 1,
-            rsvpEntry.dietary ?? null,
-            rsvpEntry.partnerDietary ?? null,
             rsvpEntry.message ?? null
           ) as {
             id: number; token: string; status: string; guest_count: number;
-            dietary: string | null; partner_dietary: string | null;
             message: string | null; updated_at: string;
           };
 
@@ -400,8 +389,6 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
           token: newInv.token,
           status: newInv.status,
           guestCount: newInv.guest_count,
-          dietary: newInv.dietary,
-          partnerDietary: newInv.partner_dietary,
           message: newInv.message,
           updatedAt: newInv.updated_at,
         });
@@ -416,8 +403,6 @@ router.post('/claim', claimRateLimit, async (req: Request, res: Response): Promi
             token: invRow.token,
             status: entry.status,
             guestCount: entry.guestCount ?? 1,
-            dietary: entry.dietary ?? null,
-            partnerDietary: entry.partnerDietary ?? null,
             message: entry.message ?? null,
             updatedAt: now,
           },
@@ -486,7 +471,7 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
   }
 
   // phone is required by publicRsvpSchema (min 6 chars), so it is always present.
-  const { token, name, partnerName, phone, status, guestCount, dietary, partnerDietary, message, eventId } = parsed.data;
+  const { token, name, partnerName, phone, status, guestCount, message, eventId } = parsed.data;
   const now = new Date().toISOString();
 
   try {
@@ -551,15 +536,12 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
         sqlite
           .prepare(
             `UPDATE guest_invitations
-             SET status = ?, guest_count = ?, dietary = ?, partner_dietary = ?,
-                 message = ?, updated_at = ?
+             SET status = ?, guest_count = ?, message = ?, updated_at = ?
              WHERE id = ?`
           )
           .run(
             status,
             status === 'attending' ? (guestCount ?? 1) : 1,
-            dietary || null,
-            partnerDietary || null,
             message || null,
             now,
             existingInv.id,
@@ -569,9 +551,8 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
         const newInv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, partner_dietary,
-                message, is_open, source)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'public_rsvp')
+               (guest_id, event_id, token, status, guest_count, message, is_open, source)
+             VALUES (?, ?, ?, ?, ?, ?, 0, 'public_rsvp')
              RETURNING id`
           )
           .get(
@@ -580,8 +561,6 @@ router.post('/public', claimRateLimit, async (req: Request, res: Response): Prom
             randomUUID(),
             status,
             status === 'attending' ? (guestCount ?? 1) : 1,
-            dietary || null,
-            partnerDietary || null,
             message || null,
           ) as { id: number };
         invitationId = newInv.id;
@@ -640,7 +619,7 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
     return;
   }
 
-  const { eventSlug, name, phone, status, guestCount, dietary, partnerDietary, message } = parsed.data;
+  const { eventSlug, name, phone, status, guestCount, message } = parsed.data;
   const now = new Date().toISOString();
 
   try {
@@ -694,15 +673,12 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
         sqlite
           .prepare(
             `UPDATE guest_invitations
-             SET status = ?, guest_count = ?, dietary = ?, partner_dietary = ?,
-                 message = ?, updated_at = ?
+             SET status = ?, guest_count = ?, message = ?, updated_at = ?
              WHERE id = ?`
           )
           .run(
             status,
             status === 'attending' ? (guestCount ?? 1) : 1,
-            dietary || null,
-            partnerDietary || null,
             message || null,
             now,
             existingInv.id,
@@ -712,9 +688,8 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
         const newInv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, partner_dietary,
-                message, is_open, source)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'public_rsvp')
+               (guest_id, event_id, token, status, guest_count, message, is_open, source)
+             VALUES (?, ?, ?, ?, ?, ?, 0, 'public_rsvp')
              RETURNING id`
           )
           .get(
@@ -723,8 +698,6 @@ router.post('/public-page', claimRateLimit, async (req: Request, res: Response):
             randomUUID(),
             status,
             status === 'attending' ? (guestCount ?? 1) : 1,
-            dietary || null,
-            partnerDietary || null,
             message || null,
           ) as { id: number };
         invitationId = newInv.id;

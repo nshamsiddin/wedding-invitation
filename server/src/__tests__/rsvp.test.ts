@@ -262,14 +262,14 @@ describe('Zod schema validation boundaries', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects dietary notes exceeding 500 characters', async () => {
+  it('rejects messages exceeding 1000 characters', async () => {
     const app = buildApp();
     const eventId = getFutureEventId();
     const token = insertPersonalInvitation(eventId);
 
     const res = await request(app)
       .post('/api/rsvp')
-      .send({ token, status: 'attending', dietary: 'a'.repeat(501) });
+      .send({ token, status: 'attending', message: 'a'.repeat(1001) });
     expect(res.status).toBe(400);
   });
 });

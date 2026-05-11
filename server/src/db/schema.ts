@@ -35,11 +35,7 @@ export const guestInvitations = sqliteTable('guest_invitations', {
     .notNull()
     .default('pending'),
   guestCount: integer('guest_count').notNull().default(1),
-  dietary: text('dietary'),
   message: text('message'),
-  // Optional dietary restrictions for the guest's partner — per-event because
-  // dietary needs relate to what is being served at a specific event.
-  partnerDietary: text('partner_dietary'),
   // Tracks how the invitation was created: 'admin' for manually created rows,
   // 'public_rsvp' for rows created via the permanent public link flow.
   // Used to prevent public RSVP submissions from overwriting admin-curated records.

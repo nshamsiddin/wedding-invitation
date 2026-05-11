@@ -382,6 +382,164 @@ function GuestCountEditor({
   );
 }
 
+// ─── Inline language editor ──────────────────────────────────────────────────
+// Click the flag chip → small popover with EN / TR / UZ options.
+// The flag character is the language's region indicator; we keep the two-letter
+// code visible alongside it for accessibility and locales where the emoji
+// renders as a fallback box.
+//
+// Language is the invitation page's default locale when the guest opens their
+// link, so changing it has a real user-facing consequence — kept as an
+// explicit click + select rather than e.g. a hover-cycle.
+type InvitationLanguage = 'en' | 'tr' | 'uz';
+
+const LANGUAGE_OPTIONS: Array<{
+  code: InvitationLanguage;
+  flag: string;
+  short: string;
+  label: string;
+}> = [
+  { code: 'en', flag: '\u{1F1EC}\u{1F1E7}', short: 'EN', label: 'English' },
+  { code: 'tr', flag: '\u{1F1F9}\u{1F1F7}', short: 'TR', label: 'Türkçe' },
+  { code: 'uz', flag: '\u{1F1FA}\u{1F1FF}', short: 'UZ', label: "O'zbekcha" },
+];
+
+function LanguageEditor({
+  invitationId,
+  language,
+  onChange,
+  ariaLabelContext,
+}: {
+  invitationId: number;
+  language: InvitationLanguage;
+  onChange?: (invitationId: number, next: InvitationLanguage) => void;
+  ariaLabelContext?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const current = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  if (!onChange) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-sans uppercase tracking-wide"
+        style={{ background: 'rgba(184,146,74,0.06)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO_DIM }}
+        title={current.label}
+      >
+        <span aria-hidden="true" style={{ fontSize: '0.85rem', lineHeight: 1 }}>{current.flag}</span>
+        <span className="font-semibold" style={{ color: ESPRESSO }}>{current.short}</span>
+      </span>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative inline-block">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={
+          `Invitation language: ${current.label}${ariaLabelContext ? ` for ${ariaLabelContext}` : ''}. Click to change.`
+        }
+        title="Click to change language"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-sans uppercase tracking-wide transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
+        style={{
+          background: 'rgba(184,146,74,0.08)',
+          border: `1px solid ${GOLD_DIM}`,
+          color: ESPRESSO,
+        }}
+      >
+        <span aria-hidden="true" style={{ fontSize: '0.85rem', lineHeight: 1 }}>{current.flag}</span>
+        <span className="font-semibold">{current.short}</span>
+        <svg className="w-2.5 h-2.5 opacity-60 -mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            role="listbox"
+            aria-label="Choose invitation language"
+            className="absolute left-0 top-full mt-1 z-20 rounded-lg shadow-xl overflow-hidden py-1"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, minWidth: '9rem' }}
+          >
+            {LANGUAGE_OPTIONS.map((opt) => {
+              const selected = opt.code === language;
+              return (
+                <button
+                  key={opt.code}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  autoFocus={selected}
+                  onClick={() => {
+                    if (!selected) onChange(invitationId, opt.code);
+                    setOpen(false);
+                    requestAnimationFrame(() => triggerRef.current?.focus());
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left transition-colors focus:outline-none focus:bg-[rgba(184,146,74,0.14)] hover:bg-[rgba(184,146,74,0.08)]"
+                >
+                  <span aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }}>{opt.flag}</span>
+                  <span
+                    className="font-sans"
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: selected ? 700 : 500,
+                      color: selected ? '#7A4F10' : ESPRESSO,
+                    }}
+                  >
+                    {opt.short}
+                  </span>
+                  <span className="font-sans" style={{ fontSize: '0.7rem', color: ESPRESSO_DIM }}>
+                    {opt.label}
+                  </span>
+                  {selected && (
+                    <svg
+                      className="w-3.5 h-3.5 ml-auto flex-shrink-0"
+                      style={{ color: GOLD }}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      aria-hidden="true"
+                    >
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface Props {
   guests: AdminGuest[];
   events: AdminEvent[];
@@ -395,7 +553,6 @@ interface Props {
   onToggleGuestSelection: (guestId: number) => void;
   onToggleSelectAllVisible: (checked: boolean) => void;
   onEditGuest: (guest: AdminGuest) => void;
-  onEditInvitation: (invitation: AdminInvitation, guest: AdminGuest) => void;
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
   onUpdateTableNumber?: (invitationId: number, tableNumber: number | null) => void;
@@ -409,6 +566,12 @@ interface Props {
    * editor. When omitted, the count renders as a plain non-interactive pill.
    */
   onUpdateGuestCount?: (invitationId: number, guestCount: number) => void;
+  /**
+   * Fired when the admin picks a new language from the inline language editor.
+   * Affects which locale the invitation page defaults to. When omitted, the
+   * language chip renders as a non-interactive flag pill.
+   */
+  onUpdateLanguage?: (invitationId: number, language: 'en' | 'tr' | 'uz') => void;
   /**
    * Tables already in use for the active event scope. Powers the smart-picker
    * suggestions inside `TableNumberCell` (existing tables shown as chips, plus
@@ -1732,12 +1895,12 @@ export default function GuestTable({
   onToggleGuestSelection,
   onToggleSelectAllVisible,
   onEditGuest,
-  onEditInvitation,
   onDeleteGuest,
   onDeleteInvitation,
   onUpdateTableNumber,
   onUpdateStatus,
   onUpdateGuestCount,
+  onUpdateLanguage,
   existingTables = [],
   onFilterByTable,
   activeTableFilter = null,
@@ -1785,8 +1948,10 @@ export default function GuestTable({
   const singleEvent = isSingleEvent ? displayedEvents[0] : null;
 
   // Columns: checkbox + # + name + (per-invitation OR per-event) + message + actions
+  // Single-event lays out: checkbox(1) + #(1) + name(1) + status(1) + party(1) + table(1) + lang(1) + message(1) + actions(1) = 9
+  // Multi-event lays out: checkbox(1) + #(1) + name(1) + per-event(N) + message(1) + actions(1) = 4 + N + 1
   const totalColSpan = isSingleEvent
-    ? 3 + 3 + 1 + 1
+    ? 3 + 4 + 1 + 1
     : 3 + displayedEvents.length + 1 + 1;
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const allVisibleSelected = sorted.length > 0 && sorted.every((g) => selectedGuestIds.has(g.id));
@@ -1955,6 +2120,12 @@ export default function GuestTable({
                               ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
                               compact
                             />
+                            <LanguageEditor
+                              invitationId={inv.id}
+                              language={(inv.language ?? 'en') as InvitationLanguage}
+                              onChange={onUpdateLanguage}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
+                            />
                             {onUpdateTableNumber && (
                               <TableNumberCell
                                 invitationId={inv.id}
@@ -1969,17 +2140,6 @@ export default function GuestTable({
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
-                            <button
-                              onClick={() => onEditInvitation(inv, guest)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-sans transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
-                              style={{ background: 'rgba(184,146,74,0.06)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                              aria-label={`Edit ${getEventDisplayName(ev)} RSVP for ${guest.name}`}
-                            >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              Edit RSVP
-                            </button>
                             <button
                               onClick={() => onDeleteInvitation(inv)}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-sans text-[rgba(42,31,26,0.55)] hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
@@ -2064,6 +2224,11 @@ export default function GuestTable({
                 </th>
                 <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
                   {at.colTable}
+                </th>
+                {/* Compact "Lang" column — used to be hidden behind the Edit RSVP
+                    modal; now visible at-a-glance for the active event. */}
+                <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+                  Lang
                 </th>
               </>
             ) : (
@@ -2203,6 +2368,18 @@ export default function GuestTable({
                             <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
                           )}
                         </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          {inv ? (
+                            <LanguageEditor
+                              invitationId={inv.id}
+                              language={(inv.language ?? 'en') as InvitationLanguage}
+                              onChange={onUpdateLanguage}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(singleEvent)}`}
+                            />
+                          ) : (
+                            <span className="text-xs" style={{ color: GOLD_DIM }}>—</span>
+                          )}
+                        </td>
                       </>
                     );
                   })()
@@ -2231,6 +2408,13 @@ export default function GuestTable({
                               compact
                             />
 
+                            <LanguageEditor
+                              invitationId={inv.id}
+                              language={(inv.language ?? 'en') as InvitationLanguage}
+                              onChange={onUpdateLanguage}
+                              ariaLabelContext={`${guest.name} at ${getEventDisplayName(ev)}`}
+                            />
+
                             {/* Inline table number */}
                             {onUpdateTableNumber && (
                               <TableNumberCell
@@ -2247,20 +2431,6 @@ export default function GuestTable({
                             {/* Per-invitation actions */}
                             <div className="flex items-center gap-1 flex-wrap">
                               <CopyLinkButton invitation={inv} baseUrl={baseUrl} />
-
-                              <button
-                                onClick={() => onEditInvitation(inv, guest)}
-                                title="Edit RSVP"
-                                className="p-1 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(184,146,74,0.55)]"
-                                style={{ color: ESPRESSO_DIM }}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
-                                aria-label={`Edit ${getEventDisplayName(ev)} RSVP for ${guest.name}`}
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
 
                               <button
                                 onClick={() => onDeleteInvitation(inv)}
@@ -2338,20 +2508,6 @@ export default function GuestTable({
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                            </svg>
-                          </button>
-
-                          <button
-                            onClick={() => onEditInvitation(inv, guest)}
-                            title="Edit RSVP"
-                            className="p-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] opacity-50 group-hover:opacity-100 focus-visible:opacity-100"
-                            style={{ color: ESPRESSO_DIM }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = GOLD; e.currentTarget.style.background = 'rgba(184,146,74,0.1)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = ESPRESSO_DIM; e.currentTarget.style.background = 'transparent'; }}
-                            aria-label={`Edit RSVP for ${guest.name}`}
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
 

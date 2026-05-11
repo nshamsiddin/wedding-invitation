@@ -317,8 +317,6 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         token: schema.guestInvitations.token,
         status: schema.guestInvitations.status,
         guestCount: schema.guestInvitations.guestCount,
-        dietary: schema.guestInvitations.dietary,
-        partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         tableNumber: schema.guestInvitations.tableNumber,
         language: schema.guestInvitations.language,
@@ -361,8 +359,6 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
         token: inv.token,
         status: inv.status,
         guestCount: inv.guestCount,
-        dietary: inv.dietary,
-        partnerDietary: inv.partnerDietary ?? null,
         message: inv.message,
         tableNumber: inv.tableNumber ?? null,
         language: inv.language,
@@ -784,7 +780,7 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
     return;
   }
 
-  const { name, phone, partnerName, eventIds, status, eventStatuses, guestCount, dietary, message, tableNumbers, language } = parsed.data;
+  const { name, phone, partnerName, eventIds, status, eventStatuses, guestCount, message, tableNumbers, language } = parsed.data;
 
   try {
     // Wrap guest + invitation creation in a single transaction so a partial failure
@@ -804,8 +800,8 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
         const inv = sqlite
           .prepare(
             `INSERT INTO guest_invitations
-               (guest_id, event_id, token, status, guest_count, dietary, message, table_number, language)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               (guest_id, event_id, token, status, guest_count, message, table_number, language)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING *`
           )
           .get(
@@ -814,7 +810,6 @@ router.post('/guests', requireAuth, async (req: Request, res: Response): Promise
             randomUUID(),
             (eventStatuses?.[String(eventId)] ?? status) ?? 'pending',
             guestCount ?? 1,
-            dietary ?? null,
             message ?? null,
             tableNumbers?.[String(eventId)] ?? null,
             language ?? 'en',
@@ -1250,8 +1245,6 @@ async function handleUpdateInvitation(req: Request, res: Response): Promise<void
       .update(schema.guestInvitations)
       .set({
         ...updates,
-        dietary: updates.dietary !== undefined ? (updates.dietary || null) : undefined,
-        partnerDietary: updates.partnerDietary !== undefined ? (updates.partnerDietary || null) : undefined,
         message: updates.message !== undefined ? (updates.message || null) : undefined,
         updatedAt: now,
       })
@@ -1346,8 +1339,6 @@ router.get('/export', requireAuth, async (req: Request, res: Response): Promise<
         eventSlug: schema.events.slug,
         status: schema.guestInvitations.status,
         guestCount: schema.guestInvitations.guestCount,
-        dietary: schema.guestInvitations.dietary,
-        partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         tableNumber: schema.guestInvitations.tableNumber,
         invitationLink: sql<string>`(${baseUrl} || '/invite/' || ${schema.guestInvitations.token})`,
@@ -1395,8 +1386,6 @@ router.get('/export/event-tables', requireAuth, async (req: Request, res: Respon
         eventSlug: schema.events.slug,
         status: schema.guestInvitations.status,
         guestCount: schema.guestInvitations.guestCount,
-        dietary: schema.guestInvitations.dietary,
-        partnerDietary: schema.guestInvitations.partnerDietary,
         message: schema.guestInvitations.message,
         tableNumber: schema.guestInvitations.tableNumber,
         invitationLink: sql<string>`(${baseUrl} || '/invite/' || ${schema.guestInvitations.token})`,

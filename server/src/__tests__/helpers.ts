@@ -60,9 +60,7 @@ sqlite.exec(`
     status TEXT NOT NULL DEFAULT 'pending'
                 CHECK(status IN ('attending','declined','maybe','pending')),
     guest_count INTEGER NOT NULL DEFAULT 1,
-    dietary TEXT,
     message TEXT,
-    partner_dietary TEXT,
     source TEXT NOT NULL DEFAULT 'admin',
     is_open INTEGER NOT NULL DEFAULT 0,
     is_public INTEGER NOT NULL DEFAULT 0,

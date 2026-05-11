@@ -214,8 +214,6 @@ function InvitationTab({
     reset({
       status: invitation.status,
       guestCount: invitation.guestCount,
-      dietary: invitation.dietary ?? '',
-      partnerDietary: invitation.partnerDietary ?? '',
       message: invitation.message ?? '',
       tableNumber: invitation.tableNumber ?? undefined,
       language: invitation.language ?? 'en',
@@ -287,32 +285,6 @@ function InvitationTab({
           <option value="tr">TR — Türkçe</option>
           <option value="uz">UZ — O'zbek</option>
         </select>
-      </div>
-
-      <div>
-        <label htmlFor={`inv-dietary-${invitation.id}`} className={ADMIN_LABEL_CLASS}>
-          {at.dietaryLabel}
-        </label>
-        <input
-          id={`inv-dietary-${invitation.id}`}
-          type="text"
-          {...register('dietary')}
-          className={ADMIN_INPUT_CLASS}
-          placeholder="None"
-        />
-      </div>
-
-      <div>
-        <label htmlFor={`inv-partner-dietary-${invitation.id}`} className={ADMIN_LABEL_CLASS}>
-          {at.partnerDietaryLabel}
-        </label>
-        <input
-          id={`inv-partner-dietary-${invitation.id}`}
-          type="text"
-          {...register('partnerDietary')}
-          className={ADMIN_INPUT_CLASS}
-          placeholder="None"
-        />
       </div>
 
       <div>

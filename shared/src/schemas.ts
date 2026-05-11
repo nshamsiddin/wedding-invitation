@@ -21,13 +21,6 @@ export const rsvpFormSchema = z.object({
     .max(5, 'Maximum 5 guests allowed')
     .optional()
     .default(1),
-  dietary: z
-    .string()
-    .max(500, 'Dietary notes must be under 500 characters')
-    .trim()
-    .optional()
-    .default(''),
-  partnerDietary: z.string().max(500).trim().optional().default(''),
   partnerName: z.string().max(100).trim().optional().default(''),
   message: z
     .string()
@@ -45,8 +38,6 @@ export const rsvpSubmitSchema = z.object({
   token: z.string().uuid('Invalid invitation token'),
   status: z.enum(['attending', 'declined', 'maybe']),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
-  dietary: z.string().max(500).trim().optional().default(''),
-  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
   // Optional name corrections: guests may fix a misspelling via the edit toggle
   name: z.string().min(2).max(100).trim().optional(),
@@ -59,8 +50,6 @@ export const rsvpEntrySchema = z.object({
   eventId: z.number().int().positive(),
   status: z.enum(['attending', 'declined', 'maybe']),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
-  dietary: z.string().max(500).trim().optional().default(''),
-  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
 });
 
@@ -114,8 +103,6 @@ export const invitationSchema = z.object({
   token: z.string(),
   status: z.enum(attendanceStatus),
   guestCount: z.number().int().min(1),
-  dietary: z.string().nullable(),
-  partnerDietary: z.string().nullable().optional(),
   message: z.string().nullable(),
   updatedAt: z.string(),
   // Assigned seating table — only set for Tashkent invitations
@@ -226,7 +213,6 @@ export const addGuestSchema = z.object({
   eventStatuses: z.record(z.string(), z.enum(['attending', 'declined', 'maybe', 'pending'])).optional(),
   // Admin-facing schemas allow up to 10 (vs 5 on the public RSVP form)
   guestCount: z.number().int().min(1).max(10).optional().default(1),
-  dietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
   // Per-event assigned table numbers; keys are event IDs (as strings)
   tableNumbers: z.record(z.string(), z.number().int().min(1).max(500).nullable()).optional(),
@@ -258,8 +244,6 @@ export const updateInvitationSchema = z.object({
   status: z.enum(['attending', 'declined', 'maybe', 'pending']).optional(),
   // Admin can set up to 10 guests; public RSVP form enforces max 5 separately
   guestCount: z.number().int().min(1).max(10).optional(),
-  dietary: z.string().max(500).trim().optional(),
-  partnerDietary: z.string().max(500).trim().optional(),
   message: z.string().max(1000).trim().optional(),
   // Assigned seating table — only meaningful for Tashkent invitations
   tableNumber: z.number().int().min(1).max(500).nullable().optional(),
@@ -285,8 +269,6 @@ export const publicPageRsvpSchema = z.object({
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
-  dietary: z.string().max(500).trim().optional().default(''),
-  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
 });
 
@@ -310,8 +292,6 @@ export const publicRsvpSchema = z.object({
     errorMap: () => ({ message: 'Please select an attendance option' }),
   }),
   guestCount: z.number().int().min(1).max(5).optional().default(1),
-  dietary: z.string().max(500).trim().optional().default(''),
-  partnerDietary: z.string().max(500).trim().optional().default(''),
   message: z.string().max(1000).trim().optional().default(''),
   eventId: z.number().int().positive(),
 });
@@ -419,7 +399,6 @@ export interface RSVPCheckResponse {
     token: string;
     status: AttendanceStatus;
     guestCount: number;
-    dietary: string | null;
     message: string | null;
   };
   guest?: { name: string };

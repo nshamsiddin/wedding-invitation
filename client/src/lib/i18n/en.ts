@@ -32,9 +32,7 @@ export type Translations = {
   guestCountHint: string;
   guestCountSingle: string;
   guestCountPlural: string;
-  dietaryLabel: string;
-  dietaryPlaceholder: string;
-  dietaryOptional: string;
+  optionalLabel: string;
   messageLabel: string;
   messagePlaceholder: string;
   messageOptional: string;
@@ -126,8 +124,6 @@ export type Translations = {
   thankYouRegistering: string;
   // Image alt text
   happyCoupleAlt: string;
-  // RSVP form — partner dietary field
-  partnerDietaryLabel: string;
   // Success screen — post-RSVP calendar CTA
   addToCalendar: string;
   // RSVP slide — seating preference note
@@ -180,9 +176,7 @@ export const en: Translations = {
   guestCountHint: 'Guest count includes the invitee',
   guestCountSingle: 'guest',
   guestCountPlural: 'guests',
-  dietaryLabel: 'Dietary Restrictions',
-  dietaryPlaceholder: 'e.g. Vegetarian, Gluten-free, Nut allergy',
-  dietaryOptional: '(optional)',
+  optionalLabel: '(optional)',
   messageLabel: 'Message to the Happy Couple',
   messagePlaceholder: 'Share your well wishes or a personal note…',
   messageOptional: '(optional)',
@@ -285,7 +279,6 @@ export const en: Translations = {
   youreRegistered: "You're registered!",
   thankYouRegistering: 'Thank you for registering. We look forward to celebrating with you.',
   happyCoupleAlt: 'The happy couple',
-  partnerDietaryLabel: "Partner's Dietary Restrictions",
   addToCalendar: 'Add to Calendar',
   seatingPreferenceNote: 'We kindly request that you indicate attendance preference for the seating order in the wedding hall.',
   nudgeSubtext: 'You can find the options below.',

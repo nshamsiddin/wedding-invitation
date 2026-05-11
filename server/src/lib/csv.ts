@@ -21,8 +21,6 @@ export interface CSVRow {
   eventSlug: string;
   status: string;
   guestCount: number;
-  dietary: string | null;
-  partnerDietary: string | null;
   message: string | null;
   tableNumber: number | null;
   invitationLink: string;
@@ -46,7 +44,7 @@ export interface AcceptedInvitationLinkRow {
 const CSV_HEADERS = [
   'Guest ID', 'Name', 'Partner Name', 'Phone',
   'Event', 'Event Slug', 'Status', 'Guest Count',
-  'Dietary Restrictions', 'Partner Dietary', 'Message',
+  'Message',
   'Table Number', 'Invitation Link', 'RSVP Date', 'Updated At',
 ];
 
@@ -60,8 +58,6 @@ export function toCSV(rows: CSVRow[]): string {
     r.eventSlug,
     r.status,
     r.guestCount,
-    r.dietary ?? '',
-    r.partnerDietary ?? '',
     r.message ?? '',
     r.tableNumber ?? '',
     r.invitationLink,
@@ -98,8 +94,6 @@ export function toEventTableCSV(groups: EventTableCSVGroup[]): string {
         row.eventSlug,
         row.status,
         row.guestCount,
-        row.dietary ?? '',
-        row.partnerDietary ?? '',
         row.message ?? '',
         row.tableNumber ?? '',
         row.invitationLink,

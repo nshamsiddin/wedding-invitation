@@ -21,7 +21,6 @@ import GuestTable, { TablePicker } from '../../components/admin/GuestTable';
 import AddGuestModal from '../../components/admin/AddGuestModal';
 import BulkAddGuestsModal from '../../components/admin/BulkAddGuestsModal';
 import EditGuestModal from '../../components/admin/EditGuestModal';
-import EditInvitationModal from '../../components/admin/EditInvitationModal';
 import NotificationBell from '../../components/admin/NotificationBell';
 
 // ─── Static shareable link cards ─────────────────────────────────────────────
@@ -534,7 +533,6 @@ export default function DashboardPage() {
   const [showAddModal, setShowAddModal]           = useState(false);
   const [showBulkModal, setShowBulkModal]         = useState(false);
   const [editingGuest, setEditingGuest]           = useState<AdminGuest | null>(null);
-  const [editingInvitation, setEditingInvitation] = useState<{ inv: AdminInvitation; guest: AdminGuest } | null>(null);
   const [deletingGuest, setDeletingGuest]         = useState<AdminGuest | null>(null);
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
   const [selectedGuestIds, setSelectedGuestIds] = useState<Set<number>>(new Set());
@@ -695,16 +693,33 @@ export default function DashboardPage() {
     },
   });
 
+  // Full-form invitation update — used by EditGuestModal's per-event editor
+  // (which still needs to PATCH multiple fields atomically when the admin
+  // edits a guest's contact). The standalone "Edit RSVP" modal has been
+  // retired now that status / count / table / language are all inline.
   const updateInvMutation = useMutation({
     mutationFn: ({ id, values }: { id: number; values: UpdateInvitationValues }) =>
       adminApi.updateInvitation(id, values),
     onError: () => toast.error('Failed to update RSVP'),
     onSuccess: () => {
-      setEditingInvitation(null);
       setEditingGuest(null);
       toast.success('RSVP updated');
       qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
       qc.invalidateQueries({ queryKey: ['admin', 'events'] });
+    },
+  });
+
+  // Inline language edits: the language only affects which locale the guest
+  // sees when opening their invitation link, so we just need to refresh the
+  // guests query for the new chip to render.
+  const updateLanguageMutation = useMutation({
+    mutationFn: ({ id, language }: { id: number; language: 'en' | 'tr' | 'uz' }) =>
+      adminApi.updateInvitation(id, { language }),
+    onError: () => toast.error('Failed to update language'),
+    onSuccess: (_data, { language }) => {
+      const flag = language === 'en' ? '\u{1F1EC}\u{1F1E7}' : language === 'tr' ? '\u{1F1F9}\u{1F1F7}' : '\u{1F1FA}\u{1F1FF}';
+      toast.success(`Language: ${flag} ${language.toUpperCase()}`);
+      qc.invalidateQueries({ queryKey: ['admin', 'guests'] });
     },
   });
 
@@ -720,8 +735,7 @@ export default function DashboardPage() {
   });
 
   // Inline status change from the badge in the guest table. Separate from the
-  // full-form RSVP edit so we can show a focused, single-field success toast
-  // (and skip closing/reopening the EditInvitationModal).
+  // full-form RSVP edit so we can show a focused, single-field success toast.
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: 'attending' | 'declined' | 'pending' }) =>
       adminApi.updateInvitation(id, { status }),
@@ -866,7 +880,6 @@ export default function DashboardPage() {
                     eventIds,
                     status: 'pending',
                     guestCount: 1,
-                    dietary: '',
                     message: '',
                     language: 'en',
                   },
@@ -924,9 +937,6 @@ export default function DashboardPage() {
     updateGuestMutation.mutate({ id, values });
 
   const handleUpdateInvFromUnified = (id: number, values: UpdateInvitationValues) =>
-    updateInvMutation.mutate({ id, values });
-
-  const handleUpdateInv = (id: number, values: UpdateInvitationValues) =>
     updateInvMutation.mutate({ id, values });
 
   const handleAddToEvent = (guestId: number, eventId: number) =>
@@ -1585,7 +1595,6 @@ export default function DashboardPage() {
               })
             }
             onEditGuest={setEditingGuest}
-            onEditInvitation={(inv, guest) => setEditingInvitation({ inv, guest })}
             onDeleteGuest={setDeletingGuest}
             onDeleteInvitation={setDeletingInvitation}
             onUpdateTableNumber={(invId, tableNumber) =>
@@ -1596,6 +1605,9 @@ export default function DashboardPage() {
             }
             onUpdateGuestCount={(invId, guestCount) =>
               updateGuestCountMutation.mutate({ id: invId, guestCount })
+            }
+            onUpdateLanguage={(invId, language) =>
+              updateLanguageMutation.mutate({ id: invId, language })
             }
             existingTables={availableTables}
             onFilterByTable={setTableFilter}
@@ -1633,14 +1645,6 @@ export default function DashboardPage() {
         isContactPending={updateGuestMutation.isPending}
         isInvitationPending={updateInvMutation.isPending}
         isAddToEventPending={addInvitationMutation.isPending}
-      />
-
-      <EditInvitationModal
-        invitation={editingInvitation?.inv ?? null}
-        guest={editingInvitation?.guest ?? null}
-        onClose={() => setEditingInvitation(null)}
-        onSubmit={handleUpdateInv}
-        isPending={updateInvMutation.isPending}
       />
 
       {/* ── Delete Guest confirmation ─────────────────────────────────────── */}

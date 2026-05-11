@@ -164,8 +164,6 @@ function PublicPageForm({ eventSlug }: PublicPageFormProps) {
       phone: '',
       status: 'attending',
       guestCount: 1,
-      dietary: '',
-      partnerDietary: '',
       message: '',
     },
   });
