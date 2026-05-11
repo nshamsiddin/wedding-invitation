@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import type { AdminGuest, AdminInvitation, FuzzyGuestMatch } from '../../lib/api';
+import type { AdminGuest, AdminInvitation } from '../../lib/api';
 import type {
   AddGuestValues,
   UpdateGuestContactValues,
@@ -36,6 +36,59 @@ const VENUE_META: Record<string, { displayName: string; city: string }> = {
   tashkent: { displayName: 'Tashkent', city: 'Ofarin Restaurant' },
   ankara:   { displayName: 'Ankara',   city: "Park L'Amore" },
 };
+
+function normalizeGuestName(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function bigrams(value: string): string[] {
+  if (value.length < 2) return value.length === 1 ? [value] : [];
+  const pairs: string[] = [];
+  for (let i = 0; i < value.length - 1; i += 1) pairs.push(value.slice(i, i + 2));
+  return pairs;
+}
+
+function diceCoefficient(a: string, b: string): number {
+  if (a === b) return 1;
+  const aPairs = bigrams(a);
+  const bPairs = bigrams(b);
+  if (aPairs.length === 0 || bPairs.length === 0) return 0;
+  const counts = new Map<string, number>();
+  for (const p of aPairs) counts.set(p, (counts.get(p) ?? 0) + 1);
+  let matches = 0;
+  for (const p of bPairs) {
+    const c = counts.get(p) ?? 0;
+    if (c > 0) {
+      matches += 1;
+      counts.set(p, c - 1);
+    }
+  }
+  return (2 * matches) / (aPairs.length + bPairs.length);
+}
+
+function tokenJaccard(a: string, b: string): number {
+  const aTokens = new Set(a.split(' ').filter(Boolean));
+  const bTokens = new Set(b.split(' ').filter(Boolean));
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let intersection = 0;
+  for (const token of aTokens) if (bTokens.has(token)) intersection += 1;
+  const union = aTokens.size + bTokens.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function fuzzyNameSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const dice = diceCoefficient(a, b);
+  const jaccard = tokenJaccard(a, b);
+  return (dice * 0.7) + (jaccard * 0.3);
+}
 
 interface ShareableLinkCardProps {
   venue: string;
@@ -265,12 +318,6 @@ export default function DashboardPage() {
 
   // ── Filter state ────────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
-  const [duplicateSearchInput, setDuplicateSearchInput] = useState('');
-  const [duplicateSearchTerm, setDuplicateSearchTerm] = useState('');
-  useEffect(() => {
-    const id = setTimeout(() => setDuplicateSearchTerm(duplicateSearchInput.trim()), 250);
-    return () => clearTimeout(id);
-  }, [duplicateSearchInput]);
 
   // Search: controlled input value with 300 ms debounce before hitting the API
   const [searchInput, setSearchInput] = useState('');
@@ -320,14 +367,6 @@ export default function DashboardPage() {
   const guests    = guestsData?.guests ?? [];
   const guestTotal = guestsData?.total ?? 0;
 
-  const { data: duplicateData, isFetching: duplicateLoading } = useQuery({
-    queryKey: ['admin', 'fuzzy-duplicates', duplicateSearchTerm],
-    queryFn: () => adminApi.getFuzzyGuestMatches(duplicateSearchTerm),
-    enabled: duplicateSearchTerm.length >= 2,
-    staleTime: 10_000,
-  });
-  const duplicateMatches: FuzzyGuestMatch[] = duplicateData?.matches ?? [];
-
   const { data: availableTables = [] } = useQuery({
     queryKey: ['admin', 'tables', selectedEventId],
     queryFn: () => adminApi.getTableNumbers(selectedEventId ?? undefined),
@@ -335,6 +374,53 @@ export default function DashboardPage() {
   });
 
   const filteredGuests = guests;
+  const duplicateMatches = useMemo(() => {
+    const candidates = filteredGuests.slice(0, 700);
+    const threshold = 0.86;
+    const results: Array<{ a: AdminGuest; b: AdminGuest; score: number; reason: 'phone' | 'name' }> = [];
+
+    const namesByGuest = new Map<number, string[]>();
+    const phonesByGuest = new Map<number, string | null>();
+    for (const guest of candidates) {
+      const names = [
+        normalizeGuestName(guest.name),
+        normalizeGuestName(guest.partnerName ?? ''),
+      ].filter(Boolean);
+      namesByGuest.set(guest.id, names);
+      phonesByGuest.set(guest.id, (guest.phone ?? '').replace(/\D/g, '') || null);
+    }
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      for (let j = i + 1; j < candidates.length; j += 1) {
+        const a = candidates[i];
+        const b = candidates[j];
+        if (!a || !b) continue;
+
+        const aPhone = phonesByGuest.get(a.id);
+        const bPhone = phonesByGuest.get(b.id);
+        if (aPhone && bPhone && aPhone === bPhone) {
+          results.push({ a, b, score: 0.99, reason: 'phone' });
+          continue;
+        }
+
+        const aNames = namesByGuest.get(a.id) ?? [];
+        const bNames = namesByGuest.get(b.id) ?? [];
+        let best = 0;
+        for (const an of aNames) {
+          for (const bn of bNames) {
+            best = Math.max(best, fuzzyNameSimilarity(an, bn));
+          }
+        }
+        if (best >= threshold) {
+          results.push({ a, b, score: Number(best.toFixed(3)), reason: 'name' });
+        }
+      }
+    }
+
+    return results
+      .sort((x, y) => y.score - x.score)
+      .slice(0, 12);
+  }, [filteredGuests]);
   const visibleGuestIdSet = useMemo(() => new Set(filteredGuests.map((g) => g.id)), [filteredGuests]);
   useEffect(() => {
     setSelectedGuestIds((prev) => {
@@ -996,46 +1082,26 @@ export default function DashboardPage() {
                   {at.duplicateDetectorHint}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="search"
-                  value={duplicateSearchInput}
-                  onChange={(e) => setDuplicateSearchInput(e.target.value)}
-                  placeholder={at.duplicateDetectorPlaceholder}
-                  aria-label={at.duplicateDetectorPlaceholder}
-                  className="w-full sm:w-80 px-3 py-2 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
-                  style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                />
-                {duplicateLoading && (
-                  <span
-                    className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
-                    style={{ borderColor: `${GOLD} transparent transparent transparent` }}
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-              {duplicateSearchTerm.length < 2 ? (
-                <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                  {at.duplicateDetectorTooShort}
-                </p>
-              ) : duplicateMatches.length === 0 ? (
+              {duplicateMatches.length === 0 ? (
                 <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
                   {at.duplicateDetectorNoMatches}
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {duplicateMatches.map((m) => (
+                  {duplicateMatches.map((m, idx) => (
                     <div
-                      key={m.id}
+                      key={`${m.a.id}-${m.b.id}-${idx}`}
                       className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2.5 py-2"
                       style={{ background: CREAM, border: `1px solid ${GOLD_DIM}` }}
                     >
                       <div className="min-w-0">
                         <p className="text-xs font-sans font-semibold truncate" style={{ color: ESPRESSO }}>
-                          {m.name}
+                          {m.a.name} ↔ {m.b.name}
                         </p>
                         <p className="text-[11px] font-sans truncate" style={{ color: ESPRESSO_DIM }}>
-                          {m.partnerName ? `& ${m.partnerName}` : '—'} · {m.phone ?? 'no phone'} · {m.matchedOn}
+                          {m.reason === 'phone'
+                            ? `${m.a.phone ?? '—'} = ${m.b.phone ?? '—'}`
+                            : `${m.a.partnerName ?? '—'} · ${m.b.partnerName ?? '—'}`}
                         </p>
                       </div>
                       <span
