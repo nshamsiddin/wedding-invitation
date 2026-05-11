@@ -212,17 +212,11 @@ router.get('/events', requireAuth, async (_req: Request, res: Response): Promise
 
 // ─── Guests (with their invitations) ────────────────────────────────────────
 
-const GUESTS_PAGE_LIMIT = 100; // max guests returned per page
-const MESSAGES_PAGE_LIMIT = 50; // max guest wishes/messages returned per page
-
 router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
   const status = req.query['status'] as string | undefined;
   const tableNumber = req.query['tableNumber'] ? parseInt(req.query['tableNumber'] as string, 10) : undefined;
   const search = req.query['search'] as string | undefined;
-  const page   = Math.max(1, parseInt((req.query['page'] as string) ?? '1', 10) || 1);
-  const limit  = Math.min(GUESTS_PAGE_LIMIT, Math.max(1, parseInt((req.query['limit'] as string) ?? String(GUESTS_PAGE_LIMIT), 10) || GUESTS_PAGE_LIMIT));
-  const offset = (page - 1) * limit;
 
   try {
     // Resolve which guest IDs match the event/status filter
@@ -257,7 +251,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
           .map((r) => r.guestId)
           .filter((id): id is number => id !== null);
         if (matchingGuestIds.length === 0) {
-          res.json({ guests: [], total: 0, page, limit });
+          res.json({ guests: [], total: 0 });
           return;
         }
       }
@@ -294,22 +288,20 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
 
     const whereClause = guestConditions.length > 0 ? and(...guestConditions) : undefined;
 
-    // Run count + paginated fetch in parallel
+    // Run count + fetch in parallel (no pagination: return complete filtered set)
     const [totalRows, guestRows] = await Promise.all([
       db.select({ value: count() }).from(schema.guests).where(whereClause),
       db
         .select()
         .from(schema.guests)
         .where(whereClause)
-        .orderBy(desc(schema.guests.createdAt))
-        .limit(limit)
-        .offset(offset),
+        .orderBy(desc(schema.guests.createdAt)),
     ]);
 
     const total = totalRows[0]?.value ?? 0;
 
     if (guestRows.length === 0) {
-      res.json({ guests: [], total, page, limit });
+      res.json({ guests: [], total });
       return;
     }
 
@@ -378,7 +370,7 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
       })),
     }));
 
-    res.json({ guests: result, total, page, limit });
+    res.json({ guests: result, total });
   } catch (error) {
     logger.error({ err: error }, 'guest list error');
     res.status(500).json({ error: 'Failed to fetch guests' });
@@ -388,12 +380,6 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
 // GET /api/admin/messages — list all non-empty guest wishes/messages
 router.get('/messages', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const eventId = req.query['eventId'] ? parseInt(req.query['eventId'] as string, 10) : undefined;
-  const page = Math.max(1, parseInt((req.query['page'] as string) ?? '1', 10) || 1);
-  const limit = Math.min(
-    MESSAGES_PAGE_LIMIT,
-    Math.max(1, parseInt((req.query['limit'] as string) ?? String(MESSAGES_PAGE_LIMIT), 10) || MESSAGES_PAGE_LIMIT)
-  );
-  const offset = (page - 1) * limit;
 
   try {
     const conditions = [
@@ -427,9 +413,7 @@ router.get('/messages', requireAuth, async (req: Request, res: Response): Promis
         .innerJoin(schema.guests, eq(schema.guests.id, schema.guestInvitations.guestId))
         .leftJoin(schema.events, eq(schema.events.id, schema.guestInvitations.eventId))
         .where(whereClause)
-        .orderBy(desc(schema.guestInvitations.updatedAt))
-        .limit(limit)
-        .offset(offset),
+        .orderBy(desc(schema.guestInvitations.updatedAt)),
     ]);
 
     const total = totalRows[0]?.value ?? 0;
@@ -448,8 +432,6 @@ router.get('/messages', requireAuth, async (req: Request, res: Response): Promis
         updatedAt: row.updatedAt,
       })),
       total,
-      page,
-      limit,
     });
   } catch (error) {
     logger.error({ err: error, eventId }, 'message list error');

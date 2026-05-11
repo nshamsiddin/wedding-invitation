@@ -287,6 +287,7 @@ export default function DashboardPage() {
   const [editingInvitation, setEditingInvitation] = useState<{ inv: AdminInvitation; guest: AdminGuest } | null>(null);
   const [deletingGuest, setDeletingGuest]         = useState<AdminGuest | null>(null);
   const [deletingInvitation, setDeletingInvitation] = useState<AdminInvitation | null>(null);
+  const [selectedGuestIds, setSelectedGuestIds] = useState<Set<number>>(new Set());
 
   // Undo delete: store a snapshot of the guest before deletion for 5s
   const deletedGuestRef = useRef<AdminGuest | null>(null);
@@ -298,18 +299,11 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   });
 
-  const [guestPage, setGuestPage] = useState(1);
-
-  // Reset to page 1 whenever filters change
-  useEffect(() => { setGuestPage(1); }, [selectedEventId, statusFilters, search, tableFilter]);
-
   const guestQueryParams = {
     eventId: selectedEventId ?? undefined,
     status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
     tableNumber: tableFilter ?? undefined,
     search: search || undefined,
-    page: guestPage,
-    limit: 100,
   };
 
   const { data: guestsData, isLoading: guestsLoading } = useQuery({
@@ -319,8 +313,6 @@ export default function DashboardPage() {
   });
   const guests    = guestsData?.guests ?? [];
   const guestTotal = guestsData?.total ?? 0;
-  const guestLimit = guestsData?.limit ?? 100;
-  const totalPages = Math.ceil(guestTotal / guestLimit);
 
   const { data: availableTables = [] } = useQuery({
     queryKey: ['admin', 'tables', selectedEventId],
@@ -329,6 +321,52 @@ export default function DashboardPage() {
   });
 
   const filteredGuests = guests;
+  const visibleGuestIdSet = useMemo(() => new Set(filteredGuests.map((g) => g.id)), [filteredGuests]);
+  useEffect(() => {
+    setSelectedGuestIds((prev) => {
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (visibleGuestIdSet.has(id)) next.add(id);
+      }
+      return next;
+    });
+  }, [visibleGuestIdSet]);
+
+  const selectedGuests = useMemo(
+    () => filteredGuests.filter((g) => selectedGuestIds.has(g.id)),
+    [filteredGuests, selectedGuestIds],
+  );
+
+  const selectedInvitationCount = useMemo(() => (
+    selectedGuests.reduce((sum, g) => {
+      if (selectedEventId === null) return sum + g.invitations.length;
+      return sum + g.invitations.filter((i) => i.eventId === selectedEventId).length;
+    }, 0)
+  ), [selectedGuests, selectedEventId]);
+
+  const selectedPeopleCount = useMemo(() => (
+    selectedGuests.reduce((sum, g) => {
+      if (selectedEventId === null) {
+        return sum + g.invitations.reduce((inner, i) => inner + i.guestCount, 0);
+      }
+      return sum + g.invitations
+        .filter((i) => i.eventId === selectedEventId)
+        .reduce((inner, i) => inner + i.guestCount, 0);
+    }, 0)
+  ), [selectedGuests, selectedEventId]);
+
+  const selectedAttendingPeople = useMemo(() => (
+    selectedGuests.reduce((sum, g) => {
+      if (selectedEventId === null) {
+        return sum + g.invitations
+          .filter((i) => i.status === 'attending')
+          .reduce((inner, i) => inner + i.guestCount, 0);
+      }
+      return sum + g.invitations
+        .filter((i) => i.eventId === selectedEventId && i.status === 'attending')
+        .reduce((inner, i) => inner + i.guestCount, 0);
+    }, 0)
+  ), [selectedGuests, selectedEventId]);
   const visibleInvitationCount = useMemo(() => (
     filteredGuests.reduce((sum, g) => {
       if (selectedEventId === null) return sum + g.invitations.length;
@@ -545,6 +583,7 @@ export default function DashboardPage() {
     setStatusFilters([]);
     setSearchInput('');
     setTableFilter(null);
+    setSelectedGuestIds(new Set());
   };
 
   // Is any filter active? — show indicator
@@ -776,9 +815,6 @@ export default function DashboardPage() {
                     {isFiltered && (
                       <span className="ml-1 text-[rgba(184,146,74,0.9)]">· filtered</span>
                     )}
-                    {totalPages > 1 && (
-                      <span className="ml-1">· page {guestPage}/{totalPages}</span>
-                    )}
                   </span>
                 )}
               </h2>
@@ -902,10 +938,61 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          <div
+            className="mb-4 rounded-xl border p-3.5 flex flex-wrap items-center justify-between gap-3"
+            style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
+          >
+            <div>
+              <p className="text-xs font-sans font-semibold uppercase tracking-widest" style={{ color: ESPRESSO_DIM }}>
+                {at.verificationTitle}
+              </p>
+              <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
+                {at.verificationHint}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 text-xs font-sans" style={{ color: ESPRESSO }}>
+              <span className="px-2.5 py-1 rounded-full" style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}` }}>
+                {selectedGuestIds.size} {at.verificationSelected}
+              </span>
+              <span>{selectedInvitationCount} {selectedInvitationCount === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}</span>
+              <span>{selectedPeopleCount} {selectedPeopleCount === 1 ? at.personUnitSingular : at.personUnitPlural}</span>
+              <span>{at.statsAttending}: {selectedAttendingPeople} {at.personUnitPlural}</span>
+              <button
+                type="button"
+                disabled={selectedGuestIds.size === 0}
+                onClick={() => setSelectedGuestIds(new Set())}
+                className="px-2.5 py-1 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                style={{ border: `1px solid ${GOLD_DIM}`, color: ESPRESSO_DIM }}
+              >
+                {at.clearSelection}
+              </button>
+            </div>
+          </div>
+
           <GuestTable
             guests={filteredGuests}
             events={events}
             isLoading={guestsLoading}
+            selectedGuestIds={selectedGuestIds}
+            onToggleGuestSelection={(guestId) =>
+              setSelectedGuestIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(guestId)) next.delete(guestId);
+                else next.add(guestId);
+                return next;
+              })
+            }
+            onToggleSelectAllVisible={(checked) =>
+              setSelectedGuestIds((prev) => {
+                const next = new Set(prev);
+                if (checked) {
+                  for (const g of filteredGuests) next.add(g.id);
+                } else {
+                  for (const g of filteredGuests) next.delete(g.id);
+                }
+                return next;
+              })
+            }
             onEditGuest={setEditingGuest}
             onEditInvitation={(inv, guest) => setEditingInvitation({ inv, guest })}
             onDeleteGuest={setDeletingGuest}
@@ -915,29 +1002,6 @@ export default function DashboardPage() {
             }
           />
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <button
-                onClick={() => setGuestPage((p) => Math.max(1, p - 1))}
-                disabled={guestPage <= 1}
-                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-              >
-                ← Prev
-              </button>
-              <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                {guestPage} / {totalPages}
-              </span>
-              <button
-                onClick={() => setGuestPage((p) => Math.min(totalPages, p + 1))}
-                disabled={guestPage >= totalPages}
-                className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-              >
-                Next →
-              </button>
-            </div>
-          )}
         </section>
       </main>
 

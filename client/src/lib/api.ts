@@ -122,18 +122,14 @@ export const adminApi = {
     status?: string;
     tableNumber?: number;
     search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{ guests: AdminGuest[]; total: number; page: number; limit: number }> => {
-    const { data } = await api.get<{ guests: AdminGuest[]; total: number; page: number; limit: number }>('/admin/guests', { params });
+  }): Promise<{ guests: AdminGuest[]; total: number }> => {
+    const { data } = await api.get<{ guests: AdminGuest[]; total: number }>('/admin/guests', { params });
     return data;
   },
   getMessages: async (params?: {
     eventId?: number;
-    page?: number;
-    limit?: number;
-  }): Promise<{ messages: AdminGuestMessage[]; total: number; page: number; limit: number }> => {
-    const { data } = await api.get<{ messages: AdminGuestMessage[]; total: number; page: number; limit: number }>('/admin/messages', { params });
+  }): Promise<{ messages: AdminGuestMessage[]; total: number }> => {
+    const { data } = await api.get<{ messages: AdminGuestMessage[]; total: number }>('/admin/messages', { params });
     return data;
   },
   getTableNumbers: async (eventId?: number): Promise<number[]> => {

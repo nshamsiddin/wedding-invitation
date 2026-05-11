@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,8 +18,6 @@ export default function GuestWishesPage() {
   const { language, setLanguage } = useContext(LanguageContext);
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
-  const [messagePage, setMessagePage] = useState(1);
-  useEffect(() => { setMessagePage(1); }, [selectedEventId]);
 
   const { data: events = [] } = useQuery({
     queryKey: ['admin', 'events'],
@@ -29,8 +27,6 @@ export default function GuestWishesPage() {
 
   const messageQueryParams = {
     eventId: selectedEventId ?? undefined,
-    page: messagePage,
-    limit: 12,
   };
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
     queryKey: ['admin', 'messages', messageQueryParams],
@@ -40,8 +36,6 @@ export default function GuestWishesPage() {
 
   const guestMessages = messagesData?.messages ?? [];
   const guestMessagesTotal = messagesData?.total ?? 0;
-  const guestMessageLimit = messagesData?.limit ?? 12;
-  const guestMessagePages = Math.max(1, Math.ceil(guestMessagesTotal / guestMessageLimit));
 
   const statusLabelByValue: Record<AdminGuestMessage['status'], string> = {
     attending: at.statusAttending,
@@ -221,29 +215,6 @@ export default function GuestWishesPage() {
               ))
             )}
 
-            {!messagesLoading && guestMessagePages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-1">
-                <button
-                  onClick={() => setMessagePage((p) => Math.max(1, p - 1))}
-                  disabled={messagePage <= 1}
-                  className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                >
-                  ← Prev
-                </button>
-                <span className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                  {messagePage} / {guestMessagePages}
-                </span>
-                <button
-                  onClick={() => setMessagePage((p) => Math.min(guestMessagePages, p + 1))}
-                  disabled={messagePage >= guestMessagePages}
-                  className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                >
-                  Next →
-                </button>
-              </div>
-            )}
           </div>
         </section>
       </main>

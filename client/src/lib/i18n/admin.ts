@@ -65,6 +65,10 @@ export interface AdminTranslations {
   personUnitSingular: string;
   personUnitPlural: string;
   partySizeLabel: string;
+  verificationTitle: string;
+  verificationHint: string;
+  verificationSelected: string;
+  clearSelection: string;
 
   // Add Guest modal
   addGuestTitle: string;
@@ -179,6 +183,10 @@ const adminEn: AdminTranslations = {
   personUnitSingular: 'person',
   personUnitPlural: 'people',
   partySizeLabel: 'Party size',
+  verificationTitle: 'Verification mode',
+  verificationHint: 'Select entries to verify totals from only those rows.',
+  verificationSelected: 'selected',
+  clearSelection: 'Clear selection',
 
   addGuestTitle: 'Add Guest',
   fullName: 'Full Name',
@@ -281,6 +289,10 @@ const adminTr: AdminTranslations = {
   personUnitSingular: 'kişi',
   personUnitPlural: 'kişi',
   partySizeLabel: 'Grup sayısı',
+  verificationTitle: 'Doğrulama modu',
+  verificationHint: 'Sadece seçilen satırlardan toplamları doğrulamak için girişleri seçin.',
+  verificationSelected: 'seçili',
+  clearSelection: 'Seçimi temizle',
 
   addGuestTitle: 'Misafir Ekle',
   fullName: 'Ad Soyad',
@@ -383,6 +395,10 @@ const adminUz: AdminTranslations = {
   personUnitSingular: 'kishi',
   personUnitPlural: 'kishi',
   partySizeLabel: 'Guruh soni',
+  verificationTitle: 'Tekshirish rejimi',
+  verificationHint: "Faqat tanlangan qatorlardan jami sonlarni tekshirish uchun tanlang.",
+  verificationSelected: 'tanlangan',
+  clearSelection: 'Tanlovni tozalash',
 
   addGuestTitle: "Mehmon Qo'shish",
   fullName: "To'liq Ism",

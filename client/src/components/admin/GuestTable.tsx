@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import type { AdminGuest, AdminInvitation, AdminEvent } from '../../lib/api';
@@ -55,6 +55,9 @@ interface Props {
   guests: AdminGuest[];
   events: AdminEvent[];
   isLoading: boolean;
+  selectedGuestIds: Set<number>;
+  onToggleGuestSelection: (guestId: number) => void;
+  onToggleSelectAllVisible: (checked: boolean) => void;
   onEditGuest: (guest: AdminGuest) => void;
   onEditInvitation: (invitation: AdminInvitation, guest: AdminGuest) => void;
   onDeleteGuest: (guest: AdminGuest) => void;
@@ -401,6 +404,9 @@ export default function GuestTable({
   guests,
   events,
   isLoading,
+  selectedGuestIds,
+  onToggleGuestSelection,
+  onToggleSelectAllVisible,
   onEditGuest,
   onEditInvitation,
   onDeleteGuest,
@@ -428,7 +434,15 @@ export default function GuestTable({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const totalColSpan = 3 + events.length + 1 + 1;
+  const totalColSpan = 4 + events.length + 1 + 1;
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  const allVisibleSelected = sorted.length > 0 && sorted.every((g) => selectedGuestIds.has(g.id));
+  const someVisibleSelected = sorted.some((g) => selectedGuestIds.has(g.id));
+
+  useEffect(() => {
+    if (!headerCheckboxRef.current) return;
+    headerCheckboxRef.current.indeterminate = someVisibleSelected && !allVisibleSelected;
+  }, [someVisibleSelected, allVisibleSelected]);
 
   const columns: Array<{ key: SortKey; label: string }> = [
     { key: 'name',      label: at.colName },
@@ -440,6 +454,17 @@ export default function GuestTable({
       <table className="w-full text-sm font-sans" aria-label="Guest list">
         <thead>
           <tr style={{ borderBottom: `1px solid ${GOLD_DIM}`, background: CREAM }}>
+            <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
+              <input
+                ref={headerCheckboxRef}
+                type="checkbox"
+                checked={allVisibleSelected}
+                disabled={sorted.length === 0}
+                onChange={(e) => onToggleSelectAllVisible(e.currentTarget.checked)}
+                aria-label="Select all visible guests"
+                className="w-4 h-4 rounded border-[rgba(184,146,74,0.45)] focus:ring-[rgba(184,146,74,0.45)]"
+              />
+            </th>
             <th scope="col" className="px-3 py-3 text-left font-medium whitespace-nowrap" style={{ color: ESPRESSO_DIM }}>
               {at.colNumber}
             </th>
@@ -520,10 +545,28 @@ export default function GuestTable({
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.15 }}
                 className="transition-colors group"
-                style={{ borderBottom: `1px solid ${GOLD_DIM}` }}
+                style={{
+                  borderBottom: `1px solid ${GOLD_DIM}`,
+                  background: selectedGuestIds.has(guest.id) ? 'rgba(184,146,74,0.08)' : 'transparent',
+                }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = selectedGuestIds.has(guest.id)
+                    ? 'rgba(184,146,74,0.08)'
+                    : 'transparent';
+                }}
               >
+                {/* Row selection */}
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={selectedGuestIds.has(guest.id)}
+                    onChange={() => onToggleGuestSelection(guest.id)}
+                    aria-label={`Select ${guest.name}`}
+                    className="w-4 h-4 rounded border-[rgba(184,146,74,0.45)] focus:ring-[rgba(184,146,74,0.45)]"
+                  />
+                </td>
+
                 {/* Row number */}
                 <td className="px-3 py-3 whitespace-nowrap text-xs tabular-nums" style={{ color: ESPRESSO_DIM }}>
                   {rowIndex + 1}
