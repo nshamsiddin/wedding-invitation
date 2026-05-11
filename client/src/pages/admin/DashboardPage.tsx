@@ -37,59 +37,6 @@ const VENUE_META: Record<string, { displayName: string; city: string }> = {
   ankara:   { displayName: 'Ankara',   city: "Park L'Amore" },
 };
 
-function normalizeGuestName(value: string): string {
-  return value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function bigrams(value: string): string[] {
-  if (value.length < 2) return value.length === 1 ? [value] : [];
-  const pairs: string[] = [];
-  for (let i = 0; i < value.length - 1; i += 1) pairs.push(value.slice(i, i + 2));
-  return pairs;
-}
-
-function diceCoefficient(a: string, b: string): number {
-  if (a === b) return 1;
-  const aPairs = bigrams(a);
-  const bPairs = bigrams(b);
-  if (aPairs.length === 0 || bPairs.length === 0) return 0;
-  const counts = new Map<string, number>();
-  for (const p of aPairs) counts.set(p, (counts.get(p) ?? 0) + 1);
-  let matches = 0;
-  for (const p of bPairs) {
-    const c = counts.get(p) ?? 0;
-    if (c > 0) {
-      matches += 1;
-      counts.set(p, c - 1);
-    }
-  }
-  return (2 * matches) / (aPairs.length + bPairs.length);
-}
-
-function tokenJaccard(a: string, b: string): number {
-  const aTokens = new Set(a.split(' ').filter(Boolean));
-  const bTokens = new Set(b.split(' ').filter(Boolean));
-  if (aTokens.size === 0 || bTokens.size === 0) return 0;
-  let intersection = 0;
-  for (const token of aTokens) if (bTokens.has(token)) intersection += 1;
-  const union = aTokens.size + bTokens.size - intersection;
-  return union === 0 ? 0 : intersection / union;
-}
-
-function fuzzyNameSimilarity(a: string, b: string): number {
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const dice = diceCoefficient(a, b);
-  const jaccard = tokenJaccard(a, b);
-  return (dice * 0.7) + (jaccard * 0.3);
-}
-
 interface ShareableLinkCardProps {
   venue: string;
   lang: string;
@@ -374,53 +321,6 @@ export default function DashboardPage() {
   });
 
   const filteredGuests = guests;
-  const duplicateMatches = useMemo(() => {
-    const candidates = filteredGuests.slice(0, 700);
-    const threshold = 0.86;
-    const results: Array<{ a: AdminGuest; b: AdminGuest; score: number; reason: 'phone' | 'name' }> = [];
-
-    const namesByGuest = new Map<number, string[]>();
-    const phonesByGuest = new Map<number, string | null>();
-    for (const guest of candidates) {
-      const names = [
-        normalizeGuestName(guest.name),
-        normalizeGuestName(guest.partnerName ?? ''),
-      ].filter(Boolean);
-      namesByGuest.set(guest.id, names);
-      phonesByGuest.set(guest.id, (guest.phone ?? '').replace(/\D/g, '') || null);
-    }
-
-    for (let i = 0; i < candidates.length; i += 1) {
-      for (let j = i + 1; j < candidates.length; j += 1) {
-        const a = candidates[i];
-        const b = candidates[j];
-        if (!a || !b) continue;
-
-        const aPhone = phonesByGuest.get(a.id);
-        const bPhone = phonesByGuest.get(b.id);
-        if (aPhone && bPhone && aPhone === bPhone) {
-          results.push({ a, b, score: 0.99, reason: 'phone' });
-          continue;
-        }
-
-        const aNames = namesByGuest.get(a.id) ?? [];
-        const bNames = namesByGuest.get(b.id) ?? [];
-        let best = 0;
-        for (const an of aNames) {
-          for (const bn of bNames) {
-            best = Math.max(best, fuzzyNameSimilarity(an, bn));
-          }
-        }
-        if (best >= threshold) {
-          results.push({ a, b, score: Number(best.toFixed(3)), reason: 'name' });
-        }
-      }
-    }
-
-    return results
-      .sort((x, y) => y.score - x.score)
-      .slice(0, 12);
-  }, [filteredGuests]);
   const visibleGuestIdSet = useMemo(() => new Set(filteredGuests.map((g) => g.id)), [filteredGuests]);
   useEffect(() => {
     setSelectedGuestIds((prev) => {
@@ -728,6 +628,21 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <span className="hidden sm:inline">{at.openGuestWishes}</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/admin/duplicates')}
+              className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; e.currentTarget.style.borderColor = GOLD; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; e.currentTarget.style.borderColor = GOLD_DIM; }}
+              aria-label={at.openDuplicateDetector}
+              title={at.openDuplicateDetector}
+            >
+              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10M7 12h10m-7 5h7M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+              </svg>
+              <span className="hidden sm:inline">{at.openDuplicateDetector}</span>
             </button>
 
             {/* Language switcher — compact on mobile */}
@@ -1077,54 +992,6 @@ export default function DashboardPage() {
               >
                 {at.clearSelection}
               </button>
-            </div>
-          </div>
-
-          <div
-            className="mb-4 rounded-xl border p-3.5"
-            style={{ background: PARCHMENT, borderColor: GOLD_DIM }}
-          >
-            <div className="flex flex-col gap-3">
-              <div>
-                <p className="text-xs font-sans font-semibold uppercase tracking-widest" style={{ color: ESPRESSO_DIM }}>
-                  {at.duplicateDetectorTitle}
-                </p>
-                <p className="text-xs font-sans mt-0.5" style={{ color: ESPRESSO_DIM }}>
-                  {at.duplicateDetectorHint}
-                </p>
-              </div>
-              {duplicateMatches.length === 0 ? (
-                <p className="text-xs font-sans" style={{ color: ESPRESSO_DIM }}>
-                  {at.duplicateDetectorNoMatches}
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {duplicateMatches.map((m, idx) => (
-                    <div
-                      key={`${m.a.id}-${m.b.id}-${idx}`}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2.5 py-2"
-                      style={{ background: CREAM, border: `1px solid ${GOLD_DIM}` }}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-xs font-sans font-semibold truncate" style={{ color: ESPRESSO }}>
-                          {m.a.name} ↔ {m.b.name}
-                        </p>
-                        <p className="text-[11px] font-sans truncate" style={{ color: ESPRESSO_DIM }}>
-                          {m.reason === 'phone'
-                            ? `${m.a.phone ?? '—'} = ${m.b.phone ?? '—'}`
-                            : `${m.a.partnerName ?? '—'} · ${m.b.partnerName ?? '—'}`}
-                        </p>
-                      </div>
-                      <span
-                        className="text-[11px] font-sans font-semibold tabular-nums px-2 py-1 rounded-full whitespace-nowrap"
-                        style={{ background: 'rgba(184,146,74,0.12)', border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
-                      >
-                        {Math.round(m.score * 100)}% {at.duplicateDetectorScore}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 

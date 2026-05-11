@@ -13,6 +13,7 @@ import EventPage from './pages/EventPage';
 import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import GuestWishesPage from './pages/admin/GuestWishesPage';
+import DuplicateDetectorPage from './pages/admin/DuplicateDetectorPage';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 
 function InvitationChrome() {
@@ -77,6 +78,14 @@ function AppInner() {
             element={
               <ProtectedRoute>
                 <GuestWishesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/duplicates"
+            element={
+              <ProtectedRoute>
+                <DuplicateDetectorPage />
               </ProtectedRoute>
             }
           />

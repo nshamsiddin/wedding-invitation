@@ -45,7 +45,9 @@ export interface AdminTranslations {
   guestWishSingular: string;
   guestWishPlural: string;
   openGuestWishes: string;
+  openDuplicateDetector: string;
   backToGuestList: string;
+  backToDashboard: string;
 
   // Guest list section
   guestList: string;
@@ -170,7 +172,9 @@ const adminEn: AdminTranslations = {
   guestWishSingular: 'message',
   guestWishPlural: 'messages',
   openGuestWishes: 'Guest Wishes',
+  openDuplicateDetector: 'Duplicate Detector',
   backToGuestList: 'Back to Guest List',
+  backToDashboard: 'Back to Dashboard',
 
   guestList: 'Guest List',
   guestSingular: 'guest',
@@ -282,7 +286,9 @@ const adminTr: AdminTranslations = {
   guestWishSingular: 'mesaj',
   guestWishPlural: 'mesaj',
   openGuestWishes: 'Misafir Dilekleri',
+  openDuplicateDetector: 'Yinelenen Bulucu',
   backToGuestList: 'Misafir Listesine Dön',
+  backToDashboard: 'Panele Dön',
 
   guestList: 'Misafir Listesi',
   guestSingular: 'misafir',
@@ -394,7 +400,9 @@ const adminUz: AdminTranslations = {
   guestWishSingular: 'xabar',
   guestWishPlural: 'xabar',
   openGuestWishes: 'Mehmon Tilaklari',
+  openDuplicateDetector: 'Dublikat Aniqlagich',
   backToGuestList: "Mehmonlar Ro'yxatiga Qaytish",
+  backToDashboard: 'Boshqaruvga qaytish',
 
   guestList: "Mehmonlar Ro'yxati",
   guestSingular: 'mehmon',
