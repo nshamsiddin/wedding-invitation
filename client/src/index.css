@@ -3,7 +3,15 @@
 @tailwind utilities;
 
 /* ─── Custom Fonts ───────────────────────────────────────────────── */
-/* GlossilyEnigmatic: exclude digits (U+0030–0039) so they fall back to DM Sans */
+/* The display script font is now Allura (loaded via Google Fonts in
+   index.html). Allura ships with full Latin Extended-A coverage so
+   Turkish characters (İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü) render in the script
+   itself rather than per-glyph-falling-back to Cormorant Garamond. */
+
+/* GlossilyEnigmatic — retained for fast rollback only. The file lives
+   under public/fonts/ but is no longer referenced by --font-display.
+   Re-enable this @font-face block and add 'GlossilyEnigmatic' back to
+   the head of the --font-display chain to revert.
 @font-face {
   font-family: 'GlossilyEnigmatic';
   src: url('/fonts/GlossilyEnigmatic.ttf') format('truetype');
@@ -12,6 +20,7 @@
   font-display: swap;
   unicode-range: U+0000-002F, U+003A-10FFFF;
 }
+*/
 
 /* ─── CSS Custom Properties ─────────────────────────────────────── */
 :root {
@@ -31,8 +40,13 @@
   --shadow-sm: 0 2px 12px rgba(0,0,0,0.06);
   --shadow-md: 0 8px 32px rgba(0,0,0,0.08);
   --shadow-lg: 0 24px 80px rgba(0,0,0,0.10);
-  /* ── Display font: Glossily Enigmatic for names & cities; digits fall back to Cormorant Garamond ── */
-  --font-display: 'GlossilyEnigmatic', 'Cormorant Garamond', 'DM Sans', cursive;
+  /* ── Display font: Allura (script) for couple names & headings.
+       Allura has full Latin Extended-A coverage so Turkish characters
+       render in the script itself, not as a per-glyph Cormorant fall-
+       back. Cormorant Garamond stays in the chain for any glyph Allura
+       can't render (e.g. legacy admin uses), DM Sans is the final
+       safety net. ── */
+  --font-display: 'Allura', 'Cormorant Garamond', 'DM Sans', cursive;
   --font-display-style: normal;
   /* ── Digits: Cormorant Garamond for elegant countdown numbers ── */
   --font-digits: 'Cormorant Garamond', Georgia, serif;
