@@ -144,6 +144,8 @@ export interface AdminTranslations {
   seatingUnassignedCount: (count: number) => string;
   seatingUnassignedEmpty: string;
   seatingAddTable: string;
+  seatingTableCount: string;
+  seatingTablesCreated: (count: number) => string;
   seatingCapacity: string;
   seatingCapacityLabel: (filled: number, total: number) => string;
   seatingOverCapacity: string;
@@ -301,6 +303,8 @@ const adminEn: AdminTranslations = {
   seatingUnassignedCount: (count) => `${count} ${count === 1 ? 'guest' : 'guests'} unassigned`,
   seatingUnassignedEmpty: 'Everyone is seated.',
   seatingAddTable: 'Add table',
+  seatingTableCount: 'Count',
+  seatingTablesCreated: (count) => count === 1 ? 'Table created' : `${count} tables created`,
   seatingCapacity: 'Capacity',
   seatingCapacityLabel: (filled, total) => `${filled} / ${total} seats`,
   seatingOverCapacity: 'Over capacity',
@@ -460,6 +464,8 @@ const adminTr: AdminTranslations = {
   seatingUnassignedCount: (count) => `${count} misafir atanmamış`,
   seatingUnassignedEmpty: 'Herkes oturtuldu.',
   seatingAddTable: 'Masa ekle',
+  seatingTableCount: 'Adet',
+  seatingTablesCreated: (count) => count === 1 ? 'Masa oluşturuldu' : `${count} masa oluşturuldu`,
   seatingCapacity: 'Kapasite',
   seatingCapacityLabel: (filled, total) => `${filled} / ${total} kişi`,
   seatingOverCapacity: 'Kapasite aşıldı',
@@ -619,6 +625,8 @@ const adminUz: AdminTranslations = {
   seatingUnassignedCount: (count) => `${count} mehmon biriktirilmagan`,
   seatingUnassignedEmpty: "Hamma o'tirgan.",
   seatingAddTable: "Stol qo'shish",
+  seatingTableCount: 'Soni',
+  seatingTablesCreated: (count) => count === 1 ? "Stol qo'shildi" : `${count} ta stol qo'shildi`,
   seatingCapacity: "Sig'im",
   seatingCapacityLabel: (filled, total) => `${filled} / ${total} kishi`,
   seatingOverCapacity: "Sig'imdan oshdi",

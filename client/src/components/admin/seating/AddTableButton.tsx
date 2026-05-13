@@ -7,7 +7,15 @@ interface Props {
   /** Suggested table number for the next free slot, pre-filled in the input. */
   suggestedNumber: number;
   isPending: boolean;
-  onCreate: (values: { tableNumber: number; label: string | null; capacity: number }) => void;
+  /**
+   * Called with one or more table specs. When the admin sets count > 1 the
+   * form emits a batch of consecutively-numbered tables sharing the same
+   * capacity (and label, when provided), so we let the parent decide how to
+   * sequence the API calls.
+   */
+  onCreate: (
+    values: Array<{ tableNumber: number; label: string | null; capacity: number }>,
+  ) => void;
 }
 
 // ─── "Add table" floating card + inline form ──────────────────────────────
@@ -15,12 +23,19 @@ interface Props {
 // rest of the grid. Clicking it expands an in-place form rather than opening
 // a modal — adding tables in quick succession is the common case.
 
+const MAX_BATCH = 50;
+
 export default function AddTableButton({ suggestedNumber, isPending, onCreate }: Props) {
   const at = useAdminTranslation();
   const [expanded, setExpanded] = useState(false);
   const [label, setLabel] = useState('');
   const [capacity, setCapacity] = useState(10);
   const [tableNumber, setTableNumber] = useState(suggestedNumber);
+  // Count of tables to create in a single submit. Defaults to 1 so the
+  // common "add one table" path is unchanged. Cap at MAX_BATCH to prevent
+  // accidental fat-fingering (e.g. "100" instead of "10") from issuing a
+  // huge burst of requests.
+  const [count, setCount] = useState(1);
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   // When the suggested number changes (e.g. after another table was created),
@@ -45,13 +60,20 @@ export default function AddTableButton({ suggestedNumber, isPending, onCreate }:
     // arbitrary strings or use the spinner to bottom out at 0.
     const n = Number.isFinite(tableNumber) && tableNumber > 0 ? Math.floor(tableNumber) : suggestedNumber;
     const c = Number.isFinite(capacity) && capacity > 0 ? Math.floor(capacity) : 10;
-    onCreate({
-      tableNumber: n,
-      label: label.trim() || null,
+    const k = Number.isFinite(count) && count > 0 ? Math.min(MAX_BATCH, Math.floor(count)) : 1;
+    const trimmedLabel = label.trim() || null;
+    // Build a sequential block of tables starting at `n`. Sharing the same
+    // optional label is intentional — admins can rename individual tables
+    // afterward via the edit modal if they want unique names.
+    const batch = Array.from({ length: k }, (_, i) => ({
+      tableNumber: n + i,
+      label: trimmedLabel,
       capacity: c,
-    });
-    // Reset form for the next add — keep the capacity setting since admins
-    // typically have a consistent table size across the venue.
+    }));
+    onCreate(batch);
+    // Reset only the fields that should reset between submits. Keep capacity
+    // and count since admins typically have a consistent table size and may
+    // want to keep adding more in batches of the same shape.
     setLabel('');
   };
 
@@ -154,6 +176,24 @@ export default function AddTableButton({ suggestedNumber, isPending, onCreate }:
               max={50}
               value={capacity}
               onChange={(e) => setCapacity(parseInt(e.target.value, 10) || 10)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                if (e.key === 'Escape') setExpanded(false);
+              }}
+              className="px-2 py-1 rounded-md text-xs font-sans tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: CREAM, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 flex-1">
+            <span className="text-[10px] font-sans uppercase tracking-wider" style={{ color: ESPRESSO_DIM }}>
+              {at.seatingTableCount}
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={MAX_BATCH}
+              value={count}
+              onChange={(e) => setCount(parseInt(e.target.value, 10) || 1)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); submit(); }
                 if (e.key === 'Escape') setExpanded(false);

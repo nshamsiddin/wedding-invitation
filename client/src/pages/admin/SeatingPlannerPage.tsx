@@ -77,11 +77,33 @@ export default function SeatingPlannerPage() {
   });
 
   // ── Mutations ────────────────────────────────────────────────────────────
+  // Batch-create one or more tables. We post them sequentially because the
+  // backend enforces a unique (eventId, tableNumber) constraint and parallel
+  // requests with consecutive numbers race against the cache invalidation
+  // path. Sequential keeps error reporting simple too — we know exactly
+  // which row failed.
   const createTableMutation = useMutation({
-    mutationFn: eventTablesApi.create,
+    mutationFn: async (
+      values: Array<{ tableNumber: number; label: string | null; capacity: number }>,
+    ) => {
+      if (selectedEventId == null) {
+        throw new Error('No event selected');
+      }
+      let created = 0;
+      for (const v of values) {
+        await eventTablesApi.create({
+          eventId: selectedEventId,
+          tableNumber: v.tableNumber,
+          label: v.label,
+          capacity: v.capacity,
+        });
+        created += 1;
+      }
+      return created;
+    },
     onError: () => toast.error('Failed to create table'),
-    onSuccess: () => {
-      toast.success('Table created');
+    onSuccess: (created) => {
+      toast.success(at.seatingTablesCreated(created));
       qc.invalidateQueries({ queryKey: ['admin', 'eventTables', selectedEventId] });
       qc.invalidateQueries({ queryKey: ['admin', 'tables'] });
     },
@@ -364,14 +386,7 @@ export default function SeatingPlannerPage() {
                       <AddTableButton
                         suggestedNumber={suggestedNumber}
                         isPending={createTableMutation.isPending}
-                        onCreate={(values) =>
-                          createTableMutation.mutate({
-                            eventId: selectedEventId,
-                            tableNumber: values.tableNumber,
-                            label: values.label,
-                            capacity: values.capacity,
-                          })
-                        }
+                        onCreate={(values) => createTableMutation.mutate(values)}
                       />
                     </div>
                   </div>
@@ -390,14 +405,7 @@ export default function SeatingPlannerPage() {
                     <AddTableButton
                       suggestedNumber={suggestedNumber}
                       isPending={createTableMutation.isPending}
-                      onCreate={(values) =>
-                        createTableMutation.mutate({
-                          eventId: selectedEventId,
-                          tableNumber: values.tableNumber,
-                          label: values.label,
-                          capacity: values.capacity,
-                        })
-                      }
+                      onCreate={(values) => createTableMutation.mutate(values)}
                     />
                   </div>
                 )}

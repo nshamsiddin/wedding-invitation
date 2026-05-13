@@ -238,7 +238,13 @@ export default function NotificationBell() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-10 z-50 w-80 rounded-xl shadow-xl overflow-hidden"
+            // On mobile (< sm) the bell button isn't at the viewport's right
+            // edge — there are several action buttons after it — so the
+            // panel's `right-0` (anchored to the bell's wrapper) would push
+            // the 320px panel off-screen to the left. Fall back to fixed
+            // positioning that hugs the viewport edges instead, then
+            // restore the original anchored layout from `sm:` upward.
+            className="fixed left-3 right-3 top-14 z-50 w-auto sm:absolute sm:left-auto sm:right-0 sm:top-10 sm:w-80 rounded-xl shadow-xl overflow-hidden"
             style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}` }}
           >
             {/* Header */}
