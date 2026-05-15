@@ -227,10 +227,11 @@ export default function GuestChip({
         // The button is also a real <button>, giving us free keyboard support
         // (Enter / Space) without conflicting with @dnd-kit's keyboard sensor.
         //
-        // Visual: a real, always-visible pill (subtle red tint at rest,
-        // saturated red on hover/focus). An invisible 16px button with a
-        // 60% opacity 10px icon was effectively hidden — admins reported
-        // not realising the chip was removable at all.
+        // Visual: a discreet pill at rest using the chip's warm palette so it
+        // reads as an action affordance — not an error. Hover/focus shifts
+        // it to a saturated red to confirm the destructive intent before
+        // the click lands. An earlier red-tinted rest state looked like a
+        // permanent error indicator on every seated chip.
         <button
           type="button"
           onPointerDownCapture={(e) => e.stopPropagation()}
@@ -259,9 +260,9 @@ export default function GuestChip({
             marginLeft: 2,
             marginRight: -3,
             borderRadius: '50%',
-            background: 'rgba(220,38,38,0.10)',
-            border: '1px solid rgba(220,38,38,0.25)',
-            color: '#B91C1C',
+            background: 'transparent',
+            border: `1px solid ${GOLD_DIM}`,
+            color: ESPRESSO_DIM,
             cursor: 'pointer',
             flexShrink: 0,
             transition: 'background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s',
@@ -273,10 +274,20 @@ export default function GuestChip({
             e.currentTarget.style.transform = 'scale(1.08)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(220,38,38,0.10)';
-            e.currentTarget.style.borderColor = 'rgba(220,38,38,0.25)';
-            e.currentTarget.style.color = '#B91C1C';
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = GOLD_DIM;
+            e.currentTarget.style.color = ESPRESSO_DIM;
             e.currentTarget.style.transform = 'none';
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.background = '#DC2626';
+            e.currentTarget.style.borderColor = '#DC2626';
+            e.currentTarget.style.color = '#FFFFFF';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = GOLD_DIM;
+            e.currentTarget.style.color = ESPRESSO_DIM;
           }}
         >
           <svg
