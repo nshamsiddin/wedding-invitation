@@ -164,6 +164,8 @@ export interface AdminTranslations {
   seatingDragHint: string;
   seatingFreeSeats: (n: number) => string;
   seatingTotals: (seated: number, total: number) => string;
+  seatingExportXlsx: string;
+  seatingExportXlsxHint: string;
 
   // Data backup / restore
   backupTitle: string;
@@ -326,6 +328,8 @@ const adminEn: AdminTranslations = {
   seatingDragHint: 'Drag a guest onto a table to seat them.',
   seatingFreeSeats: (n) => `${n} ${n === 1 ? 'seat' : 'seats'} free`,
   seatingTotals: (seated, total) => `${seated} / ${total} guests seated`,
+  seatingExportXlsx: 'MİSAFİR LİSTESİ',
+  seatingExportXlsxHint: 'Download Turkish-template guest list (HOSTES + MESAJ sheets)',
 
   backupTitle: 'Data Backup',
   backupDesc: 'Download a snapshot of every guest, invitation, event, and notification. Restore later to roll back any changes.',
@@ -487,6 +491,8 @@ const adminTr: AdminTranslations = {
   seatingDragHint: 'Bir misafiri masaya sürükleyerek oturtun.',
   seatingFreeSeats: (n) => `${n} boş yer`,
   seatingTotals: (seated, total) => `${seated} / ${total} misafir oturtuldu`,
+  seatingExportXlsx: 'MİSAFİR LİSTESİ',
+  seatingExportXlsxHint: 'Misafir listesini Excel olarak indir (HOSTES + MESAJ sayfaları)',
 
   backupTitle: 'Veri Yedekleme',
   backupDesc: 'Tüm misafirler, davetler, etkinlikler ve bildirimlerin anlık görüntüsünü indirin. Daha sonra geri yükleyerek değişiklikleri geri alabilirsiniz.',
@@ -648,6 +654,8 @@ const adminUz: AdminTranslations = {
   seatingDragHint: "Mehmonni stol ustiga olib o'ting.",
   seatingFreeSeats: (n) => `${n} ta bo'sh joy`,
   seatingTotals: (seated, total) => `${seated} / ${total} mehmon o'tqazildi`,
+  seatingExportXlsx: 'MİSAFİR LİSTESİ',
+  seatingExportXlsxHint: 'Mehmonlar ro\u02bcyxatini Excel sifatida yuklab oling (HOSTES + MESAJ varaqlari)',
 
   backupTitle: 'Maʼlumotlar Zaxirasi',
   backupDesc: "Barcha mehmonlar, takliflar, tadbirlar va bildirishnomalarning to'liq nusxasini yuklab oling. Keyinroq qayta tiklab o'zgarishlarni bekor qilishingiz mumkin.",

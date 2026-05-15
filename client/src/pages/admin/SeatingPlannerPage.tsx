@@ -231,6 +231,34 @@ export default function SeatingPlannerPage() {
               </p>
             </div>
           </div>
+
+          {/* Export MİSAFİR LİSTESİ workbook — only enabled when an event is
+              selected, since table numbers are per-event. The button is the
+              one and only seating-planner-specific export, so we surface it
+              prominently in the header next to the back-to-dashboard arrow. */}
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedEventId == null) return;
+              adminApi.exportMisafirListesiXLSX(selectedEventId);
+              toast.success(at.seatingExportXlsx);
+            }}
+            disabled={selectedEventId == null}
+            aria-label={at.seatingExportXlsxHint}
+            title={selectedEventId == null ? at.seatingPickEvent : at.seatingExportXlsxHint}
+            className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: GOLD, color: ESPRESSO }}
+            onMouseEnter={(e) => {
+              if (selectedEventId != null) e.currentTarget.style.background = '#A07840';
+            }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = GOLD; }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span className="hidden sm:inline">{at.seatingExportXlsx}</span>
+            <span className="sm:hidden">.xlsx</span>
+          </button>
         </div>
       </header>
 

@@ -194,6 +194,12 @@ export const adminApi = {
     const params = eventId ? `?eventId=${eventId}` : '';
     window.location.href = `/api/admin/export/accepted-links${params}`;
   },
+  // Triggers a browser download of the Turkish wedding-planner workbook
+  // ("ÖRNEK MİSAFİR LİSTESİ" .xlsx) for the given event. eventId is required
+  // — table numbers are per-event so a multi-event export wouldn't make sense.
+  exportMisafirListesiXLSX: (eventId: number): void => {
+    window.location.href = `/api/admin/export/misafir-listesi?eventId=${eventId}`;
+  },
   // Triggers the browser to download a full JSON backup of every data table.
   // Implemented as a navigation rather than a fetch so the browser handles
   // the file save dialog natively.

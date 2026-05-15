@@ -22,6 +22,7 @@ import {
   updateEventTableSchema,
 } from '@invitation/shared';
 import { toAcceptedInvitationLinksCSV, toCSV, toEventTableCSV } from '../lib/csv.js';
+import { buildMisafirListesi } from '../lib/misafirListesi.js';
 import type { AttendanceStatus } from '@invitation/shared';
 
 const router = Router();
@@ -1659,5 +1660,106 @@ router.get('/export/accepted-links', requireAuth, async (req: Request, res: Resp
     res.status(500).json({ error: 'Failed to export accepted invitation links' });
   }
 });
+
+// GET /api/admin/export/misafir-listesi — Turkish wedding-planner workbook
+// (HOSTES + MESAJ sheets) for the selected event. The file matches the
+// "ÖRNEK MİSAFİR LİSTESİ" template that the SMS-broadcast tooling expects:
+// the HOSTES sheet groups guests by table for the door hostess, and the
+// MESAJ sheet is a flat per-guest list with an auto-generated SMS body for
+// each row. eventId is required because table numbers are per-event.
+router.get(
+  '/export/misafir-listesi',
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const rawEventId = req.query['eventId'];
+    if (typeof rawEventId !== 'string' || rawEventId.length === 0) {
+      res.status(400).json({ error: 'eventId query parameter is required' });
+      return;
+    }
+    const eventId = parseInt(rawEventId, 10);
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      res.status(400).json({ error: 'eventId must be a positive integer' });
+      return;
+    }
+
+    try {
+      const eventRow = await db
+        .select({
+          name: schema.events.name,
+          slug: schema.events.slug,
+          date: schema.events.date,
+          time: schema.events.time,
+          venueName: schema.events.venueName,
+          venueAddress: schema.events.venueAddress,
+          mapsUrl: schema.events.mapsUrl,
+        })
+        .from(schema.events)
+        .where(eq(schema.events.id, eventId))
+        .limit(1);
+
+      if (eventRow.length === 0) {
+        res.status(404).json({ error: 'Event not found' });
+        return;
+      }
+
+      const event = eventRow[0]!;
+
+      // Only export claimed/personal invitations — the workbook is for the
+      // hostess at the door, and unclaimed open links don't have a guest.
+      const guestRows = await db
+        .select({
+          name: schema.guests.name,
+          partnerName: schema.guests.partnerName,
+          phone: schema.guests.phone,
+          guestCount: schema.guestInvitations.guestCount,
+          tableNumber: schema.guestInvitations.tableNumber,
+          status: schema.guestInvitations.status,
+        })
+        .from(schema.guestInvitations)
+        .innerJoin(schema.guests, eq(schema.guests.id, schema.guestInvitations.guestId))
+        .where(
+          and(
+            eq(schema.guestInvitations.eventId, eventId),
+            isNotNull(schema.guestInvitations.guestId),
+          ),
+        );
+
+      const buffer = buildMisafirListesi(
+        {
+          name: event.name,
+          date: event.date,
+          time: event.time,
+          venueName: event.venueName,
+          venueAddress: event.venueAddress,
+          mapsUrl: event.mapsUrl,
+        },
+        guestRows.map((r) => ({
+          name: r.name,
+          partnerName: r.partnerName,
+          phone: r.phone,
+          guestCount: r.guestCount,
+          tableNumber: r.tableNumber,
+          status: r.status as 'attending' | 'declined' | 'maybe' | 'pending',
+        })),
+      );
+
+      // Filename: ASCII-safe slug + ISO date for downloads from any locale.
+      const datePart = new Date().toISOString().split('T')[0];
+      const safeSlug = event.slug.replace(/[^a-zA-Z0-9_-]/g, '-');
+      const filename = `misafir-listesi-${safeSlug}-${datePart}.xlsx`;
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', String(buffer.length));
+      res.end(buffer);
+    } catch (error) {
+      logger.error({ err: error, eventId }, 'misafir listesi export error');
+      res.status(500).json({ error: 'Failed to export guest list' });
+    }
+  },
+);
 
 export default router;
