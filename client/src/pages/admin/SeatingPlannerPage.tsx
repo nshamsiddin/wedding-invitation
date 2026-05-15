@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -46,6 +46,20 @@ export default function SeatingPlannerPage() {
   // ── Editing/deleting a table ─────────────────────────────────────────────
   const [editingTable, setEditingTable] = useState<EventTableWithOccupancy | null>(null);
   const [deletingTable, setDeletingTable] = useState<EventTableWithOccupancy | null>(null);
+
+  // ── Filter state for the table grid ──────────────────────────────────────
+  // A single search input filters the visible TableCards. We search both
+  // ways admins reach for a table:
+  //   - by table number / label (e.g. "12", "Family")
+  //   - by the name of any seated guest at that table (e.g. "John")
+  // Matching tables on either field is enough to locate a row in seconds
+  // even with 50+ tables on screen.
+  const [tableFilter, setTableFilter] = useState('');
+  // Wraps the tables grid so we can scope `querySelector` lookups to it (a
+  // global query would also match the unassigned column's chips, which can
+  // contain the same names). Used by the "scroll first match into view"
+  // effect below.
+  const tablesGridRef = useRef<HTMLDivElement>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: events = [], isLoading: eventsLoading } = useQuery({
@@ -150,9 +164,63 @@ export default function SeatingPlannerPage() {
     useSensor(KeyboardSensor),
   );
 
-  const { active, onDragStart, onDragEnd, onDragCancel } = useSeatingDnd({
+  const { active, onDragStart, onDragEnd, onDragCancel, clearAssignment, assignToTable } = useSeatingDnd({
     eventId: selectedEventId ?? 0,
   });
+
+  // Whenever the filter narrows the result list, gently scroll the first
+  // match into view *and* briefly pulse-highlight it so the admin's eye
+  // catches the answer instead of having to scan the page. We keep this in
+  // an effect (rather than on the input's `onChange`) so it also runs when
+  // the underlying tables array changes — e.g. an admin filters by a guest
+  // name and that guest then gets reassigned in another tab.
+  useEffect(() => {
+    const q = tableFilter.trim();
+    if (!q) return;
+    if (!tablesGridRef.current) return;
+    const node = tablesGridRef.current.querySelector<HTMLElement>('[data-table-number]');
+    if (!node) return;
+    // `block: 'nearest'` keeps a card that's already on-screen still — it
+    // only scrolls if the card is partially or fully out of view. That's
+    // less jarring than always centering.
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Pulse a temporary outline so the admin's eye catches the match. We
+    // toggle a CSS class for the duration of one transition, then remove
+    // it so subsequent filter edits can re-trigger the same animation.
+    node.classList.add('seat-filter-pulse');
+    const t = window.setTimeout(() => {
+      node.classList.remove('seat-filter-pulse');
+    }, 900);
+    return () => {
+      window.clearTimeout(t);
+      node.classList.remove('seat-filter-pulse');
+    };
+  }, [tableFilter, tables, guests]);
+
+  // Apply the search filter. We do this in JS rather than re-querying the
+  // server because the table list is small (tens, never thousands) and the
+  // search includes per-table seated guest names which we already have in
+  // the in-memory guests cache. A trimmed empty query short-circuits to the
+  // full list — no allocation, no token noise on the next render.
+  const filteredTables = useMemo(() => {
+    const q = tableFilter.trim().toLowerCase();
+    if (!q) return tables;
+    return tables.filter((t) => {
+      // 1. Table number — admins type "12" to find table 12.
+      if (String(t.tableNumber).includes(q)) return true;
+      // 2. Custom label — case-insensitive substring (e.g. "fam" matches "Family").
+      if (t.label && t.label.toLowerCase().includes(q)) return true;
+      // 3. Seated guest names — surface the table when *anyone* at it matches,
+      //    so an admin can answer "where is X seated?" without scanning all cards.
+      for (const g of guests) {
+        const inv = g.invitations.find(
+          (i) => i.eventId === selectedEventId && i.tableNumber === t.tableNumber,
+        );
+        if (inv && g.name.toLowerCase().includes(q)) return true;
+      }
+      return false;
+    });
+  }, [tables, guests, tableFilter, selectedEventId]);
 
   // Pre-compute the "next free table number" for the AddTableButton's input.
   // Considers both event_tables rows and any legacy numbers still on
@@ -396,7 +464,12 @@ export default function SeatingPlannerPage() {
             // These are good enough out of the box; we don't need to override.
           >
             <div className="grid grid-cols-[260px_1fr] gap-4">
-              <UnassignedColumn guests={guests} eventId={selectedEventId} />
+              <UnassignedColumn
+                guests={guests}
+                eventId={selectedEventId}
+                tables={tables}
+                onAssignToTable={assignToTable}
+              />
 
               <section aria-label="Tables" className="min-w-0">
                 {tables.length === 0 ? (
@@ -419,23 +492,113 @@ export default function SeatingPlannerPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {tables.map((t) => (
-                      <TableCard
-                        key={t.tableNumber}
-                        table={t}
-                        guests={guests}
-                        eventId={selectedEventId}
-                        onEdit={setEditingTable}
-                        onDelete={setDeletingTable}
-                      />
-                    ))}
-                    <AddTableButton
-                      suggestedNumber={suggestedNumber}
-                      isPending={createTableMutation.isPending}
-                      onCreate={(values) => createTableMutation.mutate(values)}
-                    />
-                  </div>
+                  <>
+                    {/* Filter bar — searches both table number/label and the
+                        names of seated guests so admins can locate a row in
+                        seconds even with 50+ tables on screen. */}
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="relative flex-1 max-w-sm">
+                        <svg
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                          style={{ color: ESPRESSO_DIM }}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                          type="search"
+                          value={tableFilter}
+                          onChange={(e) => setTableFilter(e.target.value)}
+                          placeholder={at.seatingFilterTablesPlaceholder}
+                          aria-label={at.seatingFilterTablesPlaceholder}
+                          className="w-full pl-7 pr-7 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                          style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+                        />
+                        {tableFilter && (
+                          <button
+                            type="button"
+                            onClick={() => setTableFilter('')}
+                            aria-label={at.seatingFilterClear}
+                            title={at.seatingFilterClear}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                            style={{ color: ESPRESSO_DIM, background: 'transparent' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      {tableFilter && (
+                        <span
+                          className="text-[11px] font-sans tabular-nums"
+                          style={{ color: ESPRESSO_DIM }}
+                          aria-live="polite"
+                        >
+                          {at.seatingFilterMatches(filteredTables.length, tables.length)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div ref={tablesGridRef} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+                      {filteredTables.map((t) => (
+                        <TableCard
+                          key={t.tableNumber}
+                          table={t}
+                          guests={guests}
+                          eventId={selectedEventId}
+                          onEdit={setEditingTable}
+                          onDelete={setDeletingTable}
+                          onClearAssignment={clearAssignment}
+                          onAssignToTable={assignToTable}
+                          activeDrag={
+                            active
+                              ? {
+                                  invitationId: active.invitationId,
+                                  guestCount: active.guestCount,
+                                  currentTableNumber: active.currentTableNumber,
+                                }
+                              : null
+                          }
+                        />
+                      ))}
+                      {/* Hide the "Add table" affordance when a filter is active —
+                          mixing it into a partial result list is confusing
+                          ("did adding a table change the filter?"). It comes
+                          back the moment the filter clears. */}
+                      {!tableFilter && (
+                        <AddTableButton
+                          suggestedNumber={suggestedNumber}
+                          isPending={createTableMutation.isPending}
+                          onCreate={(values) => createTableMutation.mutate(values)}
+                        />
+                      )}
+                    </div>
+
+                    {tableFilter && filteredTables.length === 0 && (
+                      <div
+                        className="mt-3 rounded-xl p-8 text-center"
+                        style={{ background: PARCHMENT, border: `1px dashed ${GOLD_DIM}` }}
+                      >
+                        <p className="font-sans text-sm font-semibold mb-1" style={{ color: ESPRESSO }}>
+                          {at.seatingFilterNoMatches}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setTableFilter('')}
+                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+                          style={{ background: GOLD, color: '#FFFFFF' }}
+                        >
+                          {at.seatingFilterClear}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             </div>

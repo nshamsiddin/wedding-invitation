@@ -6,6 +6,16 @@ import { adminApi } from '../../../lib/api';
 import type { AdminGuest, EventTableWithOccupancy } from '../../../lib/api';
 import { useAdminTranslation } from '../../../lib/i18n/admin';
 
+// Re-exported helper signatures so callers (TableCard) can type their props
+// without importing tanstack-query types directly.
+export type ClearAssignmentFn = (invitationId: number, guestName: string) => void;
+export type AssignToTableFn = (
+  invitationId: number,
+  guestName: string,
+  tableNumber: number,
+  tableLabel: string | null,
+) => void;
+
 // ─── Cache shape ─────────────────────────────────────────────────────────────
 // The dashboard's getGuests query returns this shape; we mirror it here to
 // keep optimistic updates type-safe.
@@ -199,11 +209,43 @@ export function useSeatingDnd({ eventId }: UseSeatingDndArgs) {
     [moveMutation, at],
   );
 
+  // Click-driven unassign (the chip's "×" button). Reuses the same
+  // optimistic-update mutation as drag-drop so cache, toast, and rollback
+  // behaviour stay identical to the unassign-by-drag path.
+  const clearAssignment: ClearAssignmentFn = useCallback(
+    (invitationId, guestName) => {
+      moveMutation.mutate({
+        invitationId,
+        tableNumber: null,
+        guestName,
+        newTableLabel: null,
+      });
+    },
+    [moveMutation],
+  );
+
+  // Click-driven assign (the table card's "+ Add guest" picker). Same
+  // mutation, same optimistic update — the only difference vs drag-drop is
+  // that the user is choosing a guest first and the table second.
+  const assignToTable: AssignToTableFn = useCallback(
+    (invitationId, guestName, tableNumber, tableLabel) => {
+      moveMutation.mutate({
+        invitationId,
+        tableNumber,
+        guestName,
+        newTableLabel: tableLabel,
+      });
+    },
+    [moveMutation],
+  );
+
   return {
     active,
     onDragStart,
     onDragEnd,
     onDragCancel,
     isPending: moveMutation.isPending,
+    clearAssignment,
+    assignToTable,
   };
 }

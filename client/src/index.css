@@ -890,3 +890,32 @@ body {
     background: none;
   }
 }
+
+/* ─── Seating planner: filter-match pulse ──────────────────────────────────
+   Briefly outlines the first table that matches the seating-planner search
+   bar. Lives here (not as inline styles on TableCard) because keyframes
+   can't be inlined and the rule needs to outlive the timeout that adds the
+   class — i.e. the class must be re-addable to the same node on consecutive
+   filter edits. The timing stays under 1s so consecutive matches don't pile
+   up animations on the user. */
+@keyframes seat-filter-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 146, 74, 0);
+  }
+  35% {
+    box-shadow: 0 0 0 6px rgba(184, 146, 74, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 146, 74, 0);
+  }
+}
+
+.seat-filter-pulse {
+  animation: seat-filter-pulse 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat-filter-pulse {
+    animation: none;
+  }
+}

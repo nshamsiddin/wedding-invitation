@@ -18,6 +18,11 @@ interface Props {
   ) => void;
 }
 
+// We collapse the form back to the trigger button as soon as a submit
+// transitions from "in-flight" to "settled" — i.e. once `isPending` flips
+// false again. This is cleaner than passing an `onCreated` callback through
+// because the parent already owns the mutation lifecycle.
+
 // ─── "Add table" floating card + inline form ──────────────────────────────
 // Renders as a sibling card to TableCards so its visual weight matches the
 // rest of the grid. Clicking it expands an in-place form rather than opening
@@ -36,14 +41,31 @@ export default function AddTableButton({ suggestedNumber, isPending, onCreate }:
   // accidental fat-fingering (e.g. "100" instead of "10") from issuing a
   // huge burst of requests.
   const [count, setCount] = useState(1);
+  // Tracks whether we have a submit in flight so we can detect the
+  // pending → settled edge and collapse the form on success.
+  const submittedRef = useRef(false);
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   // When the suggested number changes (e.g. after another table was created),
   // refresh the input value — but only when the form is collapsed so we never
-  // wipe out something the admin is actively typing.
+  // wipe out a number the admin is actively typing. The "stale suggestion
+  // after a successful submit" footgun is now handled by auto-collapsing on
+  // success, which means the next time the form re-opens this effect picks
+  // up the new suggestedNumber cleanly.
   useEffect(() => {
     if (!expanded) setTableNumber(suggestedNumber);
   }, [suggestedNumber, expanded]);
+
+  // Collapse and reset the form when a submit completes successfully. We
+  // detect "submit just finished" by watching `submittedRef`, which we set
+  // on submit and clear here once `isPending` flips back to false.
+  useEffect(() => {
+    if (!isPending && submittedRef.current) {
+      submittedRef.current = false;
+      setExpanded(false);
+      setLabel('');
+    }
+  }, [isPending]);
 
   // Auto-focus the label input on expand so an admin can immediately start
   // naming the table (the common first action).
@@ -70,6 +92,7 @@ export default function AddTableButton({ suggestedNumber, isPending, onCreate }:
       label: trimmedLabel,
       capacity: c,
     }));
+    submittedRef.current = true;
     onCreate(batch);
     // Reset only the fields that should reset between submits. Keep capacity
     // and count since admins typically have a consistent table size and may

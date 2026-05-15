@@ -2,6 +2,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import type { AdminGuest, AdminInvitation } from '../../../lib/api';
 import { ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM, PARCHMENT } from '../../../garden/tokens';
+import { useAdminTranslation } from '../../../lib/i18n/admin';
 
 interface Props {
   guest: AdminGuest;
@@ -9,6 +10,23 @@ interface Props {
   /** True when this chip is currently being dragged — used to hide the original
    *  cell while the DragOverlay renders the floating clone. */
   isOverlay?: boolean;
+  /** When provided, renders a small "×" button on the chip that clears the
+   *  invitation's table assignment. Only rendered when the invitation is
+   *  actually seated (`tableNumber != null`) — passing this on an unassigned
+   *  chip is silently ignored. */
+  onUnassign?: () => void;
+  /** When provided, renders a small toggle on the left of the chip that
+   *  controls multi-select. Only meaningful for unassigned chips today —
+   *  bulk-assigning an already-seated guest is a future extension. */
+  onToggleSelect?: (event: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => void;
+  /** True when this chip is part of the active selection. Combined with
+   *  `selectionActive` this drives both the visual highlight and the
+   *  always-visible selection toggle. */
+  isSelected?: boolean;
+  /** True when *any* chip in the same list is currently selected. We use it
+   *  to keep the selection toggle visible on every chip while a selection
+   *  exists, so admins don't have to hover-hunt to add to the selection. */
+  selectionActive?: boolean;
 }
 
 // ─── RSVP status indicator dot ──────────────────────────────────────────────
@@ -31,11 +49,23 @@ const STATUS_LABEL: Record<string, string> = {
   pending: 'No response',
 };
 
-export default function GuestChip({ guest, invitation, isOverlay = false }: Props) {
+export default function GuestChip({
+  guest,
+  invitation,
+  isOverlay = false,
+  onUnassign,
+  onToggleSelect,
+  isSelected = false,
+  selectionActive = false,
+}: Props) {
+  const at = useAdminTranslation();
   // Each draggable's id is the invitation id — the canonical key for "this
   // person at this event". A guest with multiple events would have one chip
   // per event, but the seating planner is single-event so this is unambiguous.
   const dragId = `invitation:${invitation.id}`;
+  // The button only makes sense when the chip is actually seated. We also
+  // hide it on the overlay copy so the floating drag preview stays clean.
+  const showUnassignButton = !isOverlay && onUnassign != null && invitation.tableNumber != null;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
     data: {
@@ -57,6 +87,11 @@ export default function GuestChip({ guest, invitation, isOverlay = false }: Prop
   // floating clone. The overlay copy itself sets `isOverlay` to skip this.
   const sourceFaded = isDragging && !isOverlay;
 
+  // Background/border shifts when this chip is part of the active selection
+  // so a quick scan of the unassigned column reveals what's been picked.
+  // We keep the change subtle so it doesn't fight the existing status dot.
+  const selectionTint = !isOverlay && isSelected;
+
   return (
     <div
       ref={setNodeRef}
@@ -67,12 +102,15 @@ export default function GuestChip({ guest, invitation, isOverlay = false }: Prop
         transform: isOverlay ? undefined : CSS.Translate.toString(transform),
         opacity: sourceFaded ? 0.35 : 1,
         cursor: isOverlay ? 'grabbing' : 'grab',
-        background: PARCHMENT,
-        border: `1px solid ${GOLD_DIM}`,
+        background: selectionTint ? 'rgba(184,146,74,0.18)' : PARCHMENT,
+        border: `1px solid ${selectionTint ? GOLD : GOLD_DIM}`,
         boxShadow: isOverlay
           ? '0 8px 24px rgba(42,31,26,0.18), 0 2px 6px rgba(42,31,26,0.08)'
-          : undefined,
+          : selectionTint
+            ? '0 0 0 2px rgba(184,146,74,0.20)'
+            : undefined,
         touchAction: 'none', // required by @dnd-kit pointer/touch sensors
+        transition: 'background 0.12s, box-shadow 0.12s, border-color 0.12s',
       }}
       className="group/chip inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-sans font-medium select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
       // The listeners include both pointer/touch and keyboard event handlers.
@@ -80,8 +118,74 @@ export default function GuestChip({ guest, invitation, isOverlay = false }: Prop
       // Attributes include role="button", aria-roledescription="draggable",
       // and tabIndex=0 — making the chip keyboard-actionable for free.
       {...attributes}
-      aria-label={`${guest.name}${invitation.guestCount > 1 ? `, party of ${invitation.guestCount}` : ''}. ${statusLabel}. Drag to a table to assign seating.`}
+      aria-label={`${guest.name}${invitation.guestCount > 1 ? `, party of ${invitation.guestCount}` : ''}. ${statusLabel}.${onToggleSelect ? ` ${isSelected ? 'Selected. ' : ''}Click circle to ${isSelected ? 'deselect' : 'select'}. ` : ' '}Drag to a table to assign seating.`}
     >
+      {onToggleSelect && (
+        // Selection toggle — a small circle/checkbox on the left of the chip.
+        // Hidden at rest until hovered; pinned visible whenever *any* chip in
+        // the column is selected so the user can keep adding without hunting.
+        // We stopPropagation on every pointer event so this never starts a
+        // drag.
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={isSelected}
+          onPointerDownCapture={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect({
+              shiftKey: e.shiftKey,
+              metaKey: e.metaKey,
+              ctrlKey: e.ctrlKey,
+            });
+          }}
+          aria-label={isSelected ? 'Deselect' : 'Select for bulk assignment'}
+          title={isSelected ? 'Deselect' : 'Select'}
+          className={
+            (selectionActive || isSelected
+              ? 'opacity-100'
+              : 'opacity-0 group-hover/chip:opacity-100 focus-visible:opacity-100') +
+            ' focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]'
+          }
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 14,
+            height: 14,
+            marginLeft: -3,
+            padding: 0,
+            borderRadius: '50%',
+            background: isSelected ? GOLD : PARCHMENT,
+            border: `1.5px solid ${isSelected ? GOLD : GOLD_DIM}`,
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'background 0.12s, border-color 0.12s, opacity 0.12s',
+          }}
+        >
+          {isSelected && (
+            <svg
+              width="9"
+              height="9"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          )}
+        </button>
+      )}
       <span
         aria-hidden="true"
         title={statusLabel}
@@ -114,6 +218,81 @@ export default function GuestChip({ guest, invitation, isOverlay = false }: Prop
         >
           ×{invitation.guestCount}
         </span>
+      )}
+      {showUnassignButton && (
+        // The chip's parent is the drag handle — we have to stop the pointer
+        // sequence on the button itself so clicking it never starts a drag.
+        // Using `onPointerDownCapture` ensures we beat @dnd-kit's pointer
+        // listener (which is registered on the parent in the bubbling phase).
+        // The button is also a real <button>, giving us free keyboard support
+        // (Enter / Space) without conflicting with @dnd-kit's keyboard sensor.
+        //
+        // Visual: a real, always-visible pill (subtle red tint at rest,
+        // saturated red on hover/focus). An invisible 16px button with a
+        // 60% opacity 10px icon was effectively hidden — admins reported
+        // not realising the chip was removable at all.
+        <button
+          type="button"
+          onPointerDownCapture={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            // Block Enter/Space from being interpreted as "start drag" by
+            // @dnd-kit's keyboard sensor. The default button activation still
+            // fires onClick, so removal works as expected.
+            if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUnassign?.();
+          }}
+          aria-label={`${at.seatingUnassignFromTable}: ${guest.name}`}
+          title={at.seatingUnassignFromTable}
+          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 18,
+            height: 18,
+            padding: 0,
+            marginLeft: 2,
+            marginRight: -3,
+            borderRadius: '50%',
+            background: 'rgba(220,38,38,0.10)',
+            border: '1px solid rgba(220,38,38,0.25)',
+            color: '#B91C1C',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#DC2626';
+            e.currentTarget.style.borderColor = '#DC2626';
+            e.currentTarget.style.color = '#FFFFFF';
+            e.currentTarget.style.transform = 'scale(1.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(220,38,38,0.10)';
+            e.currentTarget.style.borderColor = 'rgba(220,38,38,0.25)';
+            e.currentTarget.style.color = '#B91C1C';
+            e.currentTarget.style.transform = 'none';
+          }}
+        >
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
       )}
     </div>
   );

@@ -166,6 +166,23 @@ export interface AdminTranslations {
   seatingTotals: (seated: number, total: number) => string;
   seatingExportXlsx: string;
   seatingExportXlsxHint: string;
+  seatingUnassignFromTable: string;
+  seatingAddGuest: string;
+  seatingAddGuestToTable: string;
+  seatingNoUnassignedGuests: string;
+  seatingTableFullHint: string;
+  seatingFilterTablesPlaceholder: string;
+  seatingFilterClear: string;
+  seatingFilterMatches: (matched: number, total: number) => string;
+  seatingFilterNoMatches: string;
+  seatingStatusFilterHint: string;
+  statusFilterLabel: (status: 'attending' | 'maybe' | 'pending' | 'declined') => string;
+  seatingBulkSelectionToolbar: string;
+  seatingSelectedCount: (count: number, headcount: number) => string;
+  seatingSelectAllVisible: string;
+  seatingDeselectAll: string;
+  seatingBulkAssignTo: string;
+  seatingBulkWouldOverflow: (n: number) => string;
 
   // Data backup / restore
   backupTitle: string;
@@ -330,6 +347,33 @@ const adminEn: AdminTranslations = {
   seatingTotals: (seated, total) => `${seated} / ${total} guests seated`,
   seatingExportXlsx: 'MİSAFİR LİSTESİ',
   seatingExportXlsxHint: 'Download Turkish-template guest list (HOSTES + MESAJ sheets)',
+  seatingUnassignFromTable: 'Remove from this table',
+  seatingAddGuest: 'Add guest',
+  seatingAddGuestToTable: 'Add an unassigned guest to this table',
+  seatingNoUnassignedGuests: 'No unassigned guests',
+  seatingTableFullHint: 'Table is full — adding will exceed capacity',
+  seatingFilterTablesPlaceholder: 'Search tables or guests…',
+  seatingFilterClear: 'Clear filter',
+  seatingFilterMatches: (matched, total) => `${matched} of ${total} tables`,
+  seatingFilterNoMatches: 'No tables match',
+  seatingStatusFilterHint: 'Click to toggle. Alt-click to show only this status.',
+  statusFilterLabel: (status) =>
+    status === 'attending'
+      ? 'Attending'
+      : status === 'maybe'
+        ? 'Maybe'
+        : status === 'pending'
+          ? 'Pending'
+          : 'Declined',
+  seatingBulkSelectionToolbar: 'Bulk selection',
+  seatingSelectedCount: (count, headcount) =>
+    headcount === count
+      ? `${count} selected`
+      : `${count} selected · ${headcount} ${headcount === 1 ? 'person' : 'people'}`,
+  seatingSelectAllVisible: 'Select all',
+  seatingDeselectAll: 'Deselect all',
+  seatingBulkAssignTo: 'Assign to table…',
+  seatingBulkWouldOverflow: (n) => `Would exceed capacity by ${n}`,
 
   backupTitle: 'Data Backup',
   backupDesc: 'Download a snapshot of every guest, invitation, event, and notification. Restore later to roll back any changes.',
@@ -493,6 +537,33 @@ const adminTr: AdminTranslations = {
   seatingTotals: (seated, total) => `${seated} / ${total} misafir oturtuldu`,
   seatingExportXlsx: 'MİSAFİR LİSTESİ',
   seatingExportXlsxHint: 'Misafir listesini Excel olarak indir (HOSTES + MESAJ sayfaları)',
+  seatingUnassignFromTable: 'Bu masadan kaldır',
+  seatingAddGuest: 'Misafir ekle',
+  seatingAddGuestToTable: 'Atanmamış bir misafiri bu masaya ekle',
+  seatingNoUnassignedGuests: 'Atanmamış misafir yok',
+  seatingTableFullHint: 'Masa dolu — eklemek kapasiteyi aşacak',
+  seatingFilterTablesPlaceholder: 'Masa veya misafir ara…',
+  seatingFilterClear: 'Filtreyi temizle',
+  seatingFilterMatches: (matched, total) => `${total} masadan ${matched} eşleşti`,
+  seatingFilterNoMatches: 'Eşleşen masa yok',
+  seatingStatusFilterHint: 'Açıp kapatmak için tıklayın. Sadece bu durumu göstermek için Alt+tıklayın.',
+  statusFilterLabel: (status) =>
+    status === 'attending'
+      ? 'Geliyor'
+      : status === 'maybe'
+        ? 'Belki'
+        : status === 'pending'
+          ? 'Bekliyor'
+          : 'Gelmiyor',
+  seatingBulkSelectionToolbar: 'Toplu seçim',
+  seatingSelectedCount: (count, headcount) =>
+    headcount === count
+      ? `${count} seçili`
+      : `${count} seçili · ${headcount} kişi`,
+  seatingSelectAllVisible: 'Tümünü seç',
+  seatingDeselectAll: 'Seçimi kaldır',
+  seatingBulkAssignTo: 'Masaya ata…',
+  seatingBulkWouldOverflow: (n) => `Kapasiteyi ${n} aşar`,
 
   backupTitle: 'Veri Yedekleme',
   backupDesc: 'Tüm misafirler, davetler, etkinlikler ve bildirimlerin anlık görüntüsünü indirin. Daha sonra geri yükleyerek değişiklikleri geri alabilirsiniz.',
@@ -656,6 +727,33 @@ const adminUz: AdminTranslations = {
   seatingTotals: (seated, total) => `${seated} / ${total} mehmon o'tqazildi`,
   seatingExportXlsx: 'MİSAFİR LİSTESİ',
   seatingExportXlsxHint: 'Mehmonlar ro\u02bcyxatini Excel sifatida yuklab oling (HOSTES + MESAJ varaqlari)',
+  seatingUnassignFromTable: 'Stoldan olib tashlash',
+  seatingAddGuest: "Mehmon qo'shish",
+  seatingAddGuestToTable: "Biriktirilmagan mehmonni shu stolga qo'shish",
+  seatingNoUnassignedGuests: "Biriktirilmagan mehmon yo'q",
+  seatingTableFullHint: "Stol to'la — qo'shish sig'imdan oshib ketadi",
+  seatingFilterTablesPlaceholder: 'Stol yoki mehmon qidirish…',
+  seatingFilterClear: 'Filtrni tozalash',
+  seatingFilterMatches: (matched, total) => `${total} ta stoldan ${matched} ta moslik`,
+  seatingFilterNoMatches: 'Mos keluvchi stol topilmadi',
+  seatingStatusFilterHint: "Bosib o'zgartirish. Faqat shu holatni ko'rsatish uchun Alt+bosing.",
+  statusFilterLabel: (status) =>
+    status === 'attending'
+      ? 'Keladi'
+      : status === 'maybe'
+        ? "Ehtimol"
+        : status === 'pending'
+          ? 'Kutilmoqda'
+          : 'Kelmaydi',
+  seatingBulkSelectionToolbar: 'Toplu tanlash',
+  seatingSelectedCount: (count, headcount) =>
+    headcount === count
+      ? `${count} ta tanlandi`
+      : `${count} ta tanlandi · ${headcount} ta odam`,
+  seatingSelectAllVisible: 'Hammasini tanlash',
+  seatingDeselectAll: 'Tanlovni bekor qilish',
+  seatingBulkAssignTo: 'Stolga biriktirish…',
+  seatingBulkWouldOverflow: (n) => `Sig'imdan ${n} ta oshib ketadi`,
 
   backupTitle: 'Maʼlumotlar Zaxirasi',
   backupDesc: "Barcha mehmonlar, takliflar, tadbirlar va bildirishnomalarning to'liq nusxasini yuklab oling. Keyinroq qayta tiklab o'zgarishlarni bekor qilishingiz mumkin.",
