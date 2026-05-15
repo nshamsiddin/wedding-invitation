@@ -88,11 +88,10 @@ export default function TableCard({
   })();
 
   // `tableLabel` is used for accessible names (aria-label, confirm dialogs).
-  // The visible header now leads with a prominent number badge, so the title
-  // text falls back to a generic localized "Table" word when no custom label
-  // is set — avoiding "5  Table 5" duplication next to the badge.
+  // The visible header leads with a prominent number badge; the title text is
+  // only rendered when the admin has set a custom label, so default tables
+  // show just the badge instead of a redundant "Table N".
   const customLabel = table.label?.trim() || null;
-  const headerTitle = customLabel ?? at.seatingTableWord;
   const tableLabel = customLabel ?? at.seatingTableLabel(table.tableNumber);
 
   // Pill colour rules:
@@ -180,13 +179,15 @@ export default function TableCard({
           >
             {table.tableNumber}
           </span>
-          <h3
-            className="font-sans font-semibold text-sm leading-tight truncate min-w-0"
-            style={{ color: ESPRESSO }}
-            title={tableLabel}
-          >
-            {headerTitle}
-          </h3>
+          {customLabel && (
+            <h3
+              className="font-sans font-semibold text-sm leading-tight truncate min-w-0"
+              style={{ color: ESPRESSO }}
+              title={customLabel}
+            >
+              {customLabel}
+            </h3>
+          )}
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">

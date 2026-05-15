@@ -151,9 +151,6 @@ export interface AdminTranslations {
   seatingOverCapacity: string;
   seatingOverCapacityBy: (n: number) => string;
   seatingTableLabel: (n: number) => string;
-  /** Standalone word for "Table" — used alongside the prominent number badge
-   *  on the seating-planner table card when no custom label is set. */
-  seatingTableWord: string;
   seatingTableLabelPlaceholder: string;
   seatingEditTable: string;
   seatingDeleteTable: string;
@@ -332,7 +329,6 @@ const adminEn: AdminTranslations = {
   seatingOverCapacity: 'Over capacity',
   seatingOverCapacityBy: (n) => `Over by ${n}`,
   seatingTableLabel: (n) => `Table ${n}`,
-  seatingTableWord: 'Table',
   seatingTableLabelPlaceholder: 'Optional name (e.g. Family)',
   seatingEditTable: 'Edit table',
   seatingDeleteTable: 'Delete table',
@@ -523,7 +519,6 @@ const adminTr: AdminTranslations = {
   seatingOverCapacity: 'Kapasite aşıldı',
   seatingOverCapacityBy: (n) => `${n} fazla`,
   seatingTableLabel: (n) => `Masa ${n}`,
-  seatingTableWord: 'Masa',
   seatingTableLabelPlaceholder: 'İsteğe bağlı ad (örn. Aile)',
   seatingEditTable: 'Masayı düzenle',
   seatingDeleteTable: 'Masayı sil',
@@ -714,7 +709,6 @@ const adminUz: AdminTranslations = {
   seatingOverCapacity: "Sig'imdan oshdi",
   seatingOverCapacityBy: (n) => `${n} ortiqcha`,
   seatingTableLabel: (n) => `Stol ${n}`,
-  seatingTableWord: 'Stol',
   seatingTableLabelPlaceholder: "Ixtiyoriy nom (masalan, Oila)",
   seatingEditTable: 'Stolni tahrirlash',
   seatingDeleteTable: "Stolni o'chirish",
