@@ -291,17 +291,16 @@ router.get('/guests', requireAuth, async (req: Request, res: Response): Promise<
 
     const whereClause = guestConditions.length > 0 ? and(...guestConditions) : undefined;
 
-    // Run count + fetch in parallel (no pagination: return complete filtered set)
-    const [totalRows, guestRows] = await Promise.all([
-      db.select({ value: count() }).from(schema.guests).where(whereClause),
-      db
-        .select()
-        .from(schema.guests)
-        .where(whereClause)
-        .orderBy(desc(schema.guests.createdAt)),
-    ]);
+    // No pagination on this endpoint, so total === guestRows.length by
+    // construction — there is no value in a parallel COUNT(*) here, it would
+    // just double the table-scan work for an answer we already have.
+    const guestRows = await db
+      .select()
+      .from(schema.guests)
+      .where(whereClause)
+      .orderBy(desc(schema.guests.createdAt));
 
-    const total = totalRows[0]?.value ?? 0;
+    const total = guestRows.length;
 
     if (guestRows.length === 0) {
       res.json({ guests: [], total });

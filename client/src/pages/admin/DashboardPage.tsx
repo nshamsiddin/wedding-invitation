@@ -515,13 +515,13 @@ export default function DashboardPage() {
   // ── Filter state ────────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
 
-  // Search: controlled input value with 300 ms debounce before hitting the API
+  // Search filters the already-loaded guest list in JS instead of round-tripping
+  // to the server on every keystroke. /admin/guests has no pagination so we
+  // already have the full event/status/table-filtered set in cache, which means
+  // a server-side search would just re-fetch the same payload after a 300 ms
+  // wait. The server's token-based search remains available for direct API
+  // consumers; the dashboard simply doesn't use it.
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  useEffect(() => {
-    const id = setTimeout(() => setSearch(searchInput), 300);
-    return () => clearTimeout(id);
-  }, [searchInput]);
 
   // Multi-select status filter — replaces the previous single <select>
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
@@ -552,20 +552,20 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   });
 
-  const guestQueryParams = {
+  // Memoized so the queryKey reference stays stable across unrelated re-renders
+  // (typing in search no longer changes this object, since search is client-side).
+  const guestQueryParams = useMemo(() => ({
     eventId: selectedEventId ?? undefined,
     status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
     tableNumber: tableFilter ?? undefined,
-    search: search || undefined,
-  };
+  }), [selectedEventId, statusFilters, tableFilter]);
 
   const { data: guestsData, isLoading: guestsLoading } = useQuery({
     queryKey: ['admin', 'guests', guestQueryParams],
     queryFn: () => adminApi.getGuests(guestQueryParams),
     placeholderData: (prev) => prev,
   });
-  const guests    = guestsData?.guests ?? [];
-  const guestTotal = guestsData?.total ?? 0;
+  const guests = guestsData?.guests ?? [];
 
   const { data: availableTables = [] } = useQuery({
     queryKey: ['admin', 'tables', selectedEventId],
@@ -573,15 +573,35 @@ export default function DashboardPage() {
     staleTime: 30_000,
   });
 
-  const filteredGuests = guests;
+  // Client-side search: replicates the server's token-based matching (each
+  // whitespace token must appear in the guest's name OR partner name) but
+  // happens instantly in JS over the cached guest list. JS toLowerCase is
+  // also more permissive with non-ASCII Turkish characters than SQLite's
+  // ASCII-only LIKE folding, which is a small UX win for Turkish names.
+  const filteredGuests = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return guests;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return guests;
+    return guests.filter((g) => {
+      const name = g.name.toLowerCase();
+      const partner = (g.partnerName ?? '').toLowerCase();
+      return tokens.every((tok) => name.includes(tok) || partner.includes(tok));
+    });
+  }, [guests, searchInput]);
   const visibleGuestIdSet = useMemo(() => new Set(filteredGuests.map((g) => g.id)), [filteredGuests]);
   useEffect(() => {
     setSelectedGuestIds((prev) => {
+      // Skip the state update when no currently-selected ID would be pruned —
+      // returning a fresh empty Set on every refetch caused a needless render.
+      if (prev.size === 0) return prev;
+      let pruned = false;
       const next = new Set<number>();
       for (const id of prev) {
         if (visibleGuestIdSet.has(id)) next.add(id);
+        else pruned = true;
       }
-      return next;
+      return pruned ? next : prev;
     });
   }, [visibleGuestIdSet]);
 
@@ -1235,7 +1255,7 @@ export default function DashboardPage() {
                 {at.guestList}
                 {!guestsLoading && (
                   <span className="ml-2 text-xs font-normal" style={{ color: ESPRESSO_DIM }}>
-                    {guestTotal} {guestTotal === 1 ? at.guestSingular : at.guestPlural}
+                    {filteredGuests.length} {filteredGuests.length === 1 ? at.guestSingular : at.guestPlural}
                     <span className="ml-1">
                       · {visibleInvitationCount} {visibleInvitationCount === 1 ? at.invitationUnitSingular : at.invitationUnitPlural}
                     </span>
@@ -1274,14 +1294,9 @@ export default function DashboardPage() {
                     className="pl-8 pr-8 py-1.5 rounded-lg text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] transition-colors w-full min-w-0 sm:w-48"
                     style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
                   />
-                  {/* Debounce loading indicator */}
-                  {guestsLoading && search.length > 0 && (
-                    <span
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-t-transparent animate-spin"
-                      style={{ borderColor: `${GOLD} transparent transparent transparent` }}
-                      aria-hidden="true"
-                    />
-                  )}
+                  {/* Search is now client-side and instant — no in-flight
+                      indicator needed. The previous spinner was tied to the
+                      300 ms debounce + server round-trip. */}
                 </div>
 
                 {/* Add guest */}
