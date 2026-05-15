@@ -515,7 +515,7 @@ function EditTableModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-gray-900/60 z-40"
         aria-hidden="true"
       />
       <div
@@ -617,7 +617,7 @@ function DeleteTableConfirm({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-gray-900/60 z-40"
         aria-hidden="true"
       />
       <div

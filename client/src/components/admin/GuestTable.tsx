@@ -1796,7 +1796,7 @@ function MessageModal({
         key="msg-backdrop"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-gray-900/60 z-40"
         aria-hidden="true"
       />
       <div
@@ -2001,17 +2001,16 @@ export default function GuestTable({
         </div>
       )}
 
-      <AnimatePresence initial={false}>
-        {!isLoading && sorted.map((guest, rowIndex) => {
-          const isSelected = selectedGuestIds.has(guest.id);
-          const hasMessage = guest.invitations.some((inv) => inv.message && inv.message.trim().length > 0);
-          return (
-            <motion.div
+      {/* Per-row framer-motion was removed: AnimatePresence + motion.div over
+          hundreds of guest rows is the dominant React perf cost on lower-end
+          (Windows / integrated-GPU) machines. The fade-in is cosmetic; we
+          keep collapsible/modal animations elsewhere in this file. */}
+      {!isLoading && sorted.map((guest, rowIndex) => {
+        const isSelected = selectedGuestIds.has(guest.id);
+        const hasMessage = guest.invitations.some((inv) => inv.message && inv.message.trim().length > 0);
+        return (
+            <div
               key={`m-${guest.id}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.15 }}
               className="rounded-xl overflow-hidden"
               style={{
                 background: isSelected ? 'rgba(184,146,74,0.08)' : PARCHMENT,
@@ -2158,10 +2157,9 @@ export default function GuestTable({
                   );
                 })}
               </div>
-            </motion.div>
+            </div>
           );
         })}
-      </AnimatePresence>
     </div>
 
     {/* ── Desktop table (md and up) ─────────────────────────────────────── */}
@@ -2273,14 +2271,12 @@ export default function GuestTable({
             </tr>
           )}
 
-          <AnimatePresence initial={false}>
+          {/* Per-row framer-motion was removed: AnimatePresence + motion.tr
+              over hundreds of rows is the dominant render cost on lower-end
+              (Windows / integrated-GPU) machines. The fade-in is cosmetic. */}
             {!isLoading && sorted.map((guest, rowIndex) => (
-              <motion.tr
+              <tr
                 key={guest.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
                 className="transition-colors group"
                 style={{
                   borderBottom: `1px solid ${GOLD_DIM}`,
@@ -2558,9 +2554,8 @@ export default function GuestTable({
                     </button>
                   </div>
                 </td>
-              </motion.tr>
+              </tr>
             ))}
-          </AnimatePresence>
         </tbody>
       </table>
     </div>
