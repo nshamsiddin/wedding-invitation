@@ -551,7 +551,13 @@ interface Props {
   isLoading: boolean;
   selectedGuestIds: Set<number>;
   onToggleGuestSelection: (guestId: number) => void;
-  onToggleSelectAllVisible: (checked: boolean) => void;
+  /**
+   * Toggle every guest in `guestIds` to `checked`. Called for the page-scoped
+   * "select all visible" header checkbox. The IDs argument lets the caller
+   * stay agnostic of pagination — GuestTable supplies the IDs of rows
+   * currently displayed on the active page.
+   */
+  onToggleSelectAllVisible: (checked: boolean, guestIds: number[]) => void;
   onEditGuest: (guest: AdminGuest) => void;
   onDeleteGuest: (guest: AdminGuest) => void;
   onDeleteInvitation: (invitation: AdminInvitation) => void;
@@ -1933,9 +1939,33 @@ export default function GuestTable({
     });
   }, [guests, sortKey, sortDir]);
 
+  // ── Pagination ───────────────────────────────────────────────────────────
+  // Client-side pagination over the already-filtered, already-sorted set.
+  // Filter (in DashboardPage) → sort (above) → paginate (here) → render.
+  // Selection is ID-based and persists across pages, so verification totals
+  // and bulk actions keep working unchanged when the admin paginates.
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  // Clamp the active page when the filtered set shrinks (e.g. after a search
+  // narrows results from 500 down to 5). Clamping to pageCount rather than
+  // hard-resetting to 1 means a delete on the last page lands on the new
+  // last page instead of yanking the admin back to the top.
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const paged = useMemo(
+    () => sorted.slice(pageStart, pageStart + PAGE_SIZE),
+    [sorted, pageStart],
+  );
+
   const handleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
+    // A new sort order changes which guests are on the first page, so it's
+    // friendlier to drop the admin back to page 1 than leave them mid-list.
+    setPage(1);
   };
 
   // When the admin has filtered to a single event the per-event cell becomes
@@ -1954,8 +1984,10 @@ export default function GuestTable({
     ? 3 + 4 + 1 + 1
     : 3 + displayedEvents.length + 1 + 1;
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
-  const allVisibleSelected = sorted.length > 0 && sorted.every((g) => selectedGuestIds.has(g.id));
-  const someVisibleSelected = sorted.some((g) => selectedGuestIds.has(g.id));
+  // "Select all visible" is page-scoped: it toggles only the rows the admin
+  // can actually see, never silently selecting hidden rows on other pages.
+  const allVisibleSelected = paged.length > 0 && paged.every((g) => selectedGuestIds.has(g.id));
+  const someVisibleSelected = paged.some((g) => selectedGuestIds.has(g.id));
 
   useEffect(() => {
     if (!headerCheckboxRef.current) return;
@@ -2005,7 +2037,8 @@ export default function GuestTable({
           hundreds of guest rows is the dominant React perf cost on lower-end
           (Windows / integrated-GPU) machines. The fade-in is cosmetic; we
           keep collapsible/modal animations elsewhere in this file. */}
-      {!isLoading && sorted.map((guest, rowIndex) => {
+      {!isLoading && paged.map((guest, idx) => {
+        const rowIndex = pageStart + idx;
         const isSelected = selectedGuestIds.has(guest.id);
         const hasMessage = guest.invitations.some((inv) => inv.message && inv.message.trim().length > 0);
         return (
@@ -2172,9 +2205,9 @@ export default function GuestTable({
                 ref={headerCheckboxRef}
                 type="checkbox"
                 checked={allVisibleSelected}
-                disabled={sorted.length === 0}
-                onChange={(e) => onToggleSelectAllVisible(e.currentTarget.checked)}
-                aria-label="Select all visible guests"
+                disabled={paged.length === 0}
+                onChange={(e) => onToggleSelectAllVisible(e.currentTarget.checked, paged.map((g) => g.id))}
+                aria-label="Select all guests on this page"
                 className="w-4 h-4 rounded border-[rgba(184,146,74,0.45)] focus:ring-[rgba(184,146,74,0.45)]"
               />
             </th>
@@ -2273,8 +2306,12 @@ export default function GuestTable({
 
           {/* Per-row framer-motion was removed: AnimatePresence + motion.tr
               over hundreds of rows is the dominant render cost on lower-end
-              (Windows / integrated-GPU) machines. The fade-in is cosmetic. */}
-            {!isLoading && sorted.map((guest, rowIndex) => (
+              (Windows / integrated-GPU) machines. The fade-in is cosmetic.
+              Pagination slices `sorted` so we only render up to PAGE_SIZE
+              rows at a time, regardless of how many guests match. */}
+            {!isLoading && paged.map((guest, idx) => {
+              const rowIndex = pageStart + idx;
+              return (
               <tr
                 key={guest.id}
                 className="transition-colors group"
@@ -2555,10 +2592,76 @@ export default function GuestTable({
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
         </tbody>
       </table>
     </div>
+
+    {/* ── Pagination controls ───────────────────────────────────────────── */}
+    {!isLoading && pageCount > 1 && (
+      <nav
+        className="mt-3 flex items-center justify-between gap-3 flex-wrap"
+        aria-label="Guest list pagination"
+      >
+        <p className="text-xs font-sans tabular-nums" style={{ color: ESPRESSO_DIM }}>
+          {sorted.length === 0
+            ? '0 results'
+            : `${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, sorted.length)} of ${sorted.length}`}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setPage(1)}
+            disabled={page <= 1}
+            aria-label="First page"
+            title="First page"
+            className="px-2 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+          >
+            «
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            aria-label="Previous page"
+            className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+          >
+            ← Prev
+          </button>
+          <span
+            className="px-3 py-1.5 text-xs font-sans tabular-nums"
+            style={{ color: ESPRESSO }}
+            aria-live="polite"
+          >
+            Page <span className="font-semibold">{page}</span> / {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            disabled={page >= pageCount}
+            aria-label="Next page"
+            className="px-3 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+          >
+            Next →
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage(pageCount)}
+            disabled={page >= pageCount}
+            aria-label="Last page"
+            title="Last page"
+            className="px-2 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, color: ESPRESSO }}
+          >
+            »
+          </button>
+        </div>
+      </nav>
+    )}
 
     {viewingMessages && (
       <MessageModal

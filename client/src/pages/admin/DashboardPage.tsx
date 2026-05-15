@@ -1598,13 +1598,13 @@ export default function DashboardPage() {
                 return next;
               })
             }
-            onToggleSelectAllVisible={(checked) =>
+            onToggleSelectAllVisible={(checked, guestIds) =>
               setSelectedGuestIds((prev) => {
                 const next = new Set(prev);
                 if (checked) {
-                  for (const g of filteredGuests) next.add(g.id);
+                  for (const id of guestIds) next.add(id);
                 } else {
-                  for (const g of filteredGuests) next.delete(g.id);
+                  for (const id of guestIds) next.delete(id);
                 }
                 return next;
               })
