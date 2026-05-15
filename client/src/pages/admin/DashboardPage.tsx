@@ -514,6 +514,9 @@ export default function DashboardPage() {
 
   // ── Filter state ────────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  // Tracks whether we've already applied the default tab selection so that a
+  // user choosing "All" (or another tab) is not overwritten on later refetches.
+  const defaultTabAppliedRef = useRef(false);
 
   // Search filters the already-loaded guest list in JS instead of round-tripping
   // to the server on every keystroke. /admin/guests has no pagination so we
@@ -551,6 +554,19 @@ export default function DashboardPage() {
     queryFn: adminApi.getEvents,
     refetchInterval: 60_000,
   });
+
+  // Default to the Ankara event tab on first load (the Tashkent event has
+  // already taken place). Only applied once so that an admin who later picks
+  // "All" or another event isn't pulled back to Ankara on the next refetch.
+  useEffect(() => {
+    if (defaultTabAppliedRef.current) return;
+    if (events.length === 0) return;
+    const ankara = events.find((e) => e.slug === 'ankara');
+    if (ankara) {
+      setSelectedEventId(ankara.id);
+    }
+    defaultTabAppliedRef.current = true;
+  }, [events]);
 
   // Memoized so the queryKey reference stays stable across unrelated re-renders
   // (typing in search no longer changes this object, since search is client-side).
