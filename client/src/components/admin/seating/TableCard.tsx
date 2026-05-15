@@ -87,9 +87,13 @@ export default function TableCard({
     return occupancy + activeDrag.guestCount > table.capacity;
   })();
 
-  const tableLabel = table.label?.trim()
-    ? table.label.trim()
-    : at.seatingTableLabel(table.tableNumber);
+  // `tableLabel` is used for accessible names (aria-label, confirm dialogs).
+  // The visible header now leads with a prominent number badge, so the title
+  // text falls back to a generic localized "Table" word when no custom label
+  // is set — avoiding "5  Table 5" duplication next to the badge.
+  const customLabel = table.label?.trim() || null;
+  const headerTitle = customLabel ?? at.seatingTableWord;
+  const tableLabel = customLabel ?? at.seatingTableLabel(table.tableNumber);
 
   // Pill colour rules:
   //   - over capacity → red
@@ -156,22 +160,33 @@ export default function TableCard({
     >
       {/* Header */}
       <div className="px-3.5 pt-3 pb-2 flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex items-center gap-2.5">
+          {/* Prominent table-number badge — always visible so the table number
+              stays scannable regardless of whether the admin has given the
+              table a custom label. Solid gold tile keeps it the strongest
+              element in the header. */}
+          <span
+            className="inline-flex items-center justify-center rounded-lg font-sans font-bold tabular-nums leading-none flex-shrink-0"
+            style={{
+              background: GOLD,
+              color: '#FFFFFF',
+              minWidth: '2rem',
+              height: '2rem',
+              padding: '0 0.45rem',
+              fontSize: '0.95rem',
+              boxShadow: '0 1px 2px rgba(184,146,74,0.35)',
+            }}
+            aria-hidden="true"
+          >
+            {table.tableNumber}
+          </span>
           <h3
-            className="font-sans font-semibold text-sm leading-tight truncate"
+            className="font-sans font-semibold text-sm leading-tight truncate min-w-0"
             style={{ color: ESPRESSO }}
             title={tableLabel}
           >
-            {tableLabel}
+            {headerTitle}
           </h3>
-          {table.label && (
-            <p
-              className="text-[10px] font-sans uppercase tracking-wider mt-0.5 tabular-nums"
-              style={{ color: ESPRESSO_DIM }}
-            >
-              #{table.tableNumber}
-            </p>
-          )}
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
