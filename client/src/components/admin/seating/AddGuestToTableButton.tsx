@@ -133,10 +133,20 @@ export default function AddGuestToTableButton({
         // a secondary action — the new height matches a normal small button
         // and aligns with the "free seats" text on the right of the footer.
         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+        // Colour stays neutral gold even when the table is at capacity.
+        // The previous salmon-red variant on full tables was a lying
+        // affordance — it looked like "danger / disabled" but the button
+        // was still fully clickable and a successful click was a legitimate
+        // workflow (admins sometimes intentionally over-seat a table, e.g.
+        // adding a child next to a parent). The capacity pill already
+        // communicates "Full" via colour + magnitude, and the dropdown
+        // surfaces a textual warning (`seatingTableFullHint`) before the
+        // user actually picks a guest. Repeating the warning on the trigger
+        // just added noise and an inconsistent affordance grammar.
         style={{
-          background: isFull ? 'rgba(220,38,38,0.10)' : 'rgba(184,146,74,0.14)',
-          color: isFull ? '#B91C1C' : '#7A4F10',
-          border: isFull ? '1px solid rgba(220,38,38,0.30)' : `1px solid ${GOLD_DIM}`,
+          background: 'rgba(184,146,74,0.14)',
+          color: '#7A4F10',
+          border: `1px solid ${GOLD_DIM}`,
           // Explicit cursor: the global `.admin-page button` rule in index.css
           // *should* hand us pointer, but specifying it inline removes any
           // doubt across browsers / extension stylesheets, and matches the
@@ -150,20 +160,12 @@ export default function AddGuestToTableButton({
         // hover affordance for an action that won't fire.
         onMouseEnter={(e) => {
           if (e.currentTarget.disabled) return;
-          e.currentTarget.style.background = isFull
-            ? 'rgba(220,38,38,0.18)'
-            : 'rgba(184,146,74,0.24)';
-          e.currentTarget.style.borderColor = isFull
-            ? 'rgba(220,38,38,0.50)'
-            : GOLD;
+          e.currentTarget.style.background = 'rgba(184,146,74,0.24)';
+          e.currentTarget.style.borderColor = GOLD;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = isFull
-            ? 'rgba(220,38,38,0.10)'
-            : 'rgba(184,146,74,0.14)';
-          e.currentTarget.style.borderColor = isFull
-            ? 'rgba(220,38,38,0.30)'
-            : GOLD_DIM;
+          e.currentTarget.style.background = 'rgba(184,146,74,0.14)';
+          e.currentTarget.style.borderColor = GOLD_DIM;
         }}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

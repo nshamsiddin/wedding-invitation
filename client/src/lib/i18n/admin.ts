@@ -205,6 +205,17 @@ export interface AdminTranslations {
   seatingUndo: string;
   seatingUndone: string;
   seatingAddGuestToFooter: string;
+  // Sticky-bar planner summary — surfaces overall progress so admins
+  // never have to scroll-and-count cards to gauge how much work is left.
+  seatingSummaryLabel: string;
+  seatingSummarySeated: (seated: number, attending: number) => string;
+  seatingSummarySeatedHint: string;
+  seatingSummaryUnassigned: (n: number) => string;
+  seatingSummaryUnassignedHint: string;
+  seatingSummaryAllSeated: string;
+  seatingSummaryAllSeatedHint: string;
+  seatingSummaryTables: (full: number, partial: number, empty: number) => string;
+  seatingSummaryTablesHint: string;
 
   // Data backup / restore
   backupTitle: string;
@@ -421,6 +432,16 @@ const adminEn: AdminTranslations = {
   seatingUndo: 'Undo',
   seatingUndone: 'Undone',
   seatingAddGuestToFooter: 'Add guest to this table',
+  seatingSummaryLabel: 'Planner summary',
+  seatingSummarySeated: (seated, attending) => `${seated} / ${attending} seated`,
+  seatingSummarySeatedHint: 'Attending guests seated at a table',
+  seatingSummaryUnassigned: (n) => `${n} unassigned`,
+  seatingSummaryUnassignedHint: 'Attending guests who still need a table',
+  seatingSummaryAllSeated: 'All seated',
+  seatingSummaryAllSeatedHint: 'Every attending guest has a table assignment',
+  seatingSummaryTables: (full, partial, empty) =>
+    `${full} full · ${partial} partial · ${empty} empty`,
+  seatingSummaryTablesHint: 'Tables by occupancy state',
 
   backupTitle: 'Data Backup',
   backupDesc: 'Download a snapshot of every guest, invitation, event, and notification. Restore later to roll back any changes.',
@@ -636,6 +657,16 @@ const adminTr: AdminTranslations = {
   seatingUndo: 'Geri al',
   seatingUndone: 'Geri alındı',
   seatingAddGuestToFooter: 'Bu masaya misafir ekle',
+  seatingSummaryLabel: 'Planlayıcı özeti',
+  seatingSummarySeated: (seated, attending) => `${seated} / ${attending} oturtuldu`,
+  seatingSummarySeatedHint: 'Masaya oturtulan katılacak misafirler',
+  seatingSummaryUnassigned: (n) => `${n} atanmadı`,
+  seatingSummaryUnassignedHint: 'Hâlâ masa bekleyen katılacak misafirler',
+  seatingSummaryAllSeated: 'Tümü oturtuldu',
+  seatingSummaryAllSeatedHint: 'Her katılacak misafirin bir masası var',
+  seatingSummaryTables: (full, partial, empty) =>
+    `${full} dolu · ${partial} kısmi · ${empty} boş`,
+  seatingSummaryTablesHint: 'Doluluğa göre masalar',
 
   backupTitle: 'Veri Yedekleme',
   backupDesc: 'Tüm misafirler, davetler, etkinlikler ve bildirimlerin anlık görüntüsünü indirin. Daha sonra geri yükleyerek değişiklikleri geri alabilirsiniz.',
@@ -853,6 +884,16 @@ const adminUz: AdminTranslations = {
   seatingUndo: 'Bekor qilish',
   seatingUndone: 'Bekor qilindi',
   seatingAddGuestToFooter: "Shu stolga mehmon qo'shish",
+  seatingSummaryLabel: 'Reja xulosasi',
+  seatingSummarySeated: (seated, attending) => `${seated} / ${attending} joylashtirildi`,
+  seatingSummarySeatedHint: "Stolga joylashtirilgan keladigan mehmonlar",
+  seatingSummaryUnassigned: (n) => `${n} biriktirilmagan`,
+  seatingSummaryUnassignedHint: 'Hali stoli yo‘q keladigan mehmonlar',
+  seatingSummaryAllSeated: 'Hammasi joylashdi',
+  seatingSummaryAllSeatedHint: 'Har bir keladigan mehmonning stoli bor',
+  seatingSummaryTables: (full, partial, empty) =>
+    `${full} to‘la · ${partial} qisman · ${empty} bo‘sh`,
+  seatingSummaryTablesHint: 'Bandlik bo‘yicha stollar',
 
   backupTitle: 'Maʼlumotlar Zaxirasi',
   backupDesc: "Barcha mehmonlar, takliflar, tadbirlar va bildirishnomalarning to'liq nusxasini yuklab oling. Keyinroq qayta tiklab o'zgarishlarni bekor qilishingiz mumkin.",

@@ -154,17 +154,12 @@ export default function TableCard({
     };
   }
 
-  // Plain-text seat status next to the capacity pill — answers "do I have
-  // room?" at a glance without forcing the admin to do "10 − 8 = 2" arithmetic.
-  // Suppressed on empty tables (the chip area already says "N seats free")
-  // and on over-capacity tables (the warning row says "Over by N").
-  const statusText = isOver_
-    ? null
-    : isFull
-      ? at.seatingFullPill
-      : occupancy > 0
-        ? at.seatingFreeShort(freeSeats)
-        : null;
+  // Previously we rendered a plain-text "N free" / "Full" label beside the
+  // capacity pill and another copy in the footer. The pill itself already
+  // conveys both magnitude (8/10) and state (gold vs olive-green vs red),
+  // so the extra text was redundant signal — admins reported the cards
+  // looked "shouty" with Full repeated 3-4 times. The single source of
+  // truth is now the pill (header) and the over-capacity warning row.
 
   return (
     <div
@@ -197,7 +192,13 @@ export default function TableCard({
       // `min-w-0` so a long chip never balloons the card past its grid column
       // (grid items default to `min-width: auto`, which would otherwise let an
       // overflowing chip widen the whole card).
-      className="rounded-xl flex flex-col min-w-0"
+      //
+      // The `group/card` scope is what powers the kebab "reveal on hover"
+      // behaviour below — at rest the menu trigger is a faint zero-opacity
+      // smudge so 12+ cards on screen don't show 12 sets of three dots
+      // competing for attention. The menu is still keyboard-discoverable
+      // via focus-within, and stays visible while the menu itself is open.
+      className="group/card rounded-xl flex flex-col min-w-0"
       aria-label={`${tableLabel}. ${at.seatingCapacityLabel(occupancy, table.capacity)}${isOver_ ? `. ${at.seatingOverCapacity}` : ''}`}
     >
       {/* Header */}
@@ -234,19 +235,6 @@ export default function TableCard({
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Free-seats hint — surfaces remaining capacity in plain language
-              so admins don't have to subtract in their head. Hidden in the
-              empty and over-capacity states where other affordances already
-              communicate the same thing. */}
-          {statusText && (
-            <span
-              className="text-[10px] font-sans font-medium tabular-nums hidden sm:inline"
-              style={{ color: isFull ? FULL_GREEN : ESPRESSO_DIM }}
-              aria-hidden="true"
-            >
-              {statusText}
-            </span>
-          )}
           {/* Capacity pill — always visible, communicates capacity at a glance */}
           <span
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-sans font-semibold tabular-nums"
@@ -262,8 +250,14 @@ export default function TableCard({
             {occupancy} / {table.capacity}
           </span>
 
-          {/* Kebab menu — edit + delete. We keep these collapsed under a
-              single button so the card header isn't visually busy at rest. */}
+          {/* Kebab menu — edit + delete. Hidden at rest, fades in when the
+              card is hovered, when any child is focus-within (keyboard
+              tabbing through), or when the menu is open (so it doesn't
+              vanish under the cursor mid-click). With ~12 cards on screen
+              the always-visible state was 12 sets of three dots competing
+              with the table-number badges; admins almost never use this
+              menu in the primary drag-and-drop loop, so it earns its
+              visibility on intent rather than at rest. */}
           <div className="relative">
             <button
               type="button"
@@ -271,7 +265,12 @@ export default function TableCard({
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label={`${at.seatingEditTable} options`}
-              className="p-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              className={
+                'p-1 rounded transition-opacity transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] ' +
+                (menuOpen
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus-visible:opacity-100')
+              }
               style={{ color: ESPRESSO_DIM }}
               onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -551,20 +550,6 @@ export default function TableCard({
           freeSeats={freeSeats}
           onAssign={onAssignToTable}
         />
-        {/* Quietly remind the admin of remaining capacity in the footer
-            — same info as the pill, but easier to read next to the
-            "+ Add guest" action they're about to use. */}
-        <span
-          className="text-[10px] font-sans tabular-nums"
-          style={{ color: ESPRESSO_DIM }}
-          aria-hidden="true"
-        >
-          {isOver_
-            ? at.seatingOverCapacityBy(overBy)
-            : isFull
-              ? at.seatingFullPill
-              : at.seatingFreeShort(freeSeats)}
-        </span>
       </div>
     </div>
   );

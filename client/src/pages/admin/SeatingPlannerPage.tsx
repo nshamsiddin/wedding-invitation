@@ -291,7 +291,10 @@ export default function SeatingPlannerPage() {
   }, [tables, guests, selectedEventId]);
 
   // Totals strip — counts headcount of *attending* guests so admins can size
-  // tables against actual expected occupancy.
+  // tables against actual expected occupancy. Also surfaces table-level
+  // counts (full/empty) so the sticky summary chip can answer the planner's
+  // primary question ("how much have I done, how much is left?") without
+  // forcing the admin to scroll-and-count cards.
   const totals = useMemo(() => {
     let attendingPeople = 0;
     let seatedPeople = 0;
@@ -302,7 +305,24 @@ export default function SeatingPlannerPage() {
       if (inv.tableNumber != null) seatedPeople += inv.guestCount;
     }
     const capacity = tables.reduce((sum, t) => sum + t.capacity, 0);
-    return { attendingPeople, seatedPeople, capacity };
+    let tablesFull = 0;
+    let tablesEmpty = 0;
+    let tablesPartial = 0;
+    for (const t of tables) {
+      if (t.occupancy === 0) tablesEmpty += 1;
+      else if (t.occupancy >= t.capacity) tablesFull += 1;
+      else tablesPartial += 1;
+    }
+    const unassignedPeople = Math.max(0, attendingPeople - seatedPeople);
+    return {
+      attendingPeople,
+      seatedPeople,
+      unassignedPeople,
+      capacity,
+      tablesFull,
+      tablesEmpty,
+      tablesPartial,
+    };
   }, [guests, tables, selectedEventId]);
 
   // Pull the currently dragged invitation back out of the cache so the
@@ -611,6 +631,98 @@ export default function SeatingPlannerPage() {
                           {at.seatingFilterMatches(filteredTables.length, tables.length)}
                         </span>
                       )}
+
+                      {/* Planner summary — answers "how much have I done,
+                          how much is left?" at a glance from anywhere on
+                          the page. Lives in the sticky filter bar so it
+                          stays visible while the admin scrolls long table
+                          grids. The unassigned count is the loudest number
+                          because it's the admin's primary call-to-action;
+                          the rest are reference data. Hidden when a filter
+                          is active so the filter's "X of Y match" message
+                          isn't competing with the global totals. */}
+                      {!tableFilter && totals.attendingPeople > 0 && (
+                        <div
+                          className="inline-flex items-center gap-2 text-[11px] font-sans tabular-nums"
+                          style={{ color: ESPRESSO_DIM }}
+                          aria-label={at.seatingSummaryLabel}
+                        >
+                          {/* Seated progress — the headline metric. We use
+                              an inline progress fill behind the text so the
+                              ratio is readable both quantitatively (N/M)
+                              and visually (how much of the bar is gold). */}
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold"
+                            style={{
+                              background: `linear-gradient(to right, rgba(184,146,74,0.28) ${
+                                totals.attendingPeople > 0
+                                  ? Math.round((totals.seatedPeople / totals.attendingPeople) * 100)
+                                  : 0
+                              }%, rgba(184,146,74,0.10) ${
+                                totals.attendingPeople > 0
+                                  ? Math.round((totals.seatedPeople / totals.attendingPeople) * 100)
+                                  : 0
+                              }%)`,
+                              border: `1px solid ${GOLD_DIM}`,
+                              color: ESPRESSO,
+                            }}
+                            title={at.seatingSummarySeatedHint}
+                          >
+                            {at.seatingSummarySeated(totals.seatedPeople, totals.attendingPeople)}
+                          </span>
+
+                          {/* Unassigned — the call to action. Tinted red
+                              when > 0 so it pulls the eye; collapses to a
+                              quiet "all seated" celebration when zero. */}
+                          {totals.unassignedPeople > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold"
+                              style={{
+                                background: 'rgba(220,38,38,0.10)',
+                                color: '#B91C1C',
+                                border: '1px solid rgba(220,38,38,0.30)',
+                              }}
+                              title={at.seatingSummaryUnassignedHint}
+                            >
+                              {at.seatingSummaryUnassigned(totals.unassignedPeople)}
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold"
+                              style={{
+                                background: 'rgba(5,150,105,0.10)',
+                                color: '#059669',
+                                border: '1px solid rgba(5,150,105,0.30)',
+                              }}
+                              title={at.seatingSummaryAllSeatedHint}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                              {at.seatingSummaryAllSeated}
+                            </span>
+                          )}
+
+                          {/* Table-level counts — reference data, dimmer.
+                              Hidden on small viewports where horizontal
+                              room is tight. */}
+                          <span
+                            className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-md"
+                            style={{
+                              background: 'transparent',
+                              border: `1px solid ${GOLD_DIM}`,
+                            }}
+                            title={at.seatingSummaryTablesHint}
+                          >
+                            {at.seatingSummaryTables(
+                              totals.tablesFull,
+                              totals.tablesPartial,
+                              totals.tablesEmpty,
+                            )}
+                          </span>
+                        </div>
+                      )}
+
                       {/* View toggle — Grid (existing dense layout) /
                           List (one chip per row, full names always visible).
                           Persisted to localStorage so the admin's choice
@@ -670,54 +782,75 @@ export default function SeatingPlannerPage() {
                       </div>
                     </div>
 
-                    {/* Grid density follows view mode. In `list` mode each
-                        card holds a vertical list of chips, so we keep the
-                        same horizontal density (chips are full-width within
-                        the card and that's fine even on a 4-up layout). In
-                        `grid` mode this is the existing dense default. */}
+                    {/* Masonry via CSS multi-column. Replaces the previous
+                        `grid grid-cols-* gap-3` layout, which forced every
+                        card in a row to inherit the height of the tallest
+                        card — wasting ~40% of the viewport on empty/sparse
+                        tables (a 0/10 card stretched to match an 8/10 card
+                        next to it). With columns, each card takes only the
+                        height it needs and the next card stacks underneath.
+                        Reading order shifts from row-major to column-major
+                        ("T1-T5 in col 1, T6-T10 in col 2, …") which is fine
+                        because admins scan by the table-number badge, not
+                        by spatial position.
+
+                        Each child needs `break-inside-avoid` so a card
+                        never splits across columns, and `mb-3` to space
+                        cards within a column (the container's `gap-3`
+                        becomes `column-gap` only). */}
                     <div
                       ref={tablesGridRef}
                       className={
                         viewMode === 'list'
-                          ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3'
-                          : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3'
+                          ? 'columns-1 sm:columns-2 xl:columns-3 gap-3'
+                          : 'columns-1 sm:columns-2 xl:columns-3 2xl:columns-4 gap-3'
                       }
                     >
                       {filteredTables.map((t) => (
-                        <TableCard
-                          key={t.tableNumber}
-                          table={t}
-                          guests={guests}
-                          eventId={selectedEventId}
-                          onEdit={setEditingTable}
-                          onDelete={setDeletingTable}
-                          onClearAssignment={clearAssignment}
-                          onAssignToTable={assignToTable}
-                          onBulkUnassign={bulkUnassignFromTable}
-                          viewMode={viewMode}
-                          activeDrag={
-                            active
-                              ? {
-                                  invitationId: active.invitationId,
-                                  guestCount: active.guestCount,
-                                  currentTableNumber: active.currentTableNumber,
-                                }
-                              : null
-                          }
-                        />
+                        <div key={t.tableNumber} className="break-inside-avoid mb-3">
+                          <TableCard
+                            table={t}
+                            guests={guests}
+                            eventId={selectedEventId}
+                            onEdit={setEditingTable}
+                            onDelete={setDeletingTable}
+                            onClearAssignment={clearAssignment}
+                            onAssignToTable={assignToTable}
+                            onBulkUnassign={bulkUnassignFromTable}
+                            viewMode={viewMode}
+                            activeDrag={
+                              active
+                                ? {
+                                    invitationId: active.invitationId,
+                                    guestCount: active.guestCount,
+                                    currentTableNumber: active.currentTableNumber,
+                                  }
+                                : null
+                            }
+                          />
+                        </div>
                       ))}
-                      {/* Hide the "Add table" affordance when a filter is active —
-                          mixing it into a partial result list is confusing
-                          ("did adding a table change the filter?"). It comes
-                          back the moment the filter clears. */}
-                      {!tableFilter && (
+                    </div>
+
+                    {/* "Add table" lives below the masonry rather than as
+                        a sibling card. In a masonry layout a sibling would
+                        be stranded at the bottom of an arbitrary column —
+                        with the new compact card heights its placement
+                        looked random. As a full-width strip below the
+                        masonry it stays predictably reachable.
+
+                        Hidden when a filter is active so the result list
+                        isn't polluted with an action that doesn't match
+                        the query. */}
+                    {!tableFilter && (
+                      <div className="mt-3 max-w-md mx-auto sm:mx-0 sm:max-w-sm">
                         <AddTableButton
                           suggestedNumber={suggestedNumber}
                           isPending={createTableMutation.isPending}
                           onCreate={(values) => createTableMutation.mutate(values)}
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {tableFilter && filteredTables.length === 0 && (
                       <div
