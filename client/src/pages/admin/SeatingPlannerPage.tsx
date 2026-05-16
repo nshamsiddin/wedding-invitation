@@ -638,6 +638,17 @@ export default function SeatingPlannerPage() {
                                 background: active ? GOLD : PARCHMENT,
                                 color: active ? '#FFFFFF' : ESPRESSO_DIM,
                                 borderLeft: idx > 0 ? `1px solid ${GOLD_DIM}` : 'none',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (active) return;
+                                e.currentTarget.style.background = CREAM;
+                                e.currentTarget.style.color = ESPRESSO;
+                              }}
+                              onMouseLeave={(e) => {
+                                if (active) return;
+                                e.currentTarget.style.background = PARCHMENT;
+                                e.currentTarget.style.color = ESPRESSO_DIM;
                               }}
                             >
                               {mode === 'grid' ? (

@@ -363,6 +363,17 @@ export default function UnassignedColumn({ guests, eventId, tables, onAssignToTa
                 // Buckets that would yield zero results stay clickable but
                 // fade to communicate "you'd see nothing" before the click.
                 opacity: count === 0 ? 0.55 : 1,
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                if (enabled) return;
+                e.currentTarget.style.background = 'rgba(184,146,74,0.08)';
+                e.currentTarget.style.color = ESPRESSO;
+              }}
+              onMouseLeave={(e) => {
+                if (enabled) return;
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = ESPRESSO_DIM;
               }}
             >
               <span>{label}</span>

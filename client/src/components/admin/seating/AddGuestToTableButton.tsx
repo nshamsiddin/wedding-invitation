@@ -121,6 +121,33 @@ export default function AddGuestToTableButton({
           background: isFull ? 'rgba(220,38,38,0.10)' : 'rgba(184,146,74,0.14)',
           color: isFull ? '#B91C1C' : '#7A4F10',
           border: isFull ? '1px solid rgba(220,38,38,0.30)' : `1px solid ${GOLD_DIM}`,
+          // Explicit cursor: the global `.admin-page button` rule in index.css
+          // *should* hand us pointer, but specifying it inline removes any
+          // doubt across browsers / extension stylesheets, and matches the
+          // pattern AddTableButton already uses.
+          cursor: unassigned.length === 0 ? 'not-allowed' : 'pointer',
+        }}
+        // Hover/leave handlers — the button previously had `transition-colors`
+        // with no actual hover state defined, so the visual stayed completely
+        // static on hover and admins read it as "not interactive". Disabled
+        // state short-circuits both handlers so a full table doesn't flash a
+        // hover affordance for an action that won't fire.
+        onMouseEnter={(e) => {
+          if (e.currentTarget.disabled) return;
+          e.currentTarget.style.background = isFull
+            ? 'rgba(220,38,38,0.18)'
+            : 'rgba(184,146,74,0.24)';
+          e.currentTarget.style.borderColor = isFull
+            ? 'rgba(220,38,38,0.50)'
+            : GOLD;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = isFull
+            ? 'rgba(220,38,38,0.10)'
+            : 'rgba(184,146,74,0.14)';
+          e.currentTarget.style.borderColor = isFull
+            ? 'rgba(220,38,38,0.30)'
+            : GOLD_DIM;
         }}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

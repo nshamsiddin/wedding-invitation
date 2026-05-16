@@ -419,6 +419,15 @@ export default function TableCard({
                 background: '#FFFFFF',
                 color: '#B91C1C',
                 border: '1px solid rgba(220,38,38,0.35)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(220,38,38,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(220,38,38,0.55)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#FFFFFF';
+                e.currentTarget.style.borderColor = 'rgba(220,38,38,0.35)';
               }}
             >
               {at.seatingMoveOverflow(overBy)}
@@ -443,8 +452,10 @@ export default function TableCard({
             <button
               type="button"
               onClick={() => setClearConfirmOpen(false)}
-              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
-              style={{ background: PARCHMENT, color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
+              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: PARCHMENT, color: ESPRESSO, border: `1px solid ${GOLD_DIM}`, cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = PARCHMENT; }}
             >
               {at.cancel}
             </button>
@@ -458,8 +469,16 @@ export default function TableCard({
                   tableLabel,
                 });
               }}
-              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
-              style={{ background: GOLD, color: '#FFFFFF', border: `1px solid ${GOLD}` }}
+              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: GOLD, color: '#FFFFFF', border: `1px solid ${GOLD}`, cursor: 'pointer' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#A6803F';
+                e.currentTarget.style.borderColor = '#A6803F';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = GOLD;
+                e.currentTarget.style.borderColor = GOLD;
+              }}
             >
               {at.seatingClearTable}
             </button>
