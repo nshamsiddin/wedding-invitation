@@ -92,6 +92,26 @@ export default function GuestChip({
   // We keep the change subtle so it doesn't fight the existing status dot.
   const selectionTint = !isOverlay && isSelected;
 
+  // Compose the chip's boxShadow from three independently-toggled layers:
+  //   1. status strip (always on) — a 3px inset on the LEFT edge in the RSVP
+  //      status colour. Replaces the old 6px status dot, which was too small
+  //      to reliably distinguish across attending / maybe / pending / declined
+  //      at a glance and failed WCAG 2.5.5 target size.
+  //   2. drag overlay shadow (when DragOverlay is rendering this chip).
+  //   3. selection ring (when the chip is part of the bulk-select set).
+  // We use boxShadow rather than borderLeft for the strip so the chip's
+  // outer geometry and content offset stay identical across every state.
+  const chipBoxShadow = [
+    `inset 3px 0 0 ${statusColor}`,
+    isOverlay
+      ? '0 8px 24px rgba(42,31,26,0.18), 0 2px 6px rgba(42,31,26,0.08)'
+      : selectionTint
+        ? '0 0 0 2px rgba(184,146,74,0.20)'
+        : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <div
       ref={setNodeRef}
@@ -104,15 +124,14 @@ export default function GuestChip({
         cursor: isOverlay ? 'grabbing' : 'grab',
         background: selectionTint ? 'rgba(184,146,74,0.18)' : PARCHMENT,
         border: `1px solid ${selectionTint ? GOLD : GOLD_DIM}`,
-        boxShadow: isOverlay
-          ? '0 8px 24px rgba(42,31,26,0.18), 0 2px 6px rgba(42,31,26,0.08)'
-          : selectionTint
-            ? '0 0 0 2px rgba(184,146,74,0.20)'
-            : undefined,
+        boxShadow: chipBoxShadow,
         touchAction: 'none', // required by @dnd-kit pointer/touch sensors
         transition: 'background 0.12s, box-shadow 0.12s, border-color 0.12s',
       }}
-      className="group/chip inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-sans font-medium select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+      // `pl-2.5` (10px) instead of `px-2` (8px) so the name doesn't sit
+      // visually on top of the 3px status strip — keeps the inner padding
+      // the eye perceives at the same ~8px the chip had before.
+      className="group/chip inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-md text-xs font-sans font-medium select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] max-w-full"
       // The listeners include both pointer/touch and keyboard event handlers.
       {...listeners}
       // Attributes include role="button", aria-roledescription="draggable",
@@ -186,37 +205,66 @@ export default function GuestChip({
           )}
         </button>
       )}
-      <span
-        aria-hidden="true"
-        title={statusLabel}
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          background: statusColor,
-          flexShrink: 0,
-        }}
-      />
-      <span style={{ color: ESPRESSO }} className="truncate max-w-[10rem]">
+      {/* Drag-grip glyph — fades in only on hover/focus so it doesn't
+          contribute to chip clutter at rest. It's a redundant affordance
+          on top of `cursor: grab` for users who skim with their eyes
+          before they hover (the Notion/Linear/Trello pattern). Hidden on
+          the DragOverlay clone where it would be visual noise. */}
+      {!isOverlay && (
+        <span
+          aria-hidden="true"
+          className="opacity-0 group-hover/chip:opacity-50 group-focus-within/chip:opacity-50 transition-opacity"
+          style={{
+            display: 'inline-flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            width: 4,
+            height: 12,
+            flexShrink: 0,
+            marginLeft: -2,
+            marginRight: -2,
+            color: ESPRESSO_DIM,
+          }}
+        >
+          {/* Three pairs of dots forming the standard 6-dot drag grip. */}
+          {[0, 1, 2].map((row) => (
+            <span key={row} style={{ display: 'flex', gap: 2 }}>
+              <span style={{ width: 1.5, height: 1.5, borderRadius: '50%', background: 'currentColor' }} />
+              <span style={{ width: 1.5, height: 1.5, borderRadius: '50%', background: 'currentColor' }} />
+            </span>
+          ))}
+        </span>
+      )}
+      {/* Name shrinks to fit the chip (which itself is capped at the parent's
+          width via `max-w-full`). The `min-w-0` is the magic that lets a flex
+          child shrink below its content width so `truncate` can engage —
+          without it the chip would push past the card's right edge on narrow
+          columns (e.g. 4-up at 2xl), or names like "Abdussamet Korkmaz ve
+          Ailesi" would be amputated at a hard 10rem cap instead of using
+          whatever room the card actually has. */}
+      <span style={{ color: ESPRESSO }} className="truncate min-w-0" title={`${guest.name} · ${statusLabel}`}>
         {guest.name}
       </span>
       {showPartyBadge && (
+        // Demoted from a tinted pill to a subtle inline suffix so the name
+        // is the dominant element on the chip. The party-size filter chips
+        // in the Unassigned column are now the primary scanning tool for
+        // "where are my big parties?" — the per-chip badge is just a
+        // confirmation cue.
         <span
           aria-hidden="true"
           title={`Party of ${invitation.guestCount}`}
           style={{
-            background: 'rgba(184,146,74,0.18)',
             color: ESPRESSO_DIM,
-            fontSize: '0.62rem',
-            fontWeight: 700,
-            padding: '0 5px',
-            borderRadius: '6px',
-            lineHeight: '14px',
+            fontSize: '0.7rem',
+            fontWeight: 500,
             flexShrink: 0,
+            // The bullet leans into the dim color so it reads as a
+            // separator, not a real character of the name.
           }}
           className="tabular-nums"
         >
-          ×{invitation.guestCount}
+          ·&nbsp;×{invitation.guestCount}
         </span>
       )}
       {showUnassignButton && (
@@ -249,7 +297,13 @@ export default function GuestChip({
           }}
           aria-label={`${at.seatingUnassignFromTable}: ${guest.name}`}
           title={at.seatingUnassignFromTable}
-          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          // Hidden at rest, fades in on chip hover or when the button itself
+          // is focused. Cuts the visual weight of a card with 10–15 chips
+          // (a wall of always-visible destructive controls used to draw the
+          // eye away from the names). `focus-visible:opacity-100` keeps it
+          // discoverable for keyboard tabbing — the chip is `focus-within`
+          // when the button has focus, so it stays visible until blur.
+          className="opacity-0 group-hover/chip:opacity-100 group-focus-within/chip:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -265,7 +319,7 @@ export default function GuestChip({
             color: ESPRESSO_DIM,
             cursor: 'pointer',
             flexShrink: 0,
-            transition: 'background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s',
+            transition: 'background 0.12s, border-color 0.12s, color 0.12s, transform 0.12s, opacity 0.12s',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = '#DC2626';

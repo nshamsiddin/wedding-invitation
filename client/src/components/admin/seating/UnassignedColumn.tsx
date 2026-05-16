@@ -37,6 +37,20 @@ const STATUS_DOT_COLOR: Record<GuestStatus, string> = {
   pending: GOLD,
 };
 
+// ─── Party-size filter ──────────────────────────────────────────────────────
+// "Show me only the parties of 3+" is the most asked question during
+// real-world planning meetings. We bucket party sizes into three coarse
+// groups (solo / pair / large) — finer granularity than that doesn't help
+// most decisions and crowds the toolbar. `'all'` is the default no-op.
+const PARTY_BUCKETS = ['all', 'solo', 'pair', 'large'] as const;
+type PartyBucket = (typeof PARTY_BUCKETS)[number];
+
+function partyBucketOf(guestCount: number): Exclude<PartyBucket, 'all'> {
+  if (guestCount <= 1) return 'solo';
+  if (guestCount === 2) return 'pair';
+  return 'large';
+}
+
 // ─── Droppable column for unassigned guests ─────────────────────────────────
 // The container itself is a drop target — dragging a chip back here clears
 // the invitation's tableNumber.
@@ -49,6 +63,10 @@ export default function UnassignedColumn({ guests, eventId, tables, onAssignToTa
   // Set of statuses the admin wants to see. Stored as a Set so we can flip
   // an individual status without resequencing an array.
   const [statusFilter, setStatusFilter] = useState<Set<GuestStatus>>(() => new Set(ALL_STATUSES));
+  // Party-size bucket filter — see PARTY_BUCKETS above. Single-select since
+  // the buckets are mutually exclusive and a multi-select chip UI would be
+  // confusing here ("Are 'solo' and 'pair' both selected the same as 'all'?").
+  const [partyFilter, setPartyFilter] = useState<PartyBucket>('all');
   // Selected invitations for bulk-assign. We key by invitationId because a
   // guest can in theory have invitations to multiple events and only one of
   // those is being seated here.
@@ -87,14 +105,26 @@ export default function UnassignedColumn({ guests, eventId, tables, onAssignToTa
     return counts;
   }, [allRows]);
 
+  // Per-party-bucket counts — same "run off the unfiltered list" rationale
+  // so the badges stay stable as other filters change. Drives the chip
+  // labels in the toolbar (e.g. "Pair · 12").
+  const partyCounts = useMemo(() => {
+    const counts: Record<Exclude<PartyBucket, 'all'>, number> = { solo: 0, pair: 0, large: 0 };
+    for (const { invitation } of allRows) {
+      counts[partyBucketOf(invitation.guestCount)] += 1;
+    }
+    return counts;
+  }, [allRows]);
+
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return allRows.filter(({ guest, invitation }) => {
       if (!statusFilter.has(invitation.status as GuestStatus)) return false;
+      if (partyFilter !== 'all' && partyBucketOf(invitation.guestCount) !== partyFilter) return false;
       if (q && !guest.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [allRows, search, statusFilter]);
+  }, [allRows, search, statusFilter, partyFilter]);
 
   // Drop selections that are no longer visible (the row was assigned by
   // someone else, or filtered out). Otherwise the count in the toolbar
@@ -288,6 +318,54 @@ export default function UnassignedColumn({ guests, eventId, tables, onAssignToTa
                 }}
               />
               <span>{at.statusFilterLabel(status)}</span>
+              <span style={{ color: ESPRESSO_DIM }}>· {count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Party-size filter chips — single-select bucketing. The default
+          'all' chip is shown so the admin always has a one-click escape
+          back to no-filter. Each chip shows its bucket count so the admin
+          can decide where to focus without re-querying. */}
+      <div
+        className="px-3 pt-1.5 flex flex-wrap items-center gap-1"
+        aria-label={at.seatingPartySizeFilterLabel}
+      >
+        <span className="text-[10px] font-sans font-medium" style={{ color: ESPRESSO_DIM }}>
+          {at.seatingPartySizeFilterLabel}:
+        </span>
+        {PARTY_BUCKETS.map((bucket) => {
+          const enabled = partyFilter === bucket;
+          const count =
+            bucket === 'all'
+              ? allRows.length
+              : partyCounts[bucket];
+          const label =
+            bucket === 'all'
+              ? at.seatingPartySizeAll
+              : bucket === 'solo'
+                ? at.seatingPartySizeSingle
+                : bucket === 'pair'
+                  ? at.seatingPartySizeDouble
+                  : at.seatingPartySizeLarge;
+          return (
+            <button
+              key={bucket}
+              type="button"
+              onClick={() => setPartyFilter(bucket)}
+              aria-pressed={enabled}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-sans font-semibold tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{
+                background: enabled ? 'rgba(184,146,74,0.14)' : 'transparent',
+                color: enabled ? ESPRESSO : ESPRESSO_DIM,
+                border: `1px solid ${enabled ? GOLD_DIM : 'transparent'}`,
+                // Buckets that would yield zero results stay clickable but
+                // fade to communicate "you'd see nothing" before the click.
+                opacity: count === 0 ? 0.55 : 1,
+              }}
+            >
+              <span>{label}</span>
               <span style={{ color: ESPRESSO_DIM }}>· {count}</span>
             </button>
           );

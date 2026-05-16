@@ -5,7 +5,15 @@ import { CREAM, ESPRESSO, ESPRESSO_DIM, GOLD, GOLD_DIM, PARCHMENT } from '../../
 import { useAdminTranslation } from '../../../lib/i18n/admin';
 import GuestChip from './GuestChip';
 import AddGuestToTableButton from './AddGuestToTableButton';
-import type { AssignToTableFn, ClearAssignmentFn } from './useSeatingDnd';
+import type { AssignToTableFn, BulkUnassignFromTableFn, ClearAssignmentFn } from './useSeatingDnd';
+
+// Layout density for the chip body. Picked once at the page level and passed
+// down; each value maps to a specific layout treatment inside the card body.
+//   - 'grid': chips wrap inline (existing default; densest)
+//   - 'list': each chip occupies its own row (full names always visible)
+// We deliberately ship only two modes to start — admins overwhelmingly want
+// either "fit as much as possible on screen" or "I'm printing this".
+export type TableCardViewMode = 'grid' | 'list';
 
 interface Props {
   table: EventTableWithOccupancy;
@@ -21,6 +29,12 @@ interface Props {
   /** Assigns an unassigned guest to this table. Powers the "+ Add guest"
    *  popover for the click-to-assign path (alternative to drag-and-drop). */
   onAssignToTable: AssignToTableFn;
+  /** Bulk-unassign every (or N) invitations on this table back to the
+   *  Unassigned column. Powers two affordances:
+   *   - the kebab's "Clear table" action
+   *   - the over-capacity warning's "Move last N to Unassigned" button
+   */
+  onBulkUnassign: BulkUnassignFromTableFn;
   /** Currently dragged chip (or null when nothing is being dragged). We use
    *  the headcount + source table to compute "would this drop over-fill the
    *  table?" so the card border can flash red *before* the drop, not after. */
@@ -29,6 +43,8 @@ interface Props {
     guestCount: number;
     currentTableNumber: number | null;
   } | null;
+  /** Layout density for the chip body. Defaults to 'grid' (existing layout). */
+  viewMode?: TableCardViewMode;
 }
 
 export function tableDropId(eventId: number, tableNumber: number): string {
@@ -43,10 +59,17 @@ export default function TableCard({
   onDelete,
   onClearAssignment,
   onAssignToTable,
+  onBulkUnassign,
   activeDrag,
+  viewMode = 'grid',
 }: Props) {
   const at = useAdminTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Inline confirm for "Clear table". We render a small confirmation row
+  // beneath the kebab menu instead of a full modal so admins can blow through
+  // a re-plan without modal whiplash on every table. Destructive intent is
+  // still preserved by requiring an explicit second click.
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
     id: tableDropId(eventId, table.tableNumber),
@@ -96,9 +119,14 @@ export default function TableCard({
 
   // Pill colour rules:
   //   - over capacity → red
-  //   - full (occupancy === capacity) → gold solid
+  //   - full (occupancy === capacity) → olive-green solid (matches the
+  //     "attending" accent used elsewhere). The previous gold solid was
+  //     visually indistinguishable from the gold table-number badge two
+  //     centimetres to the left, so the "full" state stopped standing out.
   //   - partial → gold tinted
   //   - empty → muted gold outline
+  const FULL_GREEN = '#059669'; // matches the "attending" status dot
+  const isFull = occupancy === table.capacity && occupancy > 0;
   let pillStyle: React.CSSProperties;
   if (isOver_) {
     pillStyle = {
@@ -106,11 +134,11 @@ export default function TableCard({
       color: '#B91C1C',
       border: '1px solid rgba(220,38,38,0.35)',
     };
-  } else if (occupancy === table.capacity && occupancy > 0) {
+  } else if (isFull) {
     pillStyle = {
-      background: GOLD,
-      color: '#FFFFFF',
-      border: `1px solid ${GOLD}`,
+      background: 'rgba(5,150,105,0.12)',
+      color: FULL_GREEN,
+      border: `1px solid rgba(5,150,105,0.45)`,
     };
   } else if (occupancy > 0) {
     pillStyle = {
@@ -125,6 +153,18 @@ export default function TableCard({
       border: `1px dashed ${GOLD_DIM}`,
     };
   }
+
+  // Plain-text seat status next to the capacity pill — answers "do I have
+  // room?" at a glance without forcing the admin to do "10 − 8 = 2" arithmetic.
+  // Suppressed on empty tables (the chip area already says "N seats free")
+  // and on over-capacity tables (the warning row says "Over by N").
+  const statusText = isOver_
+    ? null
+    : isFull
+      ? at.seatingFullPill
+      : occupancy > 0
+        ? at.seatingFreeShort(freeSeats)
+        : null;
 
   return (
     <div
@@ -154,7 +194,10 @@ export default function TableCard({
             : '0 1px 2px rgba(42,31,26,0.04)',
         transition: 'box-shadow 0.15s, border-color 0.15s, background 0.15s',
       }}
-      className="rounded-xl flex flex-col"
+      // `min-w-0` so a long chip never balloons the card past its grid column
+      // (grid items default to `min-width: auto`, which would otherwise let an
+      // overflowing chip widen the whole card).
+      className="rounded-xl flex flex-col min-w-0"
       aria-label={`${tableLabel}. ${at.seatingCapacityLabel(occupancy, table.capacity)}${isOver_ ? `. ${at.seatingOverCapacity}` : ''}`}
     >
       {/* Header */}
@@ -190,13 +233,32 @@ export default function TableCard({
           )}
         </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Free-seats hint — surfaces remaining capacity in plain language
+              so admins don't have to subtract in their head. Hidden in the
+              empty and over-capacity states where other affordances already
+              communicate the same thing. */}
+          {statusText && (
+            <span
+              className="text-[10px] font-sans font-medium tabular-nums hidden sm:inline"
+              style={{ color: isFull ? FULL_GREEN : ESPRESSO_DIM }}
+              aria-hidden="true"
+            >
+              {statusText}
+            </span>
+          )}
           {/* Capacity pill — always visible, communicates capacity at a glance */}
           <span
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-sans font-semibold tabular-nums"
             style={pillStyle}
             aria-live="polite"
+            aria-label={`${at.seatingCapacityLabel(occupancy, table.capacity)}${isFull ? `. ${at.seatingFullPill}` : ''}`}
           >
+            {isFull && (
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            )}
             {occupancy} / {table.capacity}
           </span>
 
@@ -235,8 +297,13 @@ export default function TableCard({
                 <div
                   role="menu"
                   className="absolute right-0 top-full mt-1 z-20 rounded-lg shadow-lg overflow-hidden"
-                  style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, minWidth: '9rem' }}
+                  style={{ background: PARCHMENT, border: `1px solid ${GOLD_DIM}`, minWidth: '11rem' }}
                 >
+                  {/* Safe actions group — edit + clear are both reversible
+                      (clear runs through onBulkUnassign which surfaces an
+                      Undo toast). They live above the visual divider that
+                      isolates the destructive "Delete table" so a misclick
+                      between Edit and Delete can't happen. */}
                   <button
                     type="button"
                     role="menuitem"
@@ -244,27 +311,60 @@ export default function TableCard({
                       setMenuOpen(false);
                       onEdit(table);
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs font-sans transition-colors focus:outline-none focus-visible:bg-[rgba(184,146,74,0.12)]"
+                    className="w-full text-left px-3 py-1.5 text-xs font-sans transition-colors focus:outline-none focus-visible:bg-[rgba(184,146,74,0.12)] inline-flex items-center gap-2"
                     style={{ color: ESPRESSO, background: 'transparent' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                   >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, color: ESPRESSO_DIM }}>
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                    </svg>
                     {at.seatingEditTable}
                   </button>
+                  {/* Clear table — reversible bulk-unassign. Disabled when
+                      the table is already empty (no rows to act on). */}
                   <button
                     type="button"
                     role="menuitem"
+                    disabled={seated.length === 0}
                     onClick={() => {
+                      if (seated.length === 0) return;
                       setMenuOpen(false);
-                      onDelete(table);
+                      setClearConfirmOpen(true);
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs font-sans transition-colors focus:outline-none"
-                    style={{ color: '#B91C1C', background: 'transparent', borderTop: `1px solid ${GOLD_DIM}` }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.06)'; }}
+                    className="w-full text-left px-3 py-1.5 text-xs font-sans transition-colors focus:outline-none focus-visible:bg-[rgba(184,146,74,0.12)] inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ color: ESPRESSO, background: 'transparent' }}
+                    onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = CREAM; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                   >
-                    {at.seatingDeleteTable}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, color: ESPRESSO_DIM }}>
+                      <path d="M20 12H4M14 6l-6 6 6 6" />
+                    </svg>
+                    {at.seatingClearTable}
                   </button>
+                  {/* Visual divider + spacer — the gap (`pt-1 mt-1`) plus
+                      the divider line means an admin can't slip from "Clear"
+                      onto "Delete" with a single accidental cursor twitch. */}
+                  <div className="pt-1 mt-1" style={{ borderTop: `1px solid ${GOLD_DIM}` }}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onDelete(table);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs font-sans transition-colors focus:outline-none focus-visible:bg-red-50 inline-flex items-center gap-2"
+                      style={{ color: '#B91C1C', background: 'transparent' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.06)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                      </svg>
+                      {at.seatingDeleteTable}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
@@ -273,26 +373,114 @@ export default function TableCard({
       </div>
 
       {/* Over-capacity warning row — persistent so it remains visible after
-          the drag finishes; mirrors the red pill above with a longer label. */}
+          the drag finishes; mirrors the red pill above with a longer label.
+          Now actionable: a "Move last N to Unassigned" button restores the
+          table to capacity by popping the most-recently-added invitations
+          off the seated list and bulk-unassigning them in one step. */}
       {isOver_ && (
         <div
-          className="mx-3.5 mb-2 px-2 py-1 rounded-md flex items-center gap-1.5 text-[11px] font-sans font-medium"
+          className="mx-3.5 mb-2 px-2 py-1.5 rounded-md flex items-center justify-between gap-2 text-[11px] font-sans font-medium"
           style={{ background: 'rgba(220,38,38,0.08)', color: '#B91C1C', border: '1px solid rgba(220,38,38,0.25)' }}
           role="alert"
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 9v4M12 17h.01" />
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          {at.seatingOverCapacityBy(overBy)}
+          <span className="inline-flex items-center gap-1.5 min-w-0">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <path d="M12 9v4M12 17h.01" />
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <span className="truncate">{at.seatingOverCapacityBy(overBy)}</span>
+          </span>
+          {seated.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                // Pop the most recent N invitations until headcount fits.
+                // We sort by invitation id desc as a stable proxy for
+                // "added most recently" — invitations are append-only.
+                const ordered = seated
+                  .slice()
+                  .sort((a, b) => b.inv.id - a.inv.id);
+                const ids: number[] = [];
+                let popped = 0;
+                for (const row of ordered) {
+                  if (popped >= overBy) break;
+                  ids.push(row.inv.id);
+                  popped += row.inv.guestCount;
+                }
+                if (ids.length === 0) return;
+                onBulkUnassign({
+                  invitationIds: ids,
+                  tableNumber: table.tableNumber,
+                  tableLabel,
+                });
+              }}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 flex-shrink-0"
+              style={{
+                background: '#FFFFFF',
+                color: '#B91C1C',
+                border: '1px solid rgba(220,38,38,0.35)',
+              }}
+            >
+              {at.seatingMoveOverflow(overBy)}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Body — list of seated chips. Doubles as the drop zone visual. The
-          "+ Add guest" picker is inlined as the last item in the chip row so
-          its visual weight matches the chips and it stays close to where the
-          new chip will appear, instead of being parked off in the header. */}
-      <div className="px-3.5 pb-3 flex flex-wrap gap-1.5 min-h-[3.5rem] content-start items-center">
+      {/* Inline "Clear table" confirmation row — kept inside the card (rather
+          than a modal) because clearing is reversible via the Undo toast and
+          the admin is already in a re-plan loop. Persists until either the
+          confirm or the cancel is clicked. */}
+      {clearConfirmOpen && (
+        <div
+          className="mx-3.5 mb-2 px-2 py-1.5 rounded-md flex items-center justify-between gap-2 text-[11px] font-sans"
+          style={{ background: 'rgba(184,146,74,0.10)', color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
+          role="alertdialog"
+          aria-label={at.seatingClearTable}
+        >
+          <span className="truncate">{at.seatingClearTableConfirm(tableLabel, occupancy)}</span>
+          <span className="inline-flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setClearConfirmOpen(false)}
+              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: PARCHMENT, color: ESPRESSO, border: `1px solid ${GOLD_DIM}` }}
+            >
+              {at.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setClearConfirmOpen(false);
+                onBulkUnassign({
+                  invitationIds: seated.map(({ inv }) => inv.id),
+                  tableNumber: table.tableNumber,
+                  tableLabel,
+                });
+              }}
+              className="px-2 py-0.5 rounded-md text-[11px] font-sans font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)]"
+              style={{ background: GOLD, color: '#FFFFFF', border: `1px solid ${GOLD}` }}
+            >
+              {at.seatingClearTable}
+            </button>
+          </span>
+        </div>
+      )}
+
+      {/* Body — list of seated chips. Doubles as the drop zone visual.
+          Layout depends on viewMode:
+            - 'grid' (default): chips wrap inline (dense scanning).
+            - 'list': one chip per row (full names always visible — admins
+              use this when they're printing or doing detail work).
+          The "+ Add guest" trigger lives in the footer below, separated by
+          a dashed top border, so it never looks like another seated chip. */}
+      <div
+        className={`px-3.5 pb-2 min-h-[3.5rem] content-start ${
+          viewMode === 'list'
+            ? 'flex flex-col gap-1'
+            : 'flex flex-wrap gap-1.5 items-center'
+        }`}
+      >
         {seated.length === 0 && !isOver && (
           <p
             className="text-xs font-sans flex-1 py-1"
@@ -314,9 +502,21 @@ export default function TableCard({
             key={inv.id}
             guest={guest}
             invitation={inv}
-            onUnassign={() => onClearAssignment(inv.id, guest.name)}
+            // Pass previous-table info so the unassign success toast can
+            // show an Undo button that re-seats the guest at this table.
+            onUnassign={() => onClearAssignment(inv.id, guest.name, table.tableNumber, tableLabel)}
           />
         ))}
+      </div>
+
+      {/* Footer — the "+ Add guest" picker lives here in its own dashed-
+          bordered strip so it reads as an *action* (distinct from the
+          seated chips above). Previously inlined into the chip wrap, where
+          it visually looked like a guest. */}
+      <div
+        className="px-3.5 py-2 flex items-center justify-between gap-2"
+        style={{ borderTop: `1px dashed ${GOLD_DIM}` }}
+      >
         <AddGuestToTableButton
           guests={guests}
           eventId={eventId}
@@ -325,6 +525,20 @@ export default function TableCard({
           freeSeats={freeSeats}
           onAssign={onAssignToTable}
         />
+        {/* Quietly remind the admin of remaining capacity in the footer
+            — same info as the pill, but easier to read next to the
+            "+ Add guest" action they're about to use. */}
+        <span
+          className="text-[10px] font-sans tabular-nums"
+          style={{ color: ESPRESSO_DIM }}
+          aria-hidden="true"
+        >
+          {isOver_
+            ? at.seatingOverCapacityBy(overBy)
+            : isFull
+              ? at.seatingFullPill
+              : at.seatingFreeShort(freeSeats)}
+        </span>
       </div>
     </div>
   );

@@ -23,6 +23,23 @@ import TableCard from '../../components/admin/seating/TableCard';
 import AddTableButton from '../../components/admin/seating/AddTableButton';
 import GuestChip from '../../components/admin/seating/GuestChip';
 import { useSeatingDnd } from '../../components/admin/seating/useSeatingDnd';
+import type { TableCardViewMode } from '../../components/admin/seating/TableCard';
+
+// ─── View-mode persistence ──────────────────────────────────────────────────
+// Stored in localStorage so the admin's preference survives reload. We use a
+// versioned key (`_v1`) so future schema changes can invalidate cleanly.
+const VIEW_MODE_STORAGE_KEY = 'seatingViewMode_v1';
+function readStoredViewMode(): TableCardViewMode {
+  if (typeof window === 'undefined') return 'grid';
+  try {
+    const raw = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    return raw === 'list' ? 'list' : 'grid';
+  } catch {
+    // localStorage can throw in private-browsing or sandboxed iframes —
+    // silently fall back to the default rather than crashing the page.
+    return 'grid';
+  }
+}
 
 export default function SeatingPlannerPage() {
   const navigate = useNavigate();
@@ -164,36 +181,69 @@ export default function SeatingPlannerPage() {
     useSensor(KeyboardSensor),
   );
 
-  const { active, onDragStart, onDragEnd, onDragCancel, clearAssignment, assignToTable } = useSeatingDnd({
+  const {
+    active,
+    onDragStart,
+    onDragEnd,
+    onDragCancel,
+    clearAssignment,
+    assignToTable,
+    bulkUnassignFromTable,
+  } = useSeatingDnd({
     eventId: selectedEventId ?? 0,
   });
 
+  // ── View mode (Grid / List) ──────────────────────────────────────────────
+  // Persisted in localStorage; default is the existing 'grid' layout so the
+  // page looks identical to admins who haven't interacted with the toggle.
+  const [viewMode, setViewMode] = useState<TableCardViewMode>(readStoredViewMode);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {
+      // Best-effort persistence; ignore quota/private-mode errors.
+    }
+  }, [viewMode]);
+
   // Whenever the filter narrows the result list, gently scroll the first
   // match into view *and* briefly pulse-highlight it so the admin's eye
-  // catches the answer instead of having to scan the page. We keep this in
-  // an effect (rather than on the input's `onChange`) so it also runs when
-  // the underlying tables array changes — e.g. an admin filters by a guest
-  // name and that guest then gets reassigned in another tab.
+  // catches the answer instead of having to scan the page.
+  //
+  // P0#5 fix: previously the scroll fired on every keystroke and always
+  // called `scrollIntoView`, which caused the page to jitter every time the
+  // admin typed. We now:
+  //   1. debounce 250 ms so a fast typer gets one scroll at the end, not
+  //      one per keystroke; and
+  //   2. only call `scrollIntoView` when the matched card's bounding box is
+  //      actually outside the visible area — otherwise we just pulse-flash
+  //      it in place. `getBoundingClientRect` is cheap and lets us avoid
+  //      the visual no-op scroll-to-same-position that browsers still log
+  //      as a layout event.
   useEffect(() => {
     const q = tableFilter.trim();
     if (!q) return;
     if (!tablesGridRef.current) return;
-    const node = tablesGridRef.current.querySelector<HTMLElement>('[data-table-number]');
-    if (!node) return;
-    // `block: 'nearest'` keeps a card that's already on-screen still — it
-    // only scrolls if the card is partially or fully out of view. That's
-    // less jarring than always centering.
-    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    // Pulse a temporary outline so the admin's eye catches the match. We
-    // toggle a CSS class for the duration of one transition, then remove
-    // it so subsequent filter edits can re-trigger the same animation.
-    node.classList.add('seat-filter-pulse');
-    const t = window.setTimeout(() => {
-      node.classList.remove('seat-filter-pulse');
-    }, 900);
+
+    const debounce = window.setTimeout(() => {
+      const node = tablesGridRef.current?.querySelector<HTMLElement>('[data-table-number]');
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      // Treat the card as off-screen if any meaningful portion is outside
+      // the viewport. The small 8-px buffer keeps near-edge cards still.
+      const isOffscreen = rect.bottom < 8 || rect.top > viewportHeight - 8;
+      if (isOffscreen) {
+        node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      // Always pulse-highlight, regardless of whether we scrolled — the
+      // pulse is the primary "here it is" cue.
+      node.classList.add('seat-filter-pulse');
+      window.setTimeout(() => node.classList.remove('seat-filter-pulse'), 900);
+    }, 250);
+
     return () => {
-      window.clearTimeout(t);
-      node.classList.remove('seat-filter-pulse');
+      window.clearTimeout(debounce);
     };
   }, [tableFilter, tables, guests]);
 
@@ -495,9 +545,27 @@ export default function SeatingPlannerPage() {
                   <>
                     {/* Filter bar — searches both table number/label and the
                         names of seated guests so admins can locate a row in
-                        seconds even with 50+ tables on screen. */}
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="relative flex-1 max-w-sm">
+                        seconds even with 50+ tables on screen.
+                        Now sticky under the page header so it stays in reach
+                        while the admin scrolls through long planners. The
+                        `top` offset roughly matches the header height; the
+                        background is solid so cards scrolling underneath
+                        don't bleed through. */}
+                    <div
+                      className="mb-3 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2 sticky z-20 flex items-center gap-2 flex-wrap"
+                      style={{
+                        // Stick directly under the sticky page header.
+                        // The header is ~48–56px tall (py-2.5 sm:py-3 + two
+                        // short lines of text). 56px gives the filter bar
+                        // a hairline gap of CREAM (matches page bg, so it
+                        // reads as one continuous toolbar) and prevents the
+                        // header (z-30) from rendering on top of it.
+                        top: 56,
+                        background: CREAM,
+                        borderBottom: `1px solid ${GOLD_DIM}`,
+                      }}
+                    >
+                      <div className="relative flex-1 max-w-sm min-w-[12rem]">
                         <svg
                           className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
                           style={{ color: ESPRESSO_DIM }}
@@ -543,9 +611,67 @@ export default function SeatingPlannerPage() {
                           {at.seatingFilterMatches(filteredTables.length, tables.length)}
                         </span>
                       )}
+                      {/* View toggle — Grid (existing dense layout) /
+                          List (one chip per row, full names always visible).
+                          Persisted to localStorage so the admin's choice
+                          survives reload. Pushed to the right via ml-auto
+                          so it never competes with the search input. */}
+                      <div
+                        className="ml-auto inline-flex items-stretch rounded-md overflow-hidden"
+                        style={{ border: `1px solid ${GOLD_DIM}` }}
+                        role="group"
+                        aria-label={at.seatingViewLabel}
+                      >
+                        {(['grid', 'list'] as const).map((mode, idx) => {
+                          const active = viewMode === mode;
+                          const label =
+                            mode === 'grid' ? at.seatingViewGrid : at.seatingViewList;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setViewMode(mode)}
+                              aria-pressed={active}
+                              title={label}
+                              className="px-2.5 py-1 text-[11px] font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgba(184,146,74,0.55)] inline-flex items-center gap-1.5"
+                              style={{
+                                background: active ? GOLD : PARCHMENT,
+                                color: active ? '#FFFFFF' : ESPRESSO_DIM,
+                                borderLeft: idx > 0 ? `1px solid ${GOLD_DIM}` : 'none',
+                              }}
+                            >
+                              {mode === 'grid' ? (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                  <rect x="3" y="3" width="7" height="7" />
+                                  <rect x="14" y="3" width="7" height="7" />
+                                  <rect x="3" y="14" width="7" height="7" />
+                                  <rect x="14" y="14" width="7" height="7" />
+                                </svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                                </svg>
+                              )}
+                              <span className="hidden sm:inline">{label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    <div ref={tablesGridRef} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+                    {/* Grid density follows view mode. In `list` mode each
+                        card holds a vertical list of chips, so we keep the
+                        same horizontal density (chips are full-width within
+                        the card and that's fine even on a 4-up layout). In
+                        `grid` mode this is the existing dense default. */}
+                    <div
+                      ref={tablesGridRef}
+                      className={
+                        viewMode === 'list'
+                          ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3'
+                          : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3'
+                      }
+                    >
                       {filteredTables.map((t) => (
                         <TableCard
                           key={t.tableNumber}
@@ -556,6 +682,8 @@ export default function SeatingPlannerPage() {
                           onDelete={setDeletingTable}
                           onClearAssignment={clearAssignment}
                           onAssignToTable={assignToTable}
+                          onBulkUnassign={bulkUnassignFromTable}
+                          viewMode={viewMode}
                           activeDrag={
                             active
                               ? {

@@ -184,6 +184,28 @@ export interface AdminTranslations {
   seatingBulkAssignTo: string;
   seatingBulkWouldOverflow: (n: number) => string;
 
+  // ── Added during the May 2026 UX pass ──────────────────────────────────
+  // Keep these grouped at the bottom so an at-a-glance diff against prod
+  // makes the addition obvious. Naming follows the existing seating prefix.
+  seatingPartySizeFilterLabel: string;
+  seatingPartySizeAll: string;
+  seatingPartySizeSingle: string;
+  seatingPartySizeDouble: string;
+  seatingPartySizeLarge: string;
+  seatingFullPill: string;
+  seatingFreeShort: (n: number) => string;
+  seatingViewLabel: string;
+  seatingViewList: string;
+  seatingViewGrid: string;
+  seatingClearTable: string;
+  seatingClearTableConfirm: (label: string, count: number) => string;
+  seatingClearedTable: (label: string, count: number) => string;
+  seatingMoveOverflow: (n: number) => string;
+  seatingMovedOverflow: (n: number) => string;
+  seatingUndo: string;
+  seatingUndone: string;
+  seatingAddGuestToFooter: string;
+
   // Data backup / restore
   backupTitle: string;
   backupDesc: string;
@@ -375,6 +397,31 @@ const adminEn: AdminTranslations = {
   seatingBulkAssignTo: 'Assign to table…',
   seatingBulkWouldOverflow: (n) => `Would exceed capacity by ${n}`,
 
+  seatingPartySizeFilterLabel: 'Party size',
+  seatingPartySizeAll: 'All',
+  seatingPartySizeSingle: 'Solo',
+  seatingPartySizeDouble: 'Pair',
+  seatingPartySizeLarge: '3+',
+  seatingFullPill: 'Full',
+  seatingFreeShort: (n) => `${n} free`,
+  seatingViewLabel: 'View',
+  seatingViewList: 'List',
+  seatingViewGrid: 'Grid',
+  seatingClearTable: 'Clear table',
+  seatingClearTableConfirm: (label, count) =>
+    `Unassign all ${count} ${count === 1 ? 'guest' : 'guests'} from ${label}? They will return to the Unassigned column.`,
+  seatingClearedTable: (label, count) =>
+    `${count} ${count === 1 ? 'guest' : 'guests'} unassigned from ${label}`,
+  seatingMoveOverflow: (n) =>
+    n === 1
+      ? 'Move last guest back to Unassigned'
+      : `Move last ${n} guests back to Unassigned`,
+  seatingMovedOverflow: (n) =>
+    n === 1 ? 'Moved 1 guest to Unassigned' : `Moved ${n} guests to Unassigned`,
+  seatingUndo: 'Undo',
+  seatingUndone: 'Undone',
+  seatingAddGuestToFooter: 'Add guest to this table',
+
   backupTitle: 'Data Backup',
   backupDesc: 'Download a snapshot of every guest, invitation, event, and notification. Restore later to roll back any changes.',
   backupDownload: 'Download Backup',
@@ -565,6 +612,31 @@ const adminTr: AdminTranslations = {
   seatingBulkAssignTo: 'Masaya ata…',
   seatingBulkWouldOverflow: (n) => `Kapasiteyi ${n} aşar`,
 
+  seatingPartySizeFilterLabel: 'Grup',
+  seatingPartySizeAll: 'Tümü',
+  seatingPartySizeSingle: 'Tekli',
+  seatingPartySizeDouble: 'İkili',
+  seatingPartySizeLarge: '3+',
+  seatingFullPill: 'Dolu',
+  seatingFreeShort: (n) => `${n} boş`,
+  seatingViewLabel: 'Görünüm',
+  seatingViewList: 'Liste',
+  seatingViewGrid: 'Izgara',
+  seatingClearTable: 'Masayı boşalt',
+  seatingClearTableConfirm: (label, count) =>
+    `${label} masasındaki ${count} misafir atanmamış duruma alınsın mı? Atanmamış sütununa geri dönecekler.`,
+  seatingClearedTable: (label, count) =>
+    `${label} masasından ${count} misafir kaldırıldı`,
+  seatingMoveOverflow: (n) =>
+    n === 1
+      ? 'Son misafiri Atanmamışa geri al'
+      : `Son ${n} misafiri Atanmamışa geri al`,
+  seatingMovedOverflow: (n) =>
+    n === 1 ? '1 misafir Atanmamışa taşındı' : `${n} misafir Atanmamışa taşındı`,
+  seatingUndo: 'Geri al',
+  seatingUndone: 'Geri alındı',
+  seatingAddGuestToFooter: 'Bu masaya misafir ekle',
+
   backupTitle: 'Veri Yedekleme',
   backupDesc: 'Tüm misafirler, davetler, etkinlikler ve bildirimlerin anlık görüntüsünü indirin. Daha sonra geri yükleyerek değişiklikleri geri alabilirsiniz.',
   backupDownload: 'Yedeği İndir',
@@ -754,6 +826,33 @@ const adminUz: AdminTranslations = {
   seatingDeselectAll: 'Tanlovni bekor qilish',
   seatingBulkAssignTo: 'Stolga biriktirish…',
   seatingBulkWouldOverflow: (n) => `Sig'imdan ${n} ta oshib ketadi`,
+
+  seatingPartySizeFilterLabel: 'Guruh',
+  seatingPartySizeAll: 'Hammasi',
+  seatingPartySizeSingle: 'Yakka',
+  seatingPartySizeDouble: 'Juft',
+  seatingPartySizeLarge: '3+',
+  seatingFullPill: "To'la",
+  seatingFreeShort: (n) => `${n} bo'sh`,
+  seatingViewLabel: "Ko'rinish",
+  seatingViewList: "Ro'yxat",
+  seatingViewGrid: 'Panjara',
+  seatingClearTable: "Stolni bo'shatish",
+  seatingClearTableConfirm: (label, count) =>
+    `${label} stolidagi ${count} ta mehmon biriktirilmagan holatga olinsinmi? Ular Biriktirilmagan ustuniga qaytadi.`,
+  seatingClearedTable: (label, count) =>
+    `${label} stolidan ${count} ta mehmon olib tashlandi`,
+  seatingMoveOverflow: (n) =>
+    n === 1
+      ? "Oxirgi mehmonni Biriktirilmaganga qaytar"
+      : `Oxirgi ${n} ta mehmonni Biriktirilmaganga qaytar`,
+  seatingMovedOverflow: (n) =>
+    n === 1
+      ? '1 ta mehmon Biriktirilmaganga ko\u02bcchirildi'
+      : `${n} ta mehmon Biriktirilmaganga ko\u02bcchirildi`,
+  seatingUndo: 'Bekor qilish',
+  seatingUndone: 'Bekor qilindi',
+  seatingAddGuestToFooter: "Shu stolga mehmon qo'shish",
 
   backupTitle: 'Maʼlumotlar Zaxirasi',
   backupDesc: "Barcha mehmonlar, takliflar, tadbirlar va bildirishnomalarning to'liq nusxasini yuklab oling. Keyinroq qayta tiklab o'zgarishlarni bekor qilishingiz mumkin.",
