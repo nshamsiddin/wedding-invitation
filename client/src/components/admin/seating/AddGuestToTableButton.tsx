@@ -101,7 +101,18 @@ export default function AddGuestToTableButton({
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+      // The wrapper inherits the same cursor as the inner button so that the
+      // 1px boundary around the button (and the wrapper's own bounding box,
+      // which can pick up sub-pixel hovers when the footer flex centers the
+      // tiny button) never flashes the default arrow on the way in. Without
+      // this the cursor flickered between auto and pointer along the top
+      // edge of the button — most visible because the footer's `py-2`
+      // padding sits ~8px above the button as an arrow-cursor "dead zone".
+      style={{ cursor: unassigned.length === 0 ? 'not-allowed' : 'pointer' }}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -116,7 +127,12 @@ export default function AddGuestToTableButton({
               ? at.seatingTableFullHint
               : at.seatingAddGuestToTable
         }
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+        // Bigger vertical padding (py-0.5 → py-1.5) tripled the button's hit
+        // target from ~18px to ~30px so hovers near the top no longer drift
+        // into the footer's padding zone. The visual weight still reads as
+        // a secondary action — the new height matches a normal small button
+        // and aligns with the "free seats" text on the right of the footer.
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-sans font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(184,146,74,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
           background: isFull ? 'rgba(220,38,38,0.10)' : 'rgba(184,146,74,0.14)',
           color: isFull ? '#B91C1C' : '#7A4F10',

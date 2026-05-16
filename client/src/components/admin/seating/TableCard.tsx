@@ -531,9 +531,16 @@ export default function TableCard({
       {/* Footer — the "+ Add guest" picker lives here in its own dashed-
           bordered strip so it reads as an *action* (distinct from the
           seated chips above). Previously inlined into the chip wrap, where
-          it visually looked like a guest. */}
+          it visually looked like a guest.
+
+          We use py-1 (not py-2) so the footer doesn't introduce an 8px-tall
+          arrow-cursor "dead zone" above the small "+ Add guest" button —
+          admins were noticing the cursor only flipped to pointer on the
+          bottom half of the button because their mouse drifted across the
+          padding zone on the way in. The button itself was also bumped to
+          py-1.5 (was py-0.5) so the hit target is generous on its own. */}
       <div
-        className="px-3.5 py-2 flex items-center justify-between gap-2"
+        className="px-3.5 py-1 flex items-center justify-between gap-2"
         style={{ borderTop: `1px dashed ${GOLD_DIM}` }}
       >
         <AddGuestToTableButton
