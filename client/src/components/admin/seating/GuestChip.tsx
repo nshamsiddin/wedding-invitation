@@ -300,6 +300,12 @@ export default function GuestChip({
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
+            // Without `pointer-events: none`, SVG's default
+            // `visiblePainted` hit-testing means hovers over the empty
+            // gaps between the X strokes fall through to the chip's drag
+            // handle (cursor: grab). Letting the button own the entire
+            // hit area keeps the pointer cursor stable on hover.
+            style={{ pointerEvents: 'none' }}
           >
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
