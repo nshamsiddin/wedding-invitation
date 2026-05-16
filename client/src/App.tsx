@@ -10,6 +10,7 @@ import HomePage from './garden/pages/HomePage';
 import InvitePage from './pages/InvitePage';
 import PublicInvitePage from './pages/PublicInvitePage';
 import EventPage from './pages/EventPage';
+import RedirectPage from './pages/RedirectPage';
 import LoginPage from './pages/admin/LoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import GuestWishesPage from './pages/admin/GuestWishesPage';
@@ -60,6 +61,9 @@ function AppInner() {
           <Route path="/"              element={<HomePage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/invite/:venue/:lang" element={<PublicInvitePage />} />
+
+          {/* ── Wedding photo album QR landing (must precede /:slug) ── */}
+          <Route path="/redirect"      element={<RedirectPage />} />
 
           {/* ── Event landing pages (linked from homepage event cards) ── */}
           <Route path="/:slug"         element={<EventPage />} />

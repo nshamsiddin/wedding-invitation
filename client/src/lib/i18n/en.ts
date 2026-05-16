@@ -152,6 +152,15 @@ export type Translations = {
   retryAction: string;
   // Reserved-for editorial label on personal RSVP
   reservedFor: string;
+  // /redirect page — wedding photo album landing
+  albumOverline: string;
+  albumComingTitle: string;
+  albumComingDate: string;
+  albumComingBody: string;
+  albumComingHint: string;
+  albumReadyTitle: string;
+  albumReadyBody: string;
+  albumRedirecting: string;
 };
 
 export const en: Translations = {
@@ -320,4 +329,15 @@ export const en: Translations = {
   retryAction: 'Try again',
   reservedFor: 'Reserved for',
 
+  // /redirect page — wedding photo album landing
+  albumOverline: 'Wedding Album',
+  albumComingTitle: 'Our album is on its way',
+  albumComingDate: 'Opening 20 May 2026',
+  albumComingBody:
+    "Every memory from our celebration is being lovingly gathered. The full photo album will open here on 20 May 2026 — please return then to relive the day with us.",
+  albumComingHint: 'Bookmark this page — the same link will take you straight to the album once it is live.',
+  albumReadyTitle: 'Almost there',
+  albumReadyBody:
+    'The album will appear here shortly. Thank you for your patience — please check back a little later.',
+  albumRedirecting: 'Opening the album…',
 };

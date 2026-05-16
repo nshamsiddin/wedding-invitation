@@ -165,4 +165,16 @@ export const tr: Translations = {
   invitationOfflineSub: 'Lütfen bağlantınızı kontrol edip tekrar deneyin.',
   retryAction: 'Tekrar dene',
   reservedFor: 'Ayrılan kişi',
+
+  // /redirect — düğün fotoğraf albümü açılış sayfası
+  albumOverline: 'Düğün Albümü',
+  albumComingTitle: 'Albümümüz yolda',
+  albumComingDate: '20 Mayıs 2026\'da açılıyor',
+  albumComingBody:
+    'Kutlamamızdan kalan her an özenle bir araya getiriliyor. Tam fotoğraf albümü 20 Mayıs 2026\'da burada açılacak — o günü bizimle yeniden yaşamak için lütfen geri dönün.',
+  albumComingHint: 'Bu sayfayı yer imlerinize ekleyin — aynı bağlantı, albüm yayına girdiğinde sizi doğrudan oraya götürecek.',
+  albumReadyTitle: 'Neredeyse hazır',
+  albumReadyBody:
+    'Albüm kısa süre içinde burada görünecek. Sabrınız için teşekkür ederiz — lütfen az sonra tekrar deneyin.',
+  albumRedirecting: 'Albüm açılıyor…',
 };

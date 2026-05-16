@@ -165,4 +165,16 @@ export const uz: Translations = {
   invitationOfflineSub: "Iltimos, internet aloqangizni tekshirib, qayta urinib ko'ring.",
   retryAction: "Qayta urinib ko'rish",
   reservedFor: 'Atalgan',
+
+  // /redirect — to'y fotoalbomi sahifasi
+  albumOverline: "To'y Albomi",
+  albumComingTitle: "Albomimiz tez kunda tayyor bo'ladi",
+  albumComingDate: '2026-yil 20-mayda ochiladi',
+  albumComingBody:
+    "Bayramimizdan qolgan har bir lahza mehr bilan yig'ilmoqda. To'liq fotoalbom shu sahifada 2026-yil 20-mayda ochiladi — o'sha kunni biz bilan birga qayta yashash uchun, iltimos, qayting.",
+  albumComingHint: "Ushbu sahifani saqlab qo'ying — albom faollashishi bilan xuddi shu havola sizni to'g'ridan-to'g'ri unga olib boradi.",
+  albumReadyTitle: 'Deyarli tayyor',
+  albumReadyBody:
+    "Albom tez orada shu yerda paydo bo'ladi. Sabringiz uchun rahmat — iltimos, bir oz keyinroq qayta urinib ko'ring.",
+  albumRedirecting: 'Albom ochilmoqda…',
 };
