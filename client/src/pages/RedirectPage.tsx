@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../lib/i18n';
+import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -16,6 +17,12 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
  */
 const REDIRECT_URL = '';
 const ACTIVATION_DATE = '2026-05-20T12:00:00+05:00';
+
+// Default locale for QR-code visitors. The album QR lives on the Ankara
+// reception tables, so Turkish is the most welcoming first impression.
+// Applied via setLanguageFromInvitation() so it never stomps a manual
+// choice the guest has already made via the language switcher.
+const DEFAULT_LANGUAGE = 'tr' as const;
 
 function isSafeHttpsUrl(value: string): boolean {
   if (!value) return false;
@@ -49,8 +56,16 @@ function isZero(t: TimeLeft) {
 
 export default function RedirectPage() {
   const tl = useTranslation();
+  const { setLanguageFromInvitation } = useContext(LanguageContext);
   const redirectActive = isSafeHttpsUrl(REDIRECT_URL);
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => calculateTimeLeft(ACTIVATION_DATE));
+
+  // Default first-time visitors to Turkish; respects manual overrides
+  // already saved in localStorage by the LanguageSwitcher.
+  useEffect(() => {
+    setLanguageFromInvitation(DEFAULT_LANGUAGE);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // When the photographer archive URL has been configured, forward guests
   // immediately. Uses replace() so the back button still lands on the page
