@@ -105,13 +105,25 @@ body {
 /* Restore default cursor + light background for admin panel */
 .admin-page { background-color: #f9fafb; }
 .admin-page, .admin-page * { cursor: auto !important; }
-.admin-page a, .admin-page button, .admin-page [role="button"],
+/* Pointer for clickable elements AND their descendants. Without the `*`
+   selectors the descendant icons (svg) and labels (span) inside a button
+   would fall back to the broader `.admin-page * { cursor: auto !important }`
+   rule and override the inherited pointer from the button — admins saw the
+   cursor flip back to arrow whenever they hovered the text/icon of a button
+   instead of the button's padding. */
+.admin-page a, .admin-page a *,
+.admin-page button, .admin-page button *,
+.admin-page [role="button"], .admin-page [role="button"] *,
 .admin-page input, .admin-page select, .admin-page textarea,
 .admin-page label { cursor: pointer !important; }
 .admin-page input[type="text"], .admin-page input[type="email"],
 .admin-page input[type="password"], .admin-page input[type="tel"],
 .admin-page input[type="search"], .admin-page textarea { cursor: text !important; }
-.admin-page [disabled], .admin-page [aria-disabled="true"] { cursor: not-allowed !important; }
+/* Disabled wins over the pointer rule above — both for the element itself
+   and any inline children — so a disabled button never lies about being
+   clickable. */
+.admin-page [disabled], .admin-page [disabled] *,
+.admin-page [aria-disabled="true"], .admin-page [aria-disabled="true"] * { cursor: not-allowed !important; }
 
 /* ─── Custom Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {
